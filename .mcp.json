@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "hedera-docs": { "url": "https://docs.hedera.com/mcp" },
+    "hedera-agent": { "command": "npx", "args": ["-y", "@hashgraph/hedera-agent-kit-mcp"] },
+    "thegraph": { "command": "uvx", "args": ["subgraph-mcp"], "env": { "THEGRAPH_API_KEY": "${THEGRAPH_API_KEY}" } }
+  }
+}
