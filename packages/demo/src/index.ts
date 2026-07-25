@@ -17,10 +17,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ethers } from 'ethers';
 
-import { createBobAgent, type BobAgent } from '../packages/bob-agent/src/index.js';
-import type { FraudMode } from '../packages/bob-agent/src/fraud.js';
-import { runAliceJob } from '../packages/alice-agent/src/index.js';
-import { decodeBody } from '../packages/bob-binding/src/binding.js';
+import { createBobAgent, type BobAgent } from '@ca/bob-agent';
+import type { FraudMode } from '@ca/bob-agent/dist/fraud.js';
+import { runAliceJob } from '@ca/alice-agent';
+import { decodeBody } from '@ca/bob-binding';
 import {
   describeCompute,
   describeReasoning,
@@ -34,9 +34,9 @@ import {
   type PriceDecision,
   type ReasoningProvider,
   type ResultDecision,
-} from '../packages/shared/src/index.js';
-import { deriveAgentStealthKeys } from '../packages/payment/src/stealth.js';
-import { loadConfig, loadDotenv, repoRoot, requireEnv } from '../packages/shared/src/config.js';
+} from '@ca/shared';
+import { deriveAgentStealthKeys } from '@ca/payment';
+import { loadConfig, loadDotenv, repoRoot, requireEnv } from '@ca/shared';
 
 const BASESCAN = 'https://sepolia.basescan.org';
 const CHAIN_ID = 84532;
@@ -140,8 +140,8 @@ async function openTimeline(brief: string, data: string, log: (l: string) => voi
     log('[hcs] HEDERA_TOPIC_ID is empty — timeline skipped');
     return undefined;
   }
-  const { createHcsTimeline } = await import('../packages/payment/src/hcs-timeline.js');
-  const { createHederaOperatorClient } = await import('../packages/payment/src/signer/hedera-signer.js');
+  const { createHcsTimeline } = await import('@ca/payment');
+  const { createHederaOperatorClient } = await import('@ca/payment');
   return createHcsTimeline({
     client: createHederaOperatorClient({ accountId: cfg.HEDERA_OPERATOR_ID }),
     topicId,
@@ -159,8 +159,8 @@ export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolea
   const provider = new ethers.JsonRpcProvider(cfg.BASE_RPC_URL);
   const verifierAddress = requireEnv('VERIFIER_ADDRESS');
   if (rail === 'hedera') {
-    const { createHederaX402Backend } = await import('../packages/payment/src/hedera-x402.js');
-    const { createHederaSigner } = await import('../packages/payment/src/signer/hedera-signer.js');
+    const { createHederaX402Backend } = await import('@ca/payment/dist/hedera-x402.js');
+    const { createHederaSigner } = await import('@ca/payment');
     return createHederaX402Backend({
       signer: createHederaSigner({ accountId: cfg.HEDERA_OPERATOR_ID }),
       facilitatorUrl: cfg.BLOCKY402_URL,
@@ -169,8 +169,8 @@ export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolea
       payoutAccountId: forBob ? process.env.BOB_HEDERA_ACCOUNT : undefined,
     });
   }
-  const { createBaseStealthBackend } = await import('../packages/payment/src/base-stealth.js');
-  const { deriveAgentStealthKeys } = await import('../packages/payment/src/stealth.js');
+  const { createBaseStealthBackend } = await import('@ca/payment/dist/base-stealth.js');
+  const { deriveAgentStealthKeys } = await import('@ca/payment');
   const bobKeys = deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob');
   return createBaseStealthBackend({
     provider,
@@ -191,7 +191,7 @@ export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base
   loadDotenv();
   const cfg = loadConfig();
 
-  const { identityRegistry, readUtf8Metadata, METADATA_KEYS } = await import('../packages/shared/src/index.js');
+  const { identityRegistry, readUtf8Metadata, METADATA_KEYS } = await import('@ca/shared');
   const provider = new ethers.JsonRpcProvider(cfg.BASE_RPC_URL);
   const registry = identityRegistry(cfg.ERC8004_IDENTITY, provider);
   const agentId = requireEnv('BOB_AGENT_ID');
@@ -387,7 +387,10 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   };
   const args = [intent, job.signature, body.outputHash, body.match, body.ogSigHash, seal] as const;
 
-  const code = Number((await verifier.previewJob(...args)) as bigint);
+  // `getFunction` rather than `verifier.previewJob(...)`: ethers types dynamic contract members
+  // as possibly-undefined, and this file is type-checked now that it is a package rather than a
+  // loose script. Same call, minus a cast that would hide a genuine typo in the method name.
+  const code = Number((await verifier.getFunction('previewJob')(...args)) as bigint);
   const codeName = REJECTION_NAMES[code] ?? `Unknown(${code})`;
 
   const report: DemoReport = {
@@ -428,7 +431,8 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   // An honest job uses the STRICT path (settlement will read it).
   // Fraud uses the LENIENT path: it does not revert, it emits JobRejected, the subgraph indexes
   // it and it appears successful on Basescan (the BUILD-PLAN P3-A rationale).
-  const tx = code === 0 ? await verifier.verifyJob(...args) : await verifier.verifyJobLenient(...args);
+  const method = code === 0 ? 'verifyJob' : 'verifyJobLenient';
+  const tx = (await verifier.getFunction(method)(...args)) as ethers.ContractTransactionResponse;
   const receipt = await tx.wait();
   sw.mark('chain_verify_tx');
   report.totalMs = Date.now() - started;

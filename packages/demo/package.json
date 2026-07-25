@@ -1,0 +1,24 @@
+{
+  "name": "@ca/demo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "//": "The end-to-end hero flow as a LIBRARY. It lived in scripts/ until the dashboard needed it: scripts/ is not a workspace member, so Next.js could not import it. `pnpm demo:base` still runs the same code through scripts/demo-cli.ts.",
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@ca/alice-agent": "workspace:*",
+    "@ca/bob-agent": "workspace:*",
+    "@ca/bob-binding": "workspace:*",
+    "@ca/payment": "workspace:*",
+    "@ca/shared": "workspace:*",
+    "ethers": "^6.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

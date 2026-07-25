@@ -12,7 +12,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { closeBob, runDemo, type DemoReport } from '../../scripts/demo.js';
+import { closeBob, runDemo, type DemoReport } from '../../packages/demo/src/index.js';
 import { readTimeline } from '../../packages/payment/src/hcs-timeline.js';
 import { TIMELINE_STAGES, stageOrder, type RecordedTimelineEvent } from '../../packages/shared/src/timeline.js';
 import { loadDotenv, repoRoot, requireEnv } from '../../packages/shared/src/config.js';
