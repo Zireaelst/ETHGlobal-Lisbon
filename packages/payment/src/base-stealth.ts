@@ -1,19 +1,21 @@
-// base-stealth.ts — x402 + ERC-5564 stealth on Base Sepolia (GİZLİLİK koşusu).
+// base-stealth.ts — x402 + ERC-5564 stealth on Base Sepolia (the PRIVACY run).
 //
-// Bu ray alıcının kimliğini gizleyen olan. Bob bir meta-adres yayınlar; Alice her iş
-// için TAZE bir stealth adres türetip oraya öder. Zincirde "bir adres USDC aldı"
-// görünür, o adresin Bob'un ERC-8004 kimliğiyle bağı GÖRÜNMEZ.
+// This is the rail that hides the recipient's identity. Bob publishes a meta-address; for
+// every job Alice derives a FRESH stealth address and pays that. On chain you see "an
+// address received USDC"; its link to Bob's ERC-8004 identity is INVISIBLE.
 //
-// Hedera rayıyla farkı bilinçli (roadmap v3 §07): stealth alıcı-gizliliği bir EVM
-// konstrüksiyonu, Hedera'nın hesap modeline oturmuyor. İki ayrı kanıt sunuyoruz.
+// The difference from the Hedera rail is deliberate (roadmap v3 §07): stealth recipient
+// privacy is an EVM construction and does not fit Hedera's account model. We present two
+// separate proofs.
 //
-// GAZ: Alice gas ÖDEMEZ. EIP-3009 `transferWithAuthorization` ile yetkiyi imzalar,
-// işlemi bir relayer gönderir. Hedera'da bu rolü gerçek blocky402 facilitator'ı
-// oynuyor; Base'de kendi relayer cüzdanımız oynuyor — README'de böyle yazılacak.
+// GAS: Alice PAYS NO gas. She signs the authorisation with EIP-3009
+// `transferWithAuthorization` and a relayer submits the transaction. On Hedera that role is
+// played by the real blocky402 facilitator; on Base it is our own relayer wallet — the
+// README says so plainly.
 //
-// STEALTH ADRESİN ETH'İ YOK ve OLMAMALI: adrese ETH göndermek onu gönderene
-// bağlar ve gizliliği bozar. Bob da parayı EIP-3009 ile çıkarıyor — stealth anahtar
-// yetkiyi imzalıyor, gas'ı yine relayer ödüyor. Böylece adres hiç ETH görmüyor.
+// THE STEALTH ADDRESS HAS NO ETH, AND MUST NOT: sending ETH to it links it to the sender
+// and breaks the privacy. Bob also withdraws via EIP-3009 — the stealth key signs the
+// authorisation and the relayer again pays the gas. So the address never sees any ETH.
 
 import { Contract, Wallet, hexlify, randomBytes, verifyTypedData, type JsonRpcProvider } from 'ethers';
 import {
@@ -28,7 +30,7 @@ import { SCHEME_ID, checkAnnouncement, deriveStealthPayment, type StealthPayment
 
 const BASESCAN = 'https://sepolia.basescan.org';
 
-/** ERC-5564 kanonik singleton'ları — ikisi de Base Sepolia'da canlı. */
+/** The canonical ERC-5564 singletons — both are live on Base Sepolia. */
 export const ERC5564_ANNOUNCER = '0x55649E01B5Df198D18D95b5cc5051630cfD45564';
 export const ERC6538_REGISTRY = '0x6538E6bf4B0eBd30A8Ea093027Ac2422ce5d6538';
 
@@ -64,11 +66,11 @@ const TRANSFER_WITH_AUTHORIZATION_TYPES = {
 
 export interface BaseStealthConfig {
   provider: JsonRpcProvider;
-  /** Alice — yetkiyi İMZALAR, gas ödemez. */
+  /** Alice — SIGNS the authorisation, pays no gas. */
   payerPrivateKey: string;
   /**
-   * İşlemi gönderen ve gas'ı ödeyen. Hedera'da bu rolü blocky402 oynuyor;
-   * Base'de kendi cüzdanımız — dürüstçe "relayer" diye adlandırıldı.
+   * Submits the transaction and pays the gas. On Hedera blocky402 plays this role;
+   * on Base it is our own wallet — named "relayer" honestly.
    */
   relayerPrivateKey: string;
   usdcAddress: string;
@@ -77,16 +79,16 @@ export interface BaseStealthConfig {
   recipientMetaAddress?: string;
   announcerAddress?: string;
   /**
-   * BOB tarafı: gelen ödemenin kendisine ait olduğunu doğrulamak için.
-   * Görüntüleme anahtarı harcama yetkisi VERMEZ — sadece 'bu bana mı?' der.
-   * Alice tarafında gerekmez.
+   * The BOB side: used to verify that an incoming payment is really his.
+   * The viewing key grants NO spending authority — it only answers 'is this mine?'.
+   * Not needed on Alice's side.
    */
   viewingPrivateKey?: string;
   spendingPublicKey?: string;
   log?: (line: string) => void;
 }
 
-/** quote → authorize arasında taşınan, henüz GÖNDERİLMEMİŞ yetki. */
+/** The as-yet UNSUBMITTED authorisation carried between quote and authorize. */
 interface StealthAuthPayload {
   from: string;
   to: string;
@@ -100,7 +102,7 @@ interface StealthAuthPayload {
   metadata: string;
 }
 
-/** EIP-3009 yetkisi imzala — para HAREKET ETMEZ, sadece izin üretilir. */
+/** Sign an EIP-3009 authorisation — NO money MOVES, only a permission is produced. */
 export async function signTransferAuthorization(params: {
   provider: JsonRpcProvider;
   usdcAddress: string;
@@ -148,8 +150,9 @@ export async function signTransferAuthorization(params: {
 }
 
 /**
- * EIP-3009 yetkisinin imzacısını kurtar — Bob'un "bu imza gerçekten ödeyene mi ait?"
- * kontrolü. Digest yapının KENDİ alanlarından yeniden üretilir; iddiaya güvenilmez.
+ * Recover the signer of an EIP-3009 authorisation — Bob's "does this signature really
+ * belong to the payer?" check. The digest is rebuilt from the struct's OWN fields; the
+ * claim is not trusted.
  */
 export async function recoverTransferAuthorizationSigner(
   provider: JsonRpcProvider,
@@ -177,7 +180,7 @@ export async function recoverTransferAuthorizationSigner(
   );
 }
 
-/** Yetkiyi zincire gönder — gas'ı GÖNDEREN öder, imzalayan değil. */
+/** Submit the authorisation on chain — the SUBMITTER pays the gas, not the signer. */
 export async function submitTransferAuthorization(
   relayer: Wallet,
   usdcAddress: string,
@@ -201,14 +204,14 @@ export async function submitTransferAuthorization(
     s,
   );
   const receipt = await tx.wait();
-  if (!receipt || receipt.status !== 1) throw new Error(`transferWithAuthorization başarısız: ${tx.hash}`);
+  if (!receipt || receipt.status !== 1) throw new Error(`transferWithAuthorization failed: ${tx.hash}`);
   return { txHash: tx.hash, blockNumber: receipt.blockNumber };
 }
 
 export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBackend {
   const log = config.log ?? (() => {});
   const announcerAddress = config.announcerAddress ?? ERC5564_ANNOUNCER;
-  /** quote() ile authorize() arasında taşınan tek seferlik türetme. */
+  /** The one-shot derivation carried between quote() and authorize(). */
   let pending: StealthPayment | undefined;
 
   return {
@@ -218,12 +221,12 @@ export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBack
       const metaAddress = config.recipientMetaAddress ?? request.recipient;
       if (!metaAddress.startsWith('st:')) {
         throw new Error(
-          `base-stealth: alıcı bir ERC-5564 meta-adresi olmalı ("st:base:0x…"), gelen: ${metaAddress.slice(0, 24)}…`,
+          `base-stealth: recipient must be an ERC-5564 meta-address ("st:base:0x…"), received: ${metaAddress.slice(0, 24)}…`,
         );
       }
-      // HER İŞ İÇİN TAZE ephemeral anahtar — tekrar kullanmak iki ödemeyi bağlar.
+      // A FRESH ephemeral key FOR EVERY JOB — reusing one links two payments together.
       pending = deriveStealthPayment(metaAddress, hexlify(randomBytes(32)));
-      log(`[base-stealth] taze stealth adres türetildi: ${pending.stealthAddress}`);
+      log(`[base-stealth] fresh stealth address derived: ${pending.stealthAddress}`);
 
       return {
         rail: 'base-stealth',
@@ -244,7 +247,7 @@ export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBack
     },
 
     async authorize(quote: PaymentQuote): Promise<AuthProof> {
-      if (!pending) throw new Error('base-stealth: authorize() quote() olmadan çağrıldı');
+      if (!pending) throw new Error('base-stealth: authorize() was called without quote()');
       const auth = await signTransferAuthorization({
         provider: config.provider,
         usdcAddress: config.usdcAddress,
@@ -252,7 +255,7 @@ export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBack
         to: quote.payTo,
         value: BigInt(quote.amount),
       });
-      log('[base-stealth] EIP-3009 yetkisi imzalandı — para HENÜZ hareket etmedi');
+      log('[base-stealth] EIP-3009 authorisation signed — the money has NOT moved YET');
 
       return {
         rail: 'base-stealth',
@@ -269,9 +272,9 @@ export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBack
     },
 
     async verifyAuthorization(proof, expected) {
-      if (proof.rail !== 'base-stealth') return { ok: false, reason: `yanlış ray: ${proof.rail}` };
+      if (proof.rail !== 'base-stealth') return { ok: false, reason: `wrong rail: ${proof.rail}` };
       if (proof.intentHash.toLowerCase() !== expected.intentHash.toLowerCase()) {
-        return { ok: false, reason: 'yetki başka bir işe ait' };
+        return { ok: false, reason: 'the authorisation belongs to a different job' };
       }
       if (proof.amount !== expected.amount) {
         return { ok: false, reason: `tutar ${proof.amount}, beklenen ${expected.amount}` };
@@ -279,46 +282,46 @@ export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBack
 
       const auth = proof.payload as StealthAuthPayload;
       if (auth.to.toLowerCase() !== proof.payTo.toLowerCase()) {
-        return { ok: false, reason: 'yetkideki alıcı ile beyan edilen payTo farklı' };
+        return { ok: false, reason: 'the recipient in the authorisation differs from the declared payTo' };
       }
       if (BigInt(auth.value) !== BigInt(expected.amount)) {
-        return { ok: false, reason: 'imzalanan tutar beklenenden farklı' };
+        return { ok: false, reason: 'the signed amount differs from the expected one' };
       }
       if (BigInt(auth.validBefore) <= BigInt(Math.floor(Date.now() / 1000))) {
-        return { ok: false, reason: 'yetkinin süresi geçmiş' };
+        return { ok: false, reason: 'the authorisation has expired' };
       }
 
-      // BU ÖDEME BANA MI? Stealth adres benim meta-adresimden mi türetilmiş?
-      // Geçici pubkey yetkiyle geldiği için bunu görüntüleme anahtarıyla
-      // doğrulayabiliyoruz — başkasına yapılmış ödeme burada elenir.
+      // IS THIS PAYMENT MINE? Does the stealth address derive from my meta-address?
+      // The ephemeral pubkey travels with the authorisation, so we can check this with the
+      // viewing key — a payment made to someone else is eliminated here.
       if (config.viewingPrivateKey && config.spendingPublicKey) {
         const mine = checkAnnouncement(
           { viewingPrivateKey: config.viewingPrivateKey, spendingPublicKey: config.spendingPublicKey },
           auth.ephemeralPublicKey,
         );
         if (!mine || mine.stealthAddress.toLowerCase() !== auth.to.toLowerCase()) {
-          return { ok: false, reason: 'stealth adres bu agent\'ın meta-adresinden türetilmemiş' };
+          return { ok: false, reason: 'the stealth address does not derive from this agent\'s meta-address' };
         }
       }
 
-      // İmza gerçekten ödeyene mi ait? EIP-3009 digest'ini yeniden kurup kurtar.
+      // Does the signature really belong to the payer? Rebuild the EIP-3009 digest and recover.
       const signer = await recoverTransferAuthorizationSigner(config.provider, config.usdcAddress, auth);
       if (signer.toLowerCase() !== auth.from.toLowerCase()) {
-        return { ok: false, reason: `imza ${signer} veriyor, beyan edilen ödeyen ${auth.from}` };
+        return { ok: false, reason: `signature yields ${signer}, declared payer is ${auth.from}` };
       }
 
-      // Bakiye yetiyor mu? Yetmiyorsa iş yapıp sonra tahsil edememe riski var.
+      // Is the balance sufficient? If not, we risk doing the work and failing to collect.
       const usdc = new Contract(config.usdcAddress, USDC_ABI, config.provider);
       const balance = (await usdc.getFunction('balanceOf')(auth.from)) as bigint;
       if (balance < BigInt(auth.value)) {
-        return { ok: false, reason: `ödeyenin bakiyesi yetersiz (${balance})` };
+        return { ok: false, reason: `payer's balance is insufficient (${balance})` };
       }
 
       return { ok: true };
     },
 
     async settle(proof: AuthProof, jobVerifiedTx: string): Promise<Receipt> {
-      // KAPI: doğrulanmamış iş için para serbest bırakılmaz.
+      // THE GATE: no money is released for an unverified job.
       const verified = await assertJobVerified(
         config.provider,
         config.verifierAddress,
@@ -330,10 +333,10 @@ export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBack
       const relayer = new Wallet(config.relayerPrivateKey, config.provider);
 
       const { txHash, blockNumber } = await submitTransferAuthorization(relayer, config.usdcAddress, auth);
-      log(`[base-stealth] USDC stealth adrese ulaştı: ${txHash}`);
+      log(`[base-stealth] USDC arrived at the stealth address: ${txHash}`);
 
-      // ERC-5564 duyurusu: Bob taramayla parasını bulabilsin diye. Announcer
-      // Base Sepolia'da CANLI, bant dışı fallback'e gerek yok.
+      // The ERC-5564 announcement: so Bob can find his money by scanning. The Announcer is
+      // LIVE on Base Sepolia, no out-of-band fallback is needed.
       const announcer = new Contract(announcerAddress, ANNOUNCER_ABI, relayer);
       const announceTx = await announcer.getFunction('announce')(
         SCHEME_ID,

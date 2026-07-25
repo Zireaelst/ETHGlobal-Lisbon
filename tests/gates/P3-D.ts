@@ -210,7 +210,7 @@ gate.check('`pnpm demo:base` tek komut olarak çalışıyor', async () => {
       ? pass(
           out
             .split('\n')
-            .filter((l) => l.includes('karar') || l.includes('süre') || l.includes('tx  '))
+            .filter((l) => l.includes('verdict') || l.includes('elapsed') || l.includes('tx  '))
             .join('\n'),
         )
       : fail(out.split('\n').slice(-20).join('\n'));

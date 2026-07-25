@@ -1,23 +1,23 @@
-// scripts/og-list.ts — 0G Compute keşfi (SALT OKUNUR, para harcamaz).
+// scripts/og-list.ts — 0G Compute discovery (READ-ONLY, spends no money).
 //
-// P0-B'nin ilk adımı. Amaç tek soruyu cevaplamak: ağda gerçekten `TeeML`
-// sağlayıcı var mı, ve hangisini seçeceğiz?
+// The first step of P0-B. It answers one question: are there really `TeeML` providers on the
+// network, and which one do we pick?
 //
-// Bu ayrım kozmetik değil. BUILD-PLAN P0-B/2:
-//   TeeML  → model enclave'in İÇİNDE çalışır; operatör veriyi göremez
-//   TeeTLS → sadece taşıma şifreli; model normal makinede
-// "Altyapı veriyi göremez" iddiamız TeeML'e dayanıyor. TeeTLS seçersek demo
-// çalışır ama iddia yalan olur — bu yüzden burada eleme yapıyoruz, sonra değil.
+// This distinction is not cosmetic. BUILD-PLAN P0-B/2:
+//   TeeML  → the model runs INSIDE the enclave; the operator cannot see the data
+//   TeeTLS → only the transport is encrypted; the model runs on an ordinary machine
+// Our claim "the infrastructure cannot see the data" rests on TeeML. Picking TeeTLS would
+// still produce a working demo and a false claim — so we filter here, not later.
 
 import { createRequire } from 'node:module';
 import { ethers } from 'ethers';
 import { loadDotenv, requireEnv } from '../packages/shared/src/config.js';
 
-// SDK v0.9.0'ın ESM build'i KIRIK: lib.esm/index.mjs, CJS olan bir dosyadan
-// isimlendirilmiş export çekmeye çalışıyor →
+// The SDK's ESM build is BROKEN in v0.9.0: lib.esm/index.mjs tries to pull named exports from
+// a CJS chunk →
 //   SyntaxError: The requested module './index-28fb2bc1.js' does not provide an export named 'C'
-// CJS build'i sağlam, o yüzden createRequire ile onu yüklüyoruz. Paket
-// yamalandığında bu düz import'a dönebilir.
+// The CJS build is sound, so we load it via createRequire. Once the package is patched this
+// can go back to a plain import.
 const require = createRequire(import.meta.url);
 const { createZGComputeNetworkBroker } = require('@0gfoundation/0g-compute-ts-sdk');
 
@@ -26,49 +26,49 @@ loadDotenv();
 const provider = new ethers.JsonRpcProvider(requireEnv('OG_RPC_URL'));
 const wallet = new ethers.Wallet(requireEnv('OG_PRIVATE_KEY'), provider);
 
-console.log(`cüzdan  : ${wallet.address}`);
-console.log(`bakiye  : ${ethers.formatEther(await provider.getBalance(wallet.address))} OG`);
-console.log(`ağ      : chainId ${(await provider.getNetwork()).chainId}\n`);
+console.log(`wallet  : ${wallet.address}`);
+console.log(`balance : ${ethers.formatEther(await provider.getBalance(wallet.address))} OG`);
+console.log(`network : chainId ${(await provider.getNetwork()).chainId}\n`);
 
 const broker = await createZGComputeNetworkBroker(wallet);
 
-// Defter durumu — henüz FONLAMIYORUZ, sadece bakıyoruz.
+// Ledger status — we are NOT FUNDING yet, only looking.
 try {
   const ledger = await broker.ledger.getLedger();
-  console.log(`defter  : ${ethers.formatEther(ledger.totalBalance)} OG (kilitli: ${ethers.formatEther(ledger.availableBalance)})\n`);
+  console.log(`ledger  : ${ethers.formatEther(ledger.totalBalance)} OG (available: ${ethers.formatEther(ledger.availableBalance)})\n`);
 } catch (err) {
-  console.log(`defter  : henüz yok (${(err as Error).message.slice(0, 60)})\n`);
+  console.log(`ledger  : none yet (${(err as Error).message.slice(0, 60)})\n`);
 }
 
-// DİKKAT: inference tarafının imzası fine-tuning'den FARKLI.
+// CAREFUL: the inference-side signature DIFFERS from the fine-tuning one.
 //   inference   : listService(offset = 0, limit = 50, includeUnacknowledged = false)
 //   fine-tuning : listService(includeUnacknowledged = false)
-// .d.ts ikisini de aynı isimle gösteriyor; `listService(true)` demek offset'e
-// `true` geçirmek oluyor → "invalid BigNumberish value". Kaynaktan doğrulandı:
+// The .d.ts shows both under the same name, so `listService(true)` means passing `true` as the
+// offset → "invalid BigNumberish value". Confirmed from source:
 // lib.commonjs/inference/broker/read-only-broker.js:36
 const services = await broker.inference.listService(0, 50, true);
-console.log(`${services.length} servis bulundu:\n`);
+console.log(`${services.length} services found:\n`);
 
 const byVerifiability = new Map<string, number>();
 for (const s of services) {
-  const v = s.verifiability || '(boş)';
+  const v = s.verifiability || '(empty)';
   byVerifiability.set(v, (byVerifiability.get(v) ?? 0) + 1);
 }
-console.log('verifiability dağılımı:', Object.fromEntries(byVerifiability), '\n');
+console.log('verifiability distribution:', Object.fromEntries(byVerifiability), '\n');
 
 for (const s of services) {
   const teeml = s.verifiability === 'TeeML';
-  console.log(`${teeml ? '✅ TeeML' : `   ${s.verifiability || '(boş)'}`}  ${s.provider}`);
+  console.log(`${teeml ? '✅ TeeML' : `   ${s.verifiability || '(empty)'}`}  ${s.provider}`);
   console.log(`     model     : ${s.model}`);
   console.log(`     url       : ${s.url}`);
-  console.log(`     fiyat     : input ${s.inputPrice} / output ${s.outputPrice} (neuron)`);
+  console.log(`     price     : input ${s.inputPrice} / output ${s.outputPrice} (neuron)`);
   if (teeml) {
-    // Struct'tan DOĞRUDAN okuyoruz. checkProviderSignerStatus() çağırmıyoruz:
-    // o fonksiyon sağlayıcıda alt hesap yoksa MIN_TRANSFER_AMOUNT (1 OG!)
-    // transfer ediyor — sırf listelemek için sağlayıcı başına 1 OG yakardık.
+    // We read DIRECTLY from the struct. We do NOT call checkProviderSignerStatus():
+    // that function transfers MIN_TRANSFER_AMOUNT (1 OG!) when no sub-account exists with the
+    // provider — we would burn 1 OG per provider just to list them.
     console.log(`     TEE signer: ${s.teeSignerAddress}`);
-    console.log(`     onaylı mı : ${s.teeSignerAcknowledged ? 'EVET' : 'HAYIR — processResponse false döner'}`);
-    console.log(`     ek bilgi  : ${s.additionalInfo || '(boş)'}`);
+    console.log(`     acknowledged: ${s.teeSignerAcknowledged ? 'YES' : 'NO — processResponse returns false'}`);
+    console.log(`     extra info  : ${s.additionalInfo || '(empty)'}`);
   }
   console.log();
 }

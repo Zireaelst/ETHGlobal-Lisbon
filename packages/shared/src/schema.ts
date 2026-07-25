@@ -1,28 +1,29 @@
-// schema.ts — tel üzerindeki (wire) formatların zod şemaları (BUILD-PLAN §2.3).
+// schema.ts — zod schemas for the wire formats (BUILD-PLAN §2.3).
 //
-// Amaç: iki agent arasındaki SESSİZ uyuşmazlığı öldürmek. Bozuk bir paket 500 ile
-// çökmek yerine 400 ile reddedilir (P1-C kapı kriteri).
+// Purpose: kill SILENT disagreement between the two agents. A malformed payload is
+// rejected with a 400 instead of crashing with a 500 (P1-C gate criterion).
 //
-// bigint kuralı: JSON bigint taşıyamaz. `price`, `deadline` ve `nonce` tel üzerinde
-// DECIMAL STRING'dir; `toWire`/`fromWire` dönüşümü tek yerde yapılır. Bir yerde bigint
-// bir yerde number kullanmak, hash'i sessizce değiştiren en sinsi hata sınıfıdır.
+// bigint rule: JSON cannot carry bigint. On the wire `price`, `deadline` and `nonce` are
+// DECIMAL STRINGS; the `toWire`/`fromWire` conversion happens in exactly one place. Using
+// bigint in one spot and number in another is the sneakiest class of bug that silently
+// changes a hash.
 
 import { z } from 'zod';
 import type { Constraints, Intent } from './intent.js';
 
 const hex = (bytes: number) =>
-  z.string().regex(new RegExp(`^0x[0-9a-fA-F]{${bytes * 2}}$`), `0x + ${bytes * 2} hex hane olmalı`);
+  z.string().regex(new RegExp(`^0x[0-9a-fA-F]{${bytes * 2}}$`), `must be 0x + ${bytes * 2} hex digits`);
 
 export const Bytes32Schema = hex(32);
-export const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'EVM adresi olmalı');
-export const SignatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/, '65-byte imza olmalı (r‖s‖v)');
-/** Negatif olmayan tamsayı, decimal string. */
-export const UintStringSchema = z.string().regex(/^\d+$/, 'decimal string olmalı (JSON bigint taşımaz)');
+export const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'must be an EVM address');
+export const SignatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/, 'must be a 65-byte signature (r‖s‖v)');
+/** Non-negative integer as a decimal string. */
+export const UintStringSchema = z.string().regex(/^\d+$/, 'must be a decimal string (JSON cannot carry bigint)');
 
-/** Kanonik ECIES public key: 0x04 + 128 hex (bkz. ecies.ts). */
+/** Canonical ECIES public key: 0x04 + 128 hex (see ecies.ts). */
 export const EciesPubKeySchema = z
   .string()
-  .regex(/^0x04[0-9a-fA-F]{128}$/, 'kanonik ECIES public key olmalı (0x04 + 128 hex)');
+  .regex(/^0x04[0-9a-fA-F]{128}$/, 'must be a canonical ECIES public key (0x04 + 128 hex)');
 
 export const ConstraintsSchema = z
   .object({
@@ -32,7 +33,7 @@ export const ConstraintsSchema = z
   })
   .passthrough();
 
-/** Alice'in imzaladığı yapının tel hâli. */
+/** The wire form of the struct Alice signs. */
 export const IntentWireSchema = z.object({
   intentHash: Bytes32Schema,
   client: AddressSchema,
@@ -42,7 +43,7 @@ export const IntentWireSchema = z.object({
 });
 export type IntentWire = z.infer<typeof IntentWireSchema>;
 
-/** Alice → Bob `/task`, ECIES ile şifrelenen İÇERİK. */
+/** Alice → Bob `/task`, the CONTENT that gets ECIES-encrypted. */
 export const TaskEnvelopeSchema = z.object({
   v: z.literal(1),
   intent: IntentWireSchema,
@@ -51,20 +52,20 @@ export const TaskEnvelopeSchema = z.object({
   data: z.string(),
   constraints: ConstraintsSchema,
   nonce: UintStringSchema,
-  /** Alice'in ECIES pubkey'i — sonuç buna şifrelenir (kanonik biçim). */
+  /** Alice's ECIES pubkey — the result is encrypted to this (canonical form). */
   replyPubKey: EciesPubKeySchema,
 });
 export type TaskEnvelope = z.infer<typeof TaskEnvelopeSchema>;
 
-/** Ödeme rayı kimliği — iki backend, tek arayüz. */
+/** Payment rail identifier — two backends, one interface. */
 export const PaymentRailSchema = z.enum(['base-stealth', 'hedera-x402']);
 
 /**
- * Bob'un HTTP 402 yanıtı: "önce ödeme yetkisi ver".
+ * Bob's HTTP 402 response: "authorise payment first".
  *
- * `recipient` bir ADRES DEĞİL, bir TARİF: Base'de Bob'un ERC-5564 meta-adresi
- * (Alice ondan TAZE bir stealth adres türetir — Bob bunu önceden bilemez),
- * Hedera'da düz hesap kimliği.
+ * `recipient` is NOT an address but a RECIPE: on Base it is Bob's ERC-5564 meta-address
+ * (Alice derives a FRESH stealth address from it — Bob cannot know it in advance), on
+ * Hedera it is a plain account id.
  */
 export const PaymentRequirementsSchema = z.object({
   rail: PaymentRailSchema,
@@ -79,10 +80,10 @@ export const PaymentRequirementsSchema = z.object({
 export type PaymentRequirements = z.infer<typeof PaymentRequirementsSchema>;
 
 /**
- * Alice'in imzaladığı, HENÜZ GÖNDERİLMEMİŞ ödeme yetkisi.
+ * The payment authorisation Alice signs, NOT YET SUBMITTED.
  *
- * `payload` raya özgü (Base: EIP-3009 imzası; Hedera: kısmi imzalı transfer).
- * Bob bunu doğrular, işi yapar, `JobVerified` sonrası gönderir.
+ * `payload` is rail-specific (Base: an EIP-3009 signature; Hedera: a partially signed
+ * transfer). Bob verifies it, does the work, and submits it after `JobVerified`.
  */
 export const PaymentAuthorizationSchema = z.object({
   rail: PaymentRailSchema,
@@ -94,14 +95,15 @@ export const PaymentAuthorizationSchema = z.object({
 export type PaymentAuthorization = z.infer<typeof PaymentAuthorizationSchema>;
 
 /**
- * Tel üzerindeki dış gövde: POST /task
+ * The outer body on the wire: POST /task
  *
- * `intentHash` ve `replyPubKey` ŞİFRE DIŞINDA taşınıyor çünkü Bob'un dış katmanı
- * paketi ÇÖZEMİYOR (anahtar enclave'de) ama işi yönlendirmek ve sonucu teslim etmek
- * için bu ikisine ihtiyacı var. Sızıntı yok: `intentHash` zaten `JobVerified` ile
- * zincirde herkese açık, `replyPubKey` de Alice'in ERC-8004 kaydında duruyor.
+ * `intentHash` and `replyPubKey` travel OUTSIDE the ciphertext because Bob's outer layer
+ * CANNOT decrypt the payload (the key lives in the enclave) yet still needs these two to
+ * route the job and deliver the result. Nothing leaks: `intentHash` is already public
+ * on-chain via `JobVerified`, and `replyPubKey` sits in Alice's ERC-8004 record.
  *
- * Enclave bunlara GÜVENMEZ — kendi kararlarını paketin İÇİNDEKİ alanlardan verir.
+ * The enclave does NOT trust these — it makes its own decisions from the fields INSIDE the
+ * sealed payload.
  */
 export const TaskRequestSchema = z.object({
   to: z.string().min(1),
@@ -109,33 +111,33 @@ export const TaskRequestSchema = z.object({
   replyPubKey: EciesPubKeySchema,
   cipher: z.string().min(1),
   /**
-   * Ödeme yetkisi. YOKSA Bob 402 döner ve İŞ YAPMAZ (CLAUDE.md §7).
+   * The payment authorisation. WITHOUT IT Bob returns 402 and DOES NO WORK (CLAUDE.md §7).
    *
-   * Bu bir EMANET (escrow) değil, imzalanmış bir izindir: para hâlâ Alice'in
-   * cüzdanında. Bob onu tutar, işi yapar ve `JobVerified` çıktıktan SONRA
-   * gönderir. Fraud koşusunda `JobVerified` hiç oluşmaz → yetki hiç gönderilmez.
+   * This is not an ESCROW but a signed permission: the money is still in Alice's wallet.
+   * Bob holds it, does the work, and submits it AFTER `JobVerified` appears. On a fraud run
+   * `JobVerified` never happens → the authorisation is never submitted.
    */
   payment: PaymentAuthorizationSchema.optional(),
 });
 export type TaskRequest = z.infer<typeof TaskRequestSchema>;
 
 /**
- * Enclave'in imzaladığı gövdenin ÇÖZÜLMÜŞ hâli.
+ * The DECODED form of the body the enclave signs.
  *
- * Gövdenin kendisi JSON DEĞİL — `abi.encode(bytes32,bytes32,bool,bytes32)`.
- * Sebebi §2.3: kontrat gövdeyi alanlardan yeniden üretebilsin, JSON parse etmesin.
- * Bu şema yalnızca çözülmüş hâli doğrular.
+ * The body itself is NOT JSON — it is `abi.encode(bytes32,bytes32,bool,bytes32)`.
+ * The reason is §2.3: the contract must be able to rebuild the body from the fields rather
+ * than parse it. This schema only validates the decoded form.
  */
 export const TappBodySchema = z.object({
   intentHash: Bytes32Schema,
   outputHash: Bytes32Schema,
   match: z.boolean(),
-  /** keccak256(ogSig) — imzanın kendisi değil, taahhüdü. */
+  /** keccak256(ogSig) — the commitment to the signature, not the signature itself. */
   ogSigHash: Bytes32Schema,
 });
 export type TappBody = z.infer<typeof TappBodySchema>;
 
-/** Tapp seal imzası — `v` wrapper tarafından atıldığı için sadece r‖s taşınır. */
+/** The Tapp seal signature — only r‖s is carried, because the wrapper discards `v`. */
 export const SealSchema = z.object({
   agentId: z.string().min(1),
   sealId: z.string().min(1),
@@ -145,23 +147,23 @@ export const SealSchema = z.object({
 });
 export type Seal = z.infer<typeof SealSchema>;
 
-/** Bob → Alice, Alice'in replyPubKey'ine ECIES. */
+/** Bob → Alice, ECIES-encrypted to Alice's replyPubKey. */
 export const ResultEnvelopeSchema = z.object({
   v: z.literal(1),
   output: z.string(),
-  /** İmzalanan ham gövdenin hex hâli — yeniden stringify EDİLMEZ. */
-  bodyHex: z.string().regex(/^0x[0-9a-fA-F]*$/, 'hex olmalı'),
+  /** The hex form of the raw signed body — NEVER re-stringified. */
+  bodyHex: z.string().regex(/^0x[0-9a-fA-F]*$/, 'must be hex'),
   seal: SealSchema,
   ogSig: z.string().min(1),
   ogSigner: AddressSchema,
-  /** 0G Storage kökü (P3-E bonusu). */
+  /** 0G Storage root (P3-E bonus). */
   storageRoot: Bytes32Schema.optional(),
-  /** İmza içeride doğrulanamadıysa false — sessizce true yazılmaz (P3-B kuralı). */
+  /** False when the signature could not be verified inside — never silently true (P3-B rule). */
   ogVerified: z.boolean(),
 });
 export type ResultEnvelope = z.infer<typeof ResultEnvelopeSchema>;
 
-/** Bob'un `GET /.well-known/agent-card.json` yanıtı. */
+/** Bob's `GET /.well-known/agent-card.json` response. */
 export const AgentCardSchema = z.object({
   v: z.literal(1),
   name: z.string().min(1),
@@ -176,84 +178,85 @@ export const AgentCardSchema = z.object({
     asset: z.string().min(1),
     decimals: z.number().int().min(0).max(18),
   }),
-  /** ERC-5564 stealth meta-address (P4-B). Henüz yoksa null. */
+  /** ERC-5564 stealth meta-address (P4-B). Null while absent. */
   stealthMetaAddress: z.string().nullable(),
   /**
-   * Hedera ödeme hesabı (P4-C). Alıcı gizliliği YOK — roadmap v3 §07 bilinçli kararı.
+   * Hedera payment account (P4-C). NO recipient privacy — a deliberate roadmap v3 §07 call.
    *
-   * `.default()` KULLANMIYORUZ: default'lu bir alan zod'un girdi ve çıktı tiplerini
-   * ayırıyor, `parseOrThrow`'un jeneriği de girdiye bağlanıp alanı opsiyonel sanıyor.
-   * Alanı zorunlu-nullable bırakmak hem tipleri hizalıyor hem de eksik alanı sessizce
-   * doldurmak yerine reddediyor.
+   * We do NOT use `.default()`: a defaulted field splits zod's input and output types, and
+   * `parseOrThrow`'s generic then binds to the input and treats the field as optional.
+   * Leaving it required-but-nullable both aligns the types and rejects a missing field
+   * instead of silently filling it in.
    */
   hederaAccount: z
     .string()
-    .regex(/^\d+\.\d+\.\d+$/, 'Hedera hesap kimliği olmalı')
+    .regex(/^\d+\.\d+\.\d+$/, 'must be a Hedera account id')
     .nullable(),
 });
 export type AgentCard = z.infer<typeof AgentCardSchema>;
 
 /**
- * FAZ 1 sonucu — enclave ve 0G henüz yok.
+ * The PHASE 1 result — no enclave and no 0G yet.
  *
- * Bilerek `ResultEnvelope`'tan AYRI: seal/ogSig alanlarını sahte değerlerle
- * doldurmak, henüz sahip olmadığımız bir güvenceyi varmış gibi gösterirdi.
- * P3-B gerçek gövdeyi imzalamaya başlayınca akış `ResultEnvelope`'a geçer.
+ * Deliberately SEPARATE from `ResultEnvelope`: filling the seal/ogSig fields with fake
+ * values would present a guarantee we do not yet have as if we did. Once P3-B starts
+ * signing the real body, the flow moves to `ResultEnvelope`.
  */
 export const EchoResultSchema = z.object({
   v: z.literal(1),
   stage: z.literal('echo'),
-  /** Alice'in imzaladığı taahhüt. */
+  /** The commitment Alice signed. */
   intentHash: Bytes32Schema,
-  /** Bob'un paketten yeniden hesapladığı taahhüt. */
+  /** The commitment Bob recomputed from the payload. */
   recomputedIntentHash: Bytes32Schema,
   match: z.boolean(),
-  /** Alice'in EIP-712 imzasından kurtarılan adres beklenen client mı? */
+  /** Is the address recovered from Alice's EIP-712 signature the expected client? */
   clientSigOk: z.boolean(),
   recoveredClient: AddressSchema,
   output: z.string(),
 
-  // --- binding imzası (P1-D) ---
-  // DİKKAT: bu, doğrulanmış Tapp seal imzası DEĞİL. FAZ 1'de binding yerel bir
-  // fonksiyon ve anahtar attested enclave'den gelmiyor. P3-B/P3-C gerçeğiyle değiştirecek.
-  /** İmzalanan ham gövde: abi.encode(bytes32,bytes32,bool,bytes32). */
-  bodyHex: z.string().regex(/^0x[0-9a-fA-F]*$/, 'hex olmalı'),
-  /** Seal imzası — `v` atılmış, sadece r‖s (CLAUDE.md §3.1B). Kontrat iki pariteyi de dener. */
+  // --- binding signature (P1-D) ---
+  // NOTE: this is NOT a verified Tapp seal signature. In PHASE 1 the binding is a local
+  // function and the key does not come from an attested enclave. P3-B/P3-C replace it with
+  // the real thing.
+  /** The raw signed body: abi.encode(bytes32,bytes32,bool,bytes32). */
+  bodyHex: z.string().regex(/^0x[0-9a-fA-F]*$/, 'must be hex'),
+  /** The seal signature — `v` discarded, r‖s only (CLAUDE.md §3.1B). The contract tries both parities. */
   seal: SealSchema,
-  /** Gövde imzasından kurtarılan adres. */
+  /** The address recovered from the body signature. */
   bindingSigner: AddressSchema,
-  /** Kayıtlı binding anahtarı — kontrattaki enclaveSignerOf'un FAZ 1 karşılığı. */
+  /** The registered binding key — the PHASE 1 counterpart of the contract's enclaveSignerOf. */
   expectedBindingSigner: AddressSchema,
   bindingSigOk: z.boolean(),
 
-  // --- 0G attestation durumu (compute.ts sınırından gelir) ---
-  // `provider: 'none'` ve `ogVerified: false` DÜRÜST bir cevaptır: sistem
-  // "burada TEE imzası yok" der; sahte imza üretmez.
+  // --- 0G attestation status (comes from the compute.ts boundary) ---
+  // `provider: 'none'` and `ogVerified: false` are an HONEST answer: the system says
+  // "there is no TEE signature here"; it does not fabricate one.
   computeProvider: z.enum(['none', '0g-sealed-inference', 'fixture-replay']),
   ogVerified: z.boolean(),
   ogSig: z.string().optional(),
   ogSigner: AddressSchema.optional(),
 
   /**
-   * LEVEL 0 BAĞLAMA — çıktı, Alice'in imzaladığı `intentHash`'i BİREBİR taşıyor mu.
+   * LEVEL 0 BINDING — does the output carry Alice's signed `intentHash` VERBATIM?
    *
-   * True ise şu zincir kurulmuş demektir:
-   *     0G TEE imzası → yanıt gövdesi → çıktı → intentHash → Alice'in EIP-712 imzası
-   * Bob bu zinciri kendi makinesinde üretemez; ilk halka 0G donanımından gelir.
+   * When true, this chain has been established:
+   *     0G TEE signature → response body → output → intentHash → Alice's EIP-712 signature
+   * Bob cannot produce that chain on his own machine; the first link comes from 0G hardware.
    *
-   * KAPSAMADIĞI: taahhüdün gerçekten o brief+data'ya ait olduğu. Model tekrar
-   * ediyor, doğrulamıyor. Kendi attested makinemiz olsaydı bu kontrol de mühürün
-   * içine girerdi (CLAUDE.md §11).
+   * WHAT IT DOES NOT COVER: that the commitment really belongs to that brief+data. The model
+   * repeats it, it does not validate it. With our own attested machine this check would sit
+   * inside the seal too (CLAUDE.md §11).
    */
   intentEchoed: z.boolean(),
 
-  /** P0-G: enclave İÇİNDEKİ aşama süreleri. Sadece süre — içerik değil. */
+  /** P0-G: stage durations INSIDE the enclave. Durations only — never content. */
   stageMs: z.record(z.number()).optional(),
 });
 export type EchoResult = z.infer<typeof EchoResultSchema>;
 
 // ---------------------------------------------------------------------------
-// bigint <-> wire dönüşümü — TEK yerde
+// bigint <-> wire conversion — in ONE place
 // ---------------------------------------------------------------------------
 
 export function intentToWire(intent: Intent): IntentWire {
@@ -276,14 +279,14 @@ export function intentFromWire(wire: IntentWire): Intent {
   };
 }
 
-/** Şemadan geçmeyen paketi anlamlı hatayla reddet (çağıran 400 döner). */
+/** Reject a payload that fails the schema with a meaningful error (the caller returns 400). */
 export function parseOrThrow<T>(schema: z.ZodType<T>, value: unknown, what: string): T {
   const result = schema.safeParse(value);
   if (result.success) return result.data;
   const detail = result.error.issues
-    .map((i) => `${i.path.join('.') || '(kök)'}: ${i.message}`)
+    .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
     .join('; ');
-  throw new Error(`${what} şemadan geçmedi — ${detail}`);
+  throw new Error(`${what} failed schema validation — ${detail}`);
 }
 
 export type { Constraints };

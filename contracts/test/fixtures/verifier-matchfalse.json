@@ -1,5 +1,5 @@
 {
-  "_comment": "Bob substitute modu — enclave match=false raporladı ve YİNE İMZALADI.",
+  "_comment": "Bob in substitute mode — the enclave reported match=false and SIGNED ANYWAY.",
   "outputHash": "0x4a904a7e2eadb943b43b90b4a7ae968da54d155b98417fa73eaf1a6d6f95c686",
   "match": false,
   "ogSigHash": "0x0000000000000000000000000000000000000000000000000000000000000000",

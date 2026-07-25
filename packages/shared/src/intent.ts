@@ -1,21 +1,21 @@
-// intent.ts — intentHash taahhüdü + Alice'in EIP-712 imzası (BUILD-PLAN §2.3).
+// intent.ts — the intentHash commitment + Alice's EIP-712 signature (BUILD-PLAN §2.3).
 //
 //   intentHash = keccak256(abi.encode(
 //     bytes32 briefHash,        // hashUtf8(brief)
 //     bytes32 dataHash,         // hashUtf8(data)
 //     bytes32 constraintsHash,  // hashUtf8(canonicalJson(constraints))
-//     uint256 price,            // en küçük birim (USDC: 6 hane, HBAR: tinybar)
+//     uint256 price,            // smallest unit (USDC: 6 decimals, HBAR: tinybars)
 //     uint256 nonce
 //   ))
 //
-// abi.encode — encodePacked DEĞİL. Packed kullanmak TS ile Solidity arasında sessiz
-// uyuşmazlık üretir (BUILD-PLAN P1-A ⛔ notu); ayrıca packed'de bitişik dinamik alanlar
-// birbirine karışabilir. Sabit 5×32 byte istiyoruz.
+// abi.encode — NOT encodePacked. Using packed produces a silent mismatch between TS and
+// Solidity (BUILD-PLAN P1-A ⛔ note); packed can also blur adjacent dynamic fields into
+// each other. We want a fixed 5×32 bytes.
 //
-// Tasarım notu (§2.3): Alice içeriği DEĞİL, `intentHash` taahhüdünü imzalar.
-// `agentId` yapının içinde, yoksa aynı imza başka bir worker'a replay edilebilir.
-// `price` içinde çünkü settlement onu okuyor. `deadline` içinde çünkü süresi geçmiş
-// intent kabul edilmemeli.
+// Design note (§2.3): Alice signs the `intentHash` COMMITMENT, not the content.
+// `agentId` is inside the struct, otherwise the same signature could be replayed against
+// another worker. `price` is inside because settlement reads it. `deadline` is inside
+// because an expired intent must not be accepted.
 
 import {
   AbiCoder,
@@ -30,7 +30,7 @@ import {
 } from 'ethers';
 import { hashCanonical, hashUtf8 } from './canonical.js';
 
-/** İşin teknik kısıtları. Anahtar sırası önemsiz — canonicalJson sıralıyor. */
+/** Technical constraints of the job. Key order is irrelevant — canonicalJson sorts them. */
 export interface Constraints {
   model: string;
   maxTokens: number;
@@ -38,32 +38,32 @@ export interface Constraints {
   [extra: string]: unknown;
 }
 
-/** intentHash'i oluşturan ham girdiler. */
+/** The raw inputs that make up the intentHash. */
 export interface IntentInputs {
   brief: string;
   data: string;
   constraints: Constraints;
-  /** En küçük birim (USDC 6 hane, HBAR tinybar). */
+  /** Smallest unit (USDC 6 decimals, HBAR tinybars). */
   price: bigint;
   nonce: bigint;
 }
 
-/** Alice'in EIP-712 ile imzaladığı yapı. */
+/** The struct Alice signs with EIP-712. */
 export interface Intent {
   intentHash: string;
   client: string;
-  /** ERC-8004 agentId'si bytes32'ye sağa hizalı doldurulmuş hâli. */
+  /** The ERC-8004 agentId right-aligned into bytes32. */
   agentId: string;
   price: bigint;
   deadline: bigint;
 }
 
 /**
- * P3-A deploy edilene kadar kullanılan, AÇIKÇA sahte verifyingContract.
+ * An OBVIOUSLY fake verifyingContract, used until P3-A is deployed.
  *
- * Yer tutucu olduğu isminden belli olsun diye burada duruyor: bu adresle imzalanmış
- * bir intent gerçek Verifier'da doğrulanamaz. VERIFIER_ADDRESS dolunca kullanılmayı
- * bırakmalı — çağıran taraflar boş env'de UYARI basar.
+ * It lives here so that its placeholder nature is visible from the name: an intent signed
+ * with this address cannot be verified by the real Verifier. It must stop being used once
+ * VERIFIER_ADDRESS is populated — callers print a WARNING when the env var is empty.
  */
 export const PLACEHOLDER_VERIFIER = '0x00000000000000000000000000000000DeaDBeef';
 
@@ -82,9 +82,9 @@ export const INTENT_TYPES: Record<string, TypedDataField[]> = {
 };
 
 /**
- * EIP-712 domain'i. `verifyingContract` zorunlu ve AÇIK — varsayılan vermiyoruz,
- * çünkü yanlış (ör. sıfır) adresle imzalanan bir intent kontrat tarafında sessizce
- * doğrulanamaz hâle gelir ve hata P3-D'de ortaya çıkar.
+ * The EIP-712 domain. `verifyingContract` is mandatory and EXPLICIT — we give no default,
+ * because an intent signed against the wrong (e.g. zero) address becomes silently
+ * unverifiable on the contract side and the failure only surfaces in P3-D.
  */
 export function intentDomain(verifyingContract: string, chainId: number = BASE_SEPOLIA_CHAIN_ID): TypedDataDomain {
   return {
@@ -95,14 +95,14 @@ export function intentDomain(verifyingContract: string, chainId: number = BASE_S
   };
 }
 
-/** ERC-8004 sayısal agentId'sini (ör. 8429n) bytes32'ye çevir. */
+/** Convert the numeric ERC-8004 agentId (e.g. 8429n) into bytes32. */
 export function agentIdToBytes32(agentId: bigint | number | string): string {
   return zeroPadValue(toBeHex(BigInt(agentId)), 32);
 }
 
 /**
- * §2.3'teki 5 alanlı taahhüt. Aynı girdi her zaman aynı çıktıyı verir —
- * `Date.now()` benzeri hiçbir örtük girdi yok.
+ * The 5-field commitment from §2.3. The same input always produces the same output —
+ * there is no implicit input such as `Date.now()`.
  */
 export function buildIntentHash(inputs: IntentInputs): string {
   const briefHash = hashUtf8(inputs.brief);
@@ -116,7 +116,7 @@ export function buildIntentHash(inputs: IntentInputs): string {
   );
 }
 
-/** Ara hash'ler — hata ayıklarken hangi alanın uyuşmadığını görmek için. */
+/** Intermediate hashes — so that while debugging you can see which field disagrees. */
 export function intentHashParts(inputs: IntentInputs): {
   briefHash: string;
   dataHash: string;
@@ -135,7 +135,7 @@ export function intentHashParts(inputs: IntentInputs): {
   };
 }
 
-/** Alice intent'i EIP-712 ile imzalar. */
+/** Alice signs the intent with EIP-712. */
 export async function signIntent(
   intent: Intent,
   signer: Signer,
@@ -146,10 +146,10 @@ export async function signIntent(
 }
 
 /**
- * İmzayı atan adresi geri kurtar.
+ * Recover the address that produced the signature.
  *
- * Kontrat da tam olarak bunu yapar: imza+intent çiftini Bob verse bile imzacıyı
- * yapının KENDİ alanlarından yeniden üretilen digest üzerinden bulur (§2.3, P3-A adım 3).
+ * The contract does exactly this: even if Bob supplies the signature+intent pair, it finds
+ * the signer via a digest rebuilt from the struct's OWN fields (§2.3, P3-A step 3).
  */
 export function recoverIntentSigner(
   intent: Intent,

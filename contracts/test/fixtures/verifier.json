@@ -1,5 +1,5 @@
 {
-  "_comment": "pnpm gate:P3-A üretir. seal imzası @ca/bob-binding GERÇEK çıktısıdır. Alice imzası testin içinde atılır (domain kontrat adresine bağlı).",
+  "_comment": "Produced by pnpm gate:P3-A. The seal signature is the REAL output of @ca/bob-binding. Alice's signature is made inside the test (the domain depends on the contract address).",
   "chainId": 84532,
   "alicePrivateKey": "38207243490446002571500799598855127549516883484667288829423004038932447429196",
   "intent": {

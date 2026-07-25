@@ -1,13 +1,13 @@
-// guard.ts — settlement'ı `JobVerified`'a YAPISAL olarak bağlar.
+// guard.ts — binds settlement to `JobVerified` STRUCTURALLY.
 //
-// BUILD-PLAN P4 kuralı: "settlement JobVerified'tan SONRA". Bunu her backend'in
-// kendi iyi niyetine bırakmak yerine tek bir kapıdan geçiriyoruz: settle çağıran
-// backend önce buraya uğramak zorunda, burası da ZİNCİRE bakıp o tx'in gerçekten
-// bu `intentHash` için `JobVerified` yaydığını doğruluyor.
+// The BUILD-PLAN P4 rule: "settlement comes AFTER JobVerified". Rather than leaving that to
+// each backend's good intentions, we route it through a single gate: a backend calling
+// settle must come through here first, and here we read the CHAIN and confirm that the
+// transaction really emitted `JobVerified` for this `intentHash`.
 //
-// Neden sadece "tx hash verildi mi" bakmıyoruz: Bob doğrulanmamış bir iş için
-// rastgele bir tx hash'i uydurup settle tetikleyebilirdi. Event'i okumak bunu
-// imkânsız kılıyor.
+// Why we do not merely check "was a tx hash supplied": Bob could have invented a random tx
+// hash for an unverified job and triggered settlement. Reading the event makes that
+// impossible.
 
 import { Interface, type JsonRpcProvider } from 'ethers';
 import { SettlementNotAuthorizedError } from './index.js';
@@ -27,10 +27,10 @@ export interface JobVerifiedProof {
 }
 
 /**
- * `jobVerifiedTx`'in bu `intentHash` için `JobVerified` yaydığını doğrula.
+ * Verify that `jobVerifiedTx` emitted `JobVerified` for this `intentHash`.
  *
- * @throws SettlementNotAuthorizedError tx yoksa, başarısızsa, event yoksa ya da
- *         event başka bir işe aitse.
+ * @throws SettlementNotAuthorizedError when the tx is missing, failed, has no such event, or
+ *         the event belongs to a different job.
  */
 export async function assertJobVerified(
   provider: JsonRpcProvider,
@@ -40,16 +40,16 @@ export async function assertJobVerified(
 ): Promise<JobVerifiedProof> {
   if (!jobVerifiedTx) {
     throw new SettlementNotAuthorizedError(
-      'settle() JobVerified tx referansı olmadan çağrıldı — ödeme yalnızca doğrulanmış işler için serbest bırakılır',
+      'settle() was called without a JobVerified tx reference — payment is only released for verified jobs',
     );
   }
 
   const receipt = await provider.getTransactionReceipt(jobVerifiedTx);
   if (!receipt) {
-    throw new SettlementNotAuthorizedError(`JobVerified tx bulunamadı: ${jobVerifiedTx}`);
+    throw new SettlementNotAuthorizedError(`JobVerified tx not found: ${jobVerifiedTx}`);
   }
   if (receipt.status !== 1) {
-    throw new SettlementNotAuthorizedError(`JobVerified tx başarısız (status=${receipt.status}): ${jobVerifiedTx}`);
+    throw new SettlementNotAuthorizedError(`JobVerified tx failed (status=${receipt.status}): ${jobVerifiedTx}`);
   }
 
   const iface = new Interface(JOB_VERIFIED_ABI);
@@ -79,7 +79,7 @@ export async function assertJobVerified(
   }
 
   throw new SettlementNotAuthorizedError(
-    `${jobVerifiedTx} işlemi ${intentHash} için JobVerified yaymamış — ` +
-      'iş doğrulanmadı, ödeme settle EDİLMEYECEK',
+    `transaction ${jobVerifiedTx} did not emit JobVerified for ${intentHash} — ` +
+      'the job was not verified, the payment WILL NOT settle',
   );
 }

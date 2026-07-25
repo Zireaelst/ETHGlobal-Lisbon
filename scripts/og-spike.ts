@@ -1,18 +1,18 @@
-// scripts/og-spike.ts — P0-B: 0G Sealed Inference tek çağrı + imza yakalama.
+// scripts/og-spike.ts — P0-B: one 0G Sealed Inference call + capturing the signature.
 //
-// Bu script PARA HARCAR (defter fonlama + çağrı ücreti). Fixture üretmek için
-// bir kez koşulur; kapı (tests/gates/P0-B.ts) sonra fixture'ı doğrular.
+// This script SPENDS MONEY (ledger funding + the call fee). It is run once to produce the
+// fixture; the gate (tests/gates/P0-B.ts) then verifies that fixture.
 //
-// DÜRÜSTLÜK KURALI: SDK'nın `processResponse()`'u "geçerli" dese de ona tek
-// başına güvenmiyoruz. İmzayı kendimiz indirip kendi kodumuzla kurtarıyoruz.
-// İkisi de aynı sonucu vermezse fixture yazılmaz.
+// HONESTY RULE: even when the SDK's `processResponse()` says "valid", we do not rely on that
+// alone. We download the signature ourselves and recover it with our own code.
+// If the two disagree, no fixture is written.
 //
-// Kaynaktan doğrulanan akış (lib.commonjs/inference/broker/{response,verifier}.js):
-//   imza     : GET {svc.url}/v1/proxy/signature/{chatID}?model={model} → {text, signature}
-//   doğrulama: ethers.hashMessage(text) + recoverAddress  → EIP-191 (CLAUDE.md §3.1 teyit)
+// The flow, confirmed from source (lib.commonjs/inference/broker/{response,verifier}.js):
+//   signature: GET {svc.url}/v1/proxy/signature/{chatID}?model={model} → {text, signature}
+//   verify   : ethers.hashMessage(text) + recoverAddress  → EIP-191 (confirms CLAUDE.md §3.1)
 //   signer   : svc.teeSignerAddress, AMA additionalInfo.TargetSeparated===true ve
 //              ProviderType!=='centralized' ise additionalInfo.TargetTeeAddress
-//              (model kendi ayrı TEE'sinde koşuyor demek)
+//              (meaning the model runs in its own separate TEE)
 
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
@@ -21,17 +21,17 @@ import { resolve } from 'node:path';
 import { ethers } from 'ethers';
 import { loadDotenv, optionalEnv, repoRoot, requireEnv } from '../packages/shared/src/config.js';
 
-// SDK v0.9.0 ESM build'i kırık (bkz. scripts/og-list.ts) → CJS.
+// The SDK v0.9.0 ESM build is broken (see scripts/og-list.ts) → CJS.
 const require = createRequire(import.meta.url);
 const { createZGComputeNetworkBroker } = require('@0gfoundation/0g-compute-ts-sdk');
 
 loadDotenv();
 const root = repoRoot();
 
-/** SDK'nın istemci tarafı alt sınırı: lib.commonjs/ledger/ledger.js MIN_LEDGER_BALANCE_OG = 3. */
+/** The SDK's client-side floor: lib.commonjs/ledger/ledger.js MIN_LEDGER_BALANCE_OG = 3. */
 const SDK_MIN_LEDGER_OG = 3;
 
-/** Görüntü modelleri metin analizi yapmıyor — sağlayıcı seçiminden elenir. */
+/** Image models do no text analysis — they are filtered out of provider selection. */
 const IMAGE_MODEL_HINT = /image|vision|diffusion/i;
 
 const PROMPT =
@@ -42,13 +42,13 @@ const provider = new ethers.JsonRpcProvider(requireEnv('OG_RPC_URL'));
 const wallet = new ethers.Wallet(requireEnv('OG_PRIVATE_KEY'), provider);
 const log = (l: string) => console.log(l);
 
-log(`cüzdan : ${wallet.address}`);
-log(`bakiye : ${ethers.formatEther(await provider.getBalance(wallet.address))} OG\n`);
+log(`wallet : ${wallet.address}`);
+log(`balance: ${ethers.formatEther(await provider.getBalance(wallet.address))} OG\n`);
 
 const broker = await createZGComputeNetworkBroker(wallet);
 
 // ---------------------------------------------------------------------------
-// 1. Defter — yoksa aç
+// 1. The ledger — open one if absent
 // ---------------------------------------------------------------------------
 let ledger: { totalBalance: bigint; availableBalance: bigint } | undefined;
 try {
@@ -58,23 +58,23 @@ try {
 }
 
 if (!ledger) {
-  log(`defter yok → addLedger(${SDK_MIN_LEDGER_OG}) …`);
+  log(`no ledger → addLedger(${SDK_MIN_LEDGER_OG}) …`);
   await broker.ledger.addLedger(SDK_MIN_LEDGER_OG);
   ledger = await broker.ledger.getLedger();
 }
-// Sağlayıcı alt hesabı açmak defterden 1 OG (MIN_TRANSFER_AMOUNT) kilitliyor.
-// Kullanılabilir bakiye bunun altına düşerse SDK otomatik fonlamayı yapamıyor
-// ve uyarı basıp geçiyor. Peşinen dolduruyoruz.
+// Opening a provider sub-account locks 1 OG (MIN_TRANSFER_AMOUNT) from the ledger.
+// If the available balance drops below that, the SDK cannot auto-fund and just prints a
+// warning. We top up in advance.
 const MIN_AVAILABLE_OG = 10n ** 18n;
 if (ledger!.availableBalance < MIN_AVAILABLE_OG) {
-  log(`kullanılabilir bakiye düşük (${ethers.formatEther(ledger!.availableBalance)} OG) → depositFund(2) …`);
+  log(`available balance is low (${ethers.formatEther(ledger!.availableBalance)} OG) → depositFund(2) …`);
   await broker.ledger.depositFund(2);
   ledger = await broker.ledger.getLedger();
 }
-log(`defter : ${ethers.formatEther(ledger!.totalBalance)} OG toplam / ${ethers.formatEther(ledger!.availableBalance)} OG kullanılabilir\n`);
+log(`ledger : ${ethers.formatEther(ledger!.totalBalance)} OG total / ${ethers.formatEther(ledger!.availableBalance)} OG available\n`);
 
 // ---------------------------------------------------------------------------
-// 2. Sağlayıcı seçimi — SADECE TeeML
+// 2. Provider selection — TeeML ONLY
 // ---------------------------------------------------------------------------
 type Service = {
   provider: string;
@@ -88,12 +88,12 @@ type Service = {
   teeSignerAcknowledged: boolean;
 };
 
-// listService bir ethers `Result` döndürüyor: DONMUŞ dizi. filter() de Result
-// üretiyor, o yüzden sort() "Cannot assign to read only property" veriyor.
-// Array.from ile düz diziye kopyalıyoruz.
+// listService returns an ethers `Result`: a FROZEN array. filter() produces a Result too, so
+// sort() throws "Cannot assign to read only property".
+// We copy it into a plain array with Array.from.
 const services: Service[] = Array.from(await broker.inference.listService(0, 50, true));
 const teeml = Array.from(services.filter((s) => s.verifiability === 'TeeML'));
-if (teeml.length === 0) throw new Error('ağda TeeML sağlayıcı yok — P0-B ilerleyemez');
+if (teeml.length === 0) throw new Error('no TeeML provider on the network — P0-B cannot proceed');
 
 const pinned = optionalEnv('OG_PROVIDER_ADDRESS');
 let chosen: Service | undefined;
@@ -101,47 +101,47 @@ if (pinned) {
   chosen = teeml.find((s) => s.provider.toLowerCase() === pinned.toLowerCase());
   if (!chosen) throw new Error(`OG_PROVIDER_ADDRESS=${pinned} TeeML listesinde yok`);
 } else {
-  // ONAY ŞARTI: `teeSignerAcknowledged` false ise, o sağlayıcının TEE signer
-  // adresi kontratta SAĞLAYICININ KENDİ BEYANI olarak duruyor — kontrat sahibi
-  // ona kefil olmamış. processResponse bu durumda false döner (kaynak:
-  // lib.commonjs/inference/broker/response.js:36). Onaysız sağlayıcıyla imza
-  // doğrulasak bile "0G TEE'si üretti" diyemeyiz, o yüzden burada eliyoruz.
+  // THE ACKNOWLEDGEMENT REQUIREMENT: when `teeSignerAcknowledged` is false, that provider's
+  // TEE signer address sits in the contract as the PROVIDER'S OWN CLAIM — the contract owner
+  // has not vouched for it. processResponse returns false in that case (source:
+  // lib.commonjs/inference/broker/response.js:36). Even if the signature verified against an
+  // unacknowledged provider, we could not say "a 0G TEE produced this", so we filter here.
   const eligible = Array.from(
     teeml.filter((s) => s.teeSignerAcknowledged && !IMAGE_MODEL_HINT.test(s.model)),
   );
   if (eligible.length === 0) {
     const why = teeml
-      .map((s) => `  ${s.provider} ${s.model} — onaylı:${s.teeSignerAcknowledged}`)
+      .map((s) => `  ${s.provider} ${s.model} — acknowledged:${s.teeSignerAcknowledged}`)
       .join('\n');
-    throw new Error(`onaylı TeeML metin sağlayıcısı yok:\n${why}`);
+    throw new Error(`no acknowledged TeeML text provider:\n${why}`);
   }
   chosen = eligible.sort((a, b) => (a.outputPrice === b.outputPrice
     ? Number(a.inputPrice - b.inputPrice)
     : Number(a.outputPrice - b.outputPrice)))[0];
 }
-if (!chosen) throw new Error('uygun TeeML metin sağlayıcısı bulunamadı');
+if (!chosen) throw new Error('no suitable TeeML text provider found');
 if (!chosen.teeSignerAcknowledged) {
-  throw new Error(`sabitlenen sağlayıcı ${chosen.provider} onaysız — imza doğrulanamaz`);
+  throw new Error(`the pinned provider ${chosen.provider} is unacknowledged — the signature cannot be verified`);
 }
 
-log(`sağlayıcı : ${chosen.provider}`);
+log(`provider  : ${chosen.provider}`);
 log(`model     : ${chosen.model}`);
 log(`url       : ${chosen.url}`);
-log(`fiyat     : input ${chosen.inputPrice} / output ${chosen.outputPrice} neuron\n`);
+log(`price     : input ${chosen.inputPrice} / output ${chosen.outputPrice} neuron\n`);
 
 // ---------------------------------------------------------------------------
 // 3. TEE signer + onay
 // ---------------------------------------------------------------------------
 let status = await broker.inference.checkProviderSignerStatus(chosen.provider);
 if (!status.isAcknowledged) {
-  log('sağlayıcı onaylı değil → acknowledgeProviderSigner() …');
+  log('provider not acknowledged → acknowledgeProviderSigner() …');
   await broker.inference.acknowledgeProviderSigner(chosen.provider);
   status = await broker.inference.checkProviderSignerStatus(chosen.provider);
 }
-if (!status.isAcknowledged) throw new Error('acknowledgeProviderSigner sonrası hâlâ onaysız');
+if (!status.isAcknowledged) throw new Error('still unacknowledged after acknowledgeProviderSigner');
 log(`TEE signer (kontrat): ${status.teeSignerAddress}`);
 
-// İmzayı hangi adrese karşı doğrulayacağımız additionalInfo'ya bağlı olabilir.
+// Which address the signature must verify against can depend on additionalInfo.
 let expectedSigner: string = status.teeSignerAddress;
 let targetSeparated = false;
 let providerType = 'decentralized';
@@ -156,22 +156,22 @@ if (chosen.additionalInfo) {
     targetSeparated = info.TargetSeparated === true;
     if (targetSeparated && providerType !== 'centralized' && info.TargetTeeAddress) {
       expectedSigner = info.TargetTeeAddress;
-      log(`ayrık TEE  : model kendi enclave'inde → beklenen imzacı ${expectedSigner}`);
+      log(`separated TEE: the model runs in its own enclave → expected signer ${expectedSigner}`);
     }
   } catch {
-    log('UYARI: additionalInfo JSON olarak ayrıştırılamadı');
+    log('WARNING: additionalInfo could not be parsed as JSON');
   }
 }
 log('');
 
 // ---------------------------------------------------------------------------
-// 4. Çağrı
+// 4. The call
 // ---------------------------------------------------------------------------
 const { endpoint, model } = await broker.inference.getServiceMetadata(chosen.provider);
 log(`endpoint : ${endpoint}`);
 log(`model    : ${model}\n`);
 
-// Header'lar TEK KULLANIMLIK — her istek için yeniden alınır.
+// Headers are SINGLE-USE — fetched again for every request.
 const headers = await broker.inference.getRequestHeaders(chosen.provider);
 
 const body = {
@@ -179,7 +179,7 @@ const body = {
   messages: [{ role: 'user', content: PROMPT }],
 };
 
-log('çağrı yapılıyor …');
+log('calling …');
 const startedAt = Date.now();
 const res = await fetch(`${endpoint}/chat/completions`, {
   method: 'POST',
@@ -189,12 +189,12 @@ const res = await fetch(`${endpoint}/chat/completions`, {
 const latencyMs = Date.now() - startedAt;
 
 if (!res.ok) {
-  throw new Error(`çağrı başarısız: HTTP ${res.status} — ${(await res.text()).slice(0, 300)}`);
+  throw new Error(`call failed: HTTP ${res.status} — ${(await res.text()).slice(0, 300)}`);
 }
 
-// HAM gövdeyi saklıyoruz. İmza sha256(ham gövde) üzerine atılıyor; JSON'u
-// parse edip tekrar stringify etmek anahtar sırasına bağlı kalır ve sağlayıcı
-// alan sırasını değiştirdiği gün sessizce bozulur.
+// We keep the RAW body. The signature is over sha256(raw body); parsing the JSON and
+// stringifying it again depends on key order and would break silently the day the provider
+// reorders its fields.
 const rawResponseText = await res.text();
 const completion = JSON.parse(rawResponseText) as {
   id?: string;
@@ -202,28 +202,28 @@ const completion = JSON.parse(rawResponseText) as {
   choices?: Array<{ message?: { content?: string } }>;
   usage?: Record<string, number>;
 };
-// chatID ÖNCE `ZG-Res-Key` başlığından okunur, `completion.id` sadece yedek.
+// chatID is read from the `ZG-Res-Key` header FIRST; `completion.id` is only a fallback.
 // Kaynak: cli.commonjs/sdk/inference/broker/broker.js:342 —
 //   const chatID = response.headers.get('ZG-Res-Key') || completion.id
-// completion.id ile imza sunucusu "chat_id_not_found" veriyor.
+// With completion.id the signature server answers "chat_id_not_found".
 const resKey = res.headers.get('ZG-Res-Key');
 const chatID = resKey ?? completion.id;
 const output = completion.choices?.[0]?.message?.content ?? '';
-log(`ZG-Res-Key: ${resKey ?? '(başlık yok — completion.id kullanılıyor)'}`);
+log(`ZG-Res-Key: ${resKey ?? '(header absent — falling back to completion.id)'}`);
 
-log(`yanıt    : ${latencyMs} ms, chatID=${chatID}`);
-log(`çıktı    : ${output.slice(0, 160)}${output.length > 160 ? '…' : ''}\n`);
-if (!chatID) throw new Error('yanıtta chatID (id) yok — imza indirilemez');
+log(`response : ${latencyMs} ms, chatID=${chatID}`);
+log(`output   : ${output.slice(0, 160)}${output.length > 160 ? '…' : ''}\n`);
+if (!chatID) throw new Error('the response carries no chatID (id) — the signature cannot be downloaded');
 
 // ---------------------------------------------------------------------------
-// 5. İmza — SDK ile VE kendi kodumuzla
+// 5. The signature — via the SDK AND via our own code
 // ---------------------------------------------------------------------------
-// Bağımsız yol ÖNCE: imzayı kendimiz indiriyoruz ki hata çıkarsa SDK'nın
-// yuttuğu "getting signature error" yerine gerçek HTTP durumunu görelim.
+// The independent path FIRST: we download the signature ourselves so that on failure we see
+// the real HTTP status instead of the "getting signature error" the SDK swallows.
 //
-// İmza sunucu tarafında çağrıdan hemen sonra hazır olmayabiliyor → kısa backoff.
-// URL varyantları: SDK model'i encode ETMİYOR ama model adında `/` var
-// (qwen/qwen2.5-omni-7b), o yüzden iki biçimi de deniyoruz.
+// The signature may not be ready server-side immediately after the call → a short backoff.
+// URL variants: the SDK does NOT encode the model, but the model name contains a `/`
+// (qwen/qwen2.5-omni-7b), so we try both forms.
 type SigResponse = { text: string; signature: string };
 
 const sigVariants = [
@@ -250,9 +250,9 @@ for (let round = 0; round < 6 && !sig; round += 1) {
 }
 
 if (!sig) {
-  throw new Error(`imza indirilemedi. Denemeler:\n${attempts.slice(-6).join('\n')}`);
+  throw new Error(`could not download the signature. Attempts:\n${attempts.slice(-6).join('\n')}`);
 }
-log(`imza URL : ${sigUrlUsed.replace(chosen.url, '')}`);
+log(`sig URL  : ${sigUrlUsed.replace(chosen.url, '')}`);
 
 let sdkValid: boolean | null = null;
 try {
@@ -262,52 +262,52 @@ try {
     JSON.stringify(completion.usage ?? {}),
   );
 } catch (err) {
-  log(`SDK processResponse HATA: ${(err as Error).message}`);
+  log(`SDK processResponse ERROR: ${(err as Error).message}`);
 }
 log(`SDK processResponse : ${sdkValid}`);
 
 const recovered = ethers.verifyMessage(sig.text, sig.signature);
 const ourValid = recovered.toLowerCase() === expectedSigner.toLowerCase();
 
-log(`imzalı metin        : ${sig.text.length} karakter`);
-log(`kurtarılan adres    : ${recovered}`);
-log(`beklenen imzacı     : ${expectedSigner}`);
-log(`BİZİM doğrulamamız  : ${ourValid}\n`);
+log(`signed text         : ${sig.text.length} characters`);
+log(`recovered address   : ${recovered}`);
+log(`expected signer     : ${expectedSigner}`);
+log(`OUR verification    : ${ourValid}\n`);
 
 if (!ourValid) {
   throw new Error(
-    `İMZA DOĞRULANAMADI — kurtarılan ${recovered}, beklenen ${expectedSigner}. Fixture yazılmadı.`,
+    `SIGNATURE NOT VERIFIED — recovered ${recovered}, expected ${expectedSigner}. No fixture written.`,
   );
 }
 if (sdkValid !== true) {
-  throw new Error(`SDK processResponse ${sdkValid} döndü, biz true bulduk — çelişki. Fixture yazılmadı.`);
+  throw new Error(`SDK processResponse returned ${sdkValid} while we found true — a contradiction. No fixture written.`);
 }
 
 // ---------------------------------------------------------------------------
-// 5b. İmza NEYİ kapsıyor? — CLAUDE.md §3.1 düzeltmesi
+// 5b. WHAT does the signature cover? — the CLAUDE.md §3.1 correction
 //
-// §3.1 "imza ÇIKTI metnini kapsar" diyor. Bu sağlayıcıda öyle DEĞİL. İmzalanan
-// metin bir demet:
+// §3.1 says "the signature covers the OUTPUT text". With this provider it does NOT. What is
+// signed is a tuple:
 //     "<h1>:<h2>:<ProviderType>:<ProviderIdentity>:<h3>"
-// Deneyle bulundu: h2 === sha256(ham yanıt gövdesi). Yani çıktı imza kapsamında,
-// ama düz metin olarak değil — gövdenin özeti olarak.
+// Found experimentally: h2 === sha256(raw response body). So the output IS within the
+// signature's scope — not as plain text, but as the digest of the body.
 //
-// Bunu kendimiz yeniden hesaplayıp doğruluyoruz; "imza çıktıya bağlı" cümlesini
-// kurabilmemizin tek dayanağı bu eşitlik.
+// We recompute and verify this ourselves; that equality is the only basis on which we may say
+// "the signature is bound to the output".
 // ---------------------------------------------------------------------------
 const sigParts = sig.text.split(':');
 const responseDigest = createHash('sha256').update(rawResponseText).digest('hex');
 const digestIndex = sigParts.indexOf(responseDigest);
 const signedCoversOutput = digestIndex !== -1;
 
-log(`imzalı demet parça sayısı : ${sigParts.length}`);
-log(`sha256(ham yanıt)         : ${responseDigest}`);
+log(`signed tuple part count   : ${sigParts.length}`);
+log(`sha256(raw response)      : ${responseDigest}`);
 log(`demetteki konumu          : ${digestIndex === -1 ? 'YOK' : `#${digestIndex}`}`);
 
 if (!signedCoversOutput) {
   throw new Error(
-    'İmzalanan demet yanıt gövdesinin sha256\'sını İÇERMİYOR — imza çıktıya bağlı ' +
-      `değil demektir, tez bu haliyle kurulamaz.\ndemet: ${sig.text}`,
+    'The signed tuple DOES NOT CONTAIN the sha256 of the response body — which means the ' +
+      `signature is not bound to the output, and the thesis cannot be built this way.\ntuple: ${sig.text}`,
   );
 }
 
@@ -373,6 +373,6 @@ writeFileSync(
 const after = await broker.ledger.getLedger();
 const spent = ledger!.totalBalance - after.totalBalance;
 
-log('fixtures/og/signer.json + fixtures/og/run-1.json yazıldı');
-log(`defter sonrası : ${ethers.formatEther(after.totalBalance)} OG (bu çağrı ~${ethers.formatEther(spent)} OG)`);
-log(`imzalı metin çıktıyı kapsıyor mu: ${signedCoversOutput}`);
+log('wrote fixtures/og/signer.json + fixtures/og/run-1.json');
+log(`ledger after : ${ethers.formatEther(after.totalBalance)} OG (this call ~${ethers.formatEther(spent)} OG)`);
+log(`does the signed text cover the output: ${signedCoversOutput}`);

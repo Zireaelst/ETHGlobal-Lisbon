@@ -121,7 +121,7 @@ gate.check('Geçersiz değer ADIYLA raporlanıyor (eksik ile karışmıyor)', ()
     if (fields.length !== 1 || fields[0] !== 'PRIVATE_KEY_ALICE') {
       return fail(`beklenen tek alan PRIVATE_KEY_ALICE, raporlanan [${fields.join(', ')}]`);
     }
-    if (err.message.includes('EKSİK')) return fail('geçersiz değer "EKSİK" olarak raporlanıyor');
+    if (err.message.includes('MISSING')) return fail('invalid value is reported as "MISSING"');
     return pass(err.message.split('\n')[1]?.trim() ?? '');
   }
 });

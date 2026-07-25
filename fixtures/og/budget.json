@@ -17,7 +17,7 @@
     "observedNeuron": "0",
     "usedNeuron": "402975000000000",
     "usedOG": 0.000402975,
-    "note": "bakiye farkı 0 görüldü (TEE settlement gecikmeli); tarife esas alındı"
+    "note": "balance delta read 0 (TEE settlement is lazy); the tariff was used"
   },
   "ledgerOG": 5,
   "remainingCalls": 12407,
@@ -28,6 +28,6 @@
     "reserve": 6195
   },
   "minRequired": 12,
-  "storageBonusDecision": "VAR",
-  "storageBonusReason": "kalan çağrı (12407) 100'ün üzerinde — P3-E denenebilir"
+  "storageBonusDecision": "YES",
+  "storageBonusReason": "remaining calls (12407) exceed 100 — P3-E can be attempted"
 }

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// @notice Alice'in intent taahhüdü + EIP-712 digest'i — TypeScript tarafıyla BİREBİR aynı.
+/// @notice Alice's intent commitment + its EIP-712 digest — IDENTICAL to the TypeScript side.
 /// @dev Referans: BUILD-PLAN §2.3 ve packages/shared/src/intent.ts.
-///      `abi.encode` kullanılıyor, `abi.encodePacked` DEĞİL. Packed'e geçmek TS ile
-///      sessiz uyuşmazlık üretir (BUILD-PLAN P1-A ⛔ notu).
+///      It uses `abi.encode`, NOT `abi.encodePacked`. Switching to packed produces a silent
+///      mismatch with TS (the BUILD-PLAN P1-A ⛔ note).
 library IntentLib {
     /// @dev keccak256("Intent(bytes32 intentHash,address client,bytes32 agentId,uint256 price,uint256 deadline)")
     bytes32 internal constant INTENT_TYPEHASH =
@@ -22,8 +22,8 @@ library IntentLib {
         uint256 deadline;
     }
 
-    /// @notice §2.3'teki 5 alanlı taahhüt.
-    /// @dev briefHash/dataHash/constraintsHash hazır gelir — kontrat JSON parse etmez.
+    /// @notice The 5-field commitment from §2.3.
+    /// @dev briefHash/dataHash/constraintsHash arrive ready-made — the contract does not parse JSON.
     function buildIntentHash(
         bytes32 briefHash,
         bytes32 dataHash,
@@ -46,7 +46,7 @@ library IntentLib {
         );
     }
 
-    /// @notice Intent yapısının EIP-712 struct hash'i.
+    /// @notice The EIP-712 struct hash of the Intent.
     function hashStruct(Intent memory intent) internal pure returns (bytes32) {
         return keccak256(
             abi.encode(
@@ -55,14 +55,14 @@ library IntentLib {
         );
     }
 
-    /// @notice İmzalanan nihai digest: 0x1901 ‖ domainSeparator ‖ structHash.
+    /// @notice The final signed digest: 0x1901 ‖ domainSeparator ‖ structHash.
     function digest(bytes32 separator, Intent memory intent) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked("\x19\x01", separator, hashStruct(intent)));
     }
 
-    /// @notice Digest'ten imzacıyı kurtar.
-    /// @dev İmza+intent çiftini Bob verse bile digest yapının KENDİ alanlarından
-    ///      yeniden üretilir — bu, §2.3'ün "anchor the client signature" kuralı.
+    /// @notice Recover the signer from the digest.
+    /// @dev Even if Bob supplies the signature+intent pair, the digest is rebuilt from the
+    ///      struct's OWN fields — this is §2.3's "anchor the client signature" rule.
     function recoverSigner(bytes32 separator, Intent memory intent, bytes memory signature)
         internal
         pure

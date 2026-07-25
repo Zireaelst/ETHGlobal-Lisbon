@@ -1,38 +1,38 @@
-// signer/hedera-signer.ts — DELEGATED SIGNING sınırı.
+// signer/hedera-signer.ts — the DELEGATED SIGNING boundary.
 //
-// BUILD-PLAN P4-C kriteri: "anahtar `signer` modülünde, agent/LLM bağlamına girmiyor"
-// ve kapı bunu kanıtlıyor: "agent sürecinin loglarında/bellek dökümünde private key YOK".
+// BUILD-PLAN P4-C criterion: "the key lives in the `signer` module and never enters agent/LLM
+// context", and the gate proves it: "NO private key in the agent process's logs or memory dump".
 //
-// Bu modülün tek işi anahtarı SAHİPLENMEK. Dışarı yalnızca imzalama yeteneği çıkıyor:
+// This module's only job is to OWN the key. Only the ability to sign leaves it:
 //
-//   - Anahtar env'den BU MODÜL tarafından okunuyor; çağıran onu asla elinde tutmuyor.
-//   - Kapanış (closure) içinde kalıyor; handle üzerinde erişimci yok.
-//   - `toJSON`/`toString`/`inspect` REDACTED döndürüyor — kazara loglama ya da bir
-//     hata nesnesine serileştirme sızdıramıyor.
+//   - The key is read from the env BY THIS MODULE; the caller never holds it.
+//   - It stays inside a closure; the handle exposes no accessor.
+//   - `toJSON`/`toString`/`inspect` return REDACTED — accidental logging or serialisation
+//     into an error object cannot leak it.
 //
-// Hedera'nın kendi kanonik deseni de bu: `Client.setOperatorWith(accountId, publicKey,
-// transactionSigner)` ile anahtar bir KMS/HSM'de durur, SDK yalnızca imzalama
-// fonksiyonunu çağırır (docs.hedera.com/native/tutorials/advanced/hsm-signing).
-// Burada kasa yerel bir kapanış; sınır aynı sınır, ve üretimde `createHederaSigner`'ın
-// içi KMS çağrısıyla değiştirilse çağıranların hiçbiri değişmez.
+// This is also Hedera's own canonical pattern: with `Client.setOperatorWith(accountId,
+// publicKey, transactionSigner)` the key sits in a KMS/HSM and the SDK only calls the signing
+// function (docs.hedera.com/native/tutorials/advanced/hsm-signing).
+// Here the vault is a local closure; the boundary is the same boundary, and if in production
+// the inside of `createHederaSigner` were swapped for a KMS call, no caller would change.
 
 import { createClientHederaSigner, PrivateKey } from '@x402/hedera';
 import { Client, PrivateKey as HieroPrivateKey } from '@hiero-ledger/sdk';
 
-const REDACTED = '[REDACTED — delegated signer içinde tutuluyor]';
+const REDACTED = '[REDACTED — held inside the delegated signer]';
 
 export interface HederaSignerHandle {
-  /** Ödeyen hesap kimliği — bu herkese açık, gizli olan sadece anahtar. */
+  /** The paying account id — this is public; only the key is secret. */
   readonly accountId: string;
   readonly network: 'hedera:testnet' | 'hedera:mainnet';
-  /** @x402/hedera istemci imzalayıcısı. Anahtarı AÇIĞA ÇIKARMAZ. */
+  /** The @x402/hedera client signer. It NEVER EXPOSES the key. */
   readonly signer: ReturnType<typeof createClientHederaSigner>;
 }
 
 export interface HederaSignerOptions {
   /**
-   * Anahtarın okunacağı env değişkeni. Anahtarın KENDİSİ parametre olarak
-   * KABUL EDİLMİYOR — çağıranın onu eline alması gereken bir yol bilerek yok.
+   * The env variable the key is read from. The key ITSELF is NOT ACCEPTED as a parameter —
+   * there is deliberately no path that requires the caller to hold it.
    */
   keyEnvVar?: string;
   accountId: string;
@@ -40,22 +40,22 @@ export interface HederaSignerOptions {
 }
 
 /**
- * Delegated imzalayıcı oluştur.
+ * Create the delegated signer.
  *
- * @throws anahtar env'de yoksa — sessizce imzasız devam etmez.
+ * @throws when the key is absent from the env — it does not silently continue unsigned.
  */
 export function createHederaSigner(options: HederaSignerOptions): HederaSignerHandle {
   const envVar = options.keyEnvVar ?? 'HEDERA_OPERATOR_KEY';
   const raw = process.env[envVar];
   if (!raw || raw.trim() === '') {
     throw new Error(
-      `delegated signer: ${envVar} boş. Anahtar yalnızca bu modül tarafından okunur; ` +
-        `çağıran taraf onu geçiremez.`,
+      `delegated signer: ${envVar} is empty. The key is read only by this module; ` +
+        `the caller cannot pass it in.`,
     );
   }
 
   const network = options.network ?? 'hedera:testnet';
-  // Anahtar buradan sonra yalnızca kapanışta yaşıyor. Referansı dışarı vermiyoruz.
+  // From here on the key lives only in the closure. We never hand out a reference.
   const signer = createClientHederaSigner(options.accountId, PrivateKey.fromStringECDSA(raw.trim()), {
     network,
   });
@@ -64,7 +64,7 @@ export function createHederaSigner(options: HederaSignerOptions): HederaSignerHa
     accountId: options.accountId,
     network,
     signer,
-    // Kazara serileştirme/loglama sızdırmasın diye üç kapı birden.
+    // Three doors at once, so accidental serialisation/logging cannot leak it.
     toJSON: () => ({ accountId: options.accountId, network, privateKey: REDACTED }),
     toString: () => `HederaSigner(${options.accountId}, key=${REDACTED})`,
     [Symbol.for('nodejs.util.inspect.custom')]: () =>
@@ -75,11 +75,11 @@ export function createHederaSigner(options: HederaSignerOptions): HederaSignerHa
 }
 
 /**
- * HCS yazımı için operatör `Client`'ı — anahtar yine bu modülde kalır.
+ * The operator `Client` for HCS writes — the key again stays inside this module.
  *
- * Topic'e mesaj göndermek işlem ücreti gerektiriyor, yani bir operatör anahtarı
- * şart. Onu çağırana geçirmek P4-C'nin delegated-signing sınırını delerdi; bunun
- * yerine yapılandırılmış Client'ı döndürüyoruz. Client anahtarı dışarı vermez.
+ * Submitting a message to a topic costs a transaction fee, so an operator key is required.
+ * Passing it to the caller would puncture P4-C's delegated-signing boundary; instead we return
+ * the configured Client. The Client does not hand the key out.
  */
 export function createHederaOperatorClient(options: {
   accountId: string;
@@ -89,14 +89,14 @@ export function createHederaOperatorClient(options: {
   const envVar = options.keyEnvVar ?? 'HEDERA_OPERATOR_KEY';
   const raw = process.env[envVar];
   if (!raw || raw.trim() === '') {
-    throw new Error(`delegated signer: ${envVar} boş — HCS yazımı için operatör anahtarı gerekli`);
+    throw new Error(`delegated signer: ${envVar} is empty — an operator key is required for HCS writes`);
   }
   const client = (options.network ?? 'testnet') === 'testnet' ? Client.forTestnet() : Client.forMainnet();
   client.setOperator(options.accountId, HieroPrivateKey.fromStringECDSA(raw.trim()));
   return client;
 }
 
-/** Bir metnin anahtar sızdırıp sızdırmadığını denetlemek için (kapı kullanıyor). */
+/** For auditing whether a piece of text leaks the key (used by the gate). */
 export function containsSecret(haystack: string, secretEnvVar = 'HEDERA_OPERATOR_KEY'): boolean {
   const secret = process.env[secretEnvVar];
   if (!secret || secret.trim().length < 16) return false;

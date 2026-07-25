@@ -1,5 +1,5 @@
 {
-  "_comment": "pnpm gate:P1-A tarafından üretilir. Elle düzenlemeyin — TS ile Solidity arasındaki tek gerçek kaynak.",
+  "_comment": "Produced by pnpm gate:P1-A. Do not edit by hand — this is the single source of truth between TS and Solidity.",
   "brief": "Analyse the attached quarterly report and flag revenue-recognition risks.",
   "data": "Q3-2026 revenue 12,400,000 EUR; deferred 3,100,000 EUR; 41 contracts.",
   "constraints": {

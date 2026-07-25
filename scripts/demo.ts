@@ -1,17 +1,17 @@
-// scripts/demo.ts — uçtan uca hero akışı (BUILD-PLAN P3-D).
+// scripts/demo.ts — the end-to-end hero flow (BUILD-PLAN P3-D).
 //
-//   Alice → keşif (The Graph) → intent (EIP-712) → ECIES → Bob → binding (enclave)
-//         → seal imzası → Alice çözer → verifyJob → JobVerified (Base Sepolia)
+//   Alice → discovery (The Graph) → intent (EIP-712) → ECIES → Bob → binding (enclave)
+//         → seal signature → Alice decrypts → verifyJob → JobVerified (Base Sepolia)
 //
 // Tek komut: `pnpm demo:base`
 //
-// Fraud modları aynı akıştan geçer, sadece Bob'un DIŞ katmanı hile yapar; enclave
-// her koşulda dürüsttür. Reddi kontrat verir.
+// The fraud modes take the same path; only Bob's OUTER layer cheats — the enclave is honest
+// under every condition. The contract issues the rejection.
 //
-// Kritik tasarım noktası: Alice zincire gönderdiği `intentHash`'i Bob'un SÖZÜNDEN
-// değil, ENCLAVE'İN İMZALADIĞI GÖVDEDEN çözerek alır. Böylece `selfintent` gibi
-// "Bob kendi işini uydurdu" senaryosu gerçekçi biçimde temsil edilir: uydurma hash
-// gövdededir, Alice'in imzası ona ait değildir, kontrat `BadClientSig` verir.
+// Critical design point: Alice takes the `intentHash` she submits on chain from THE BODY THE
+// ENCLAVE SIGNED, not from Bob's WORD. That makes a "Bob invented his own job" scenario such
+// as `selfintent` realistic: the fabricated hash is in the body, Alice's signature does not
+// belong to it, and the contract returns `BadClientSig`.
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -50,77 +50,77 @@ export interface DemoOptions {
   nonce?: bigint;
   brief?: string;
   data?: string;
-  /** Zincire yazmadan sadece akışı koştur (previewJob ile kodu okur). */
+  /** Run the flow without writing on chain (reads the code via previewJob). */
   dryRun?: boolean;
   /**
-   * Ödeme rayı. Verilmezse PAYMENT_BACKEND env'i, o da yoksa ödeme adımı atlanır.
-   * Kural: settlement YALNIZCA JobVerified'tan sonra — fraud koşusunda hiç çağrılmaz.
+   * The payment rail. When absent, the PAYMENT_BACKEND env is used; without that the payment
+   * step is skipped. Rule: settlement ONLY after JobVerified — never called on a fraud run.
    */
   paymentRail?: 'hedera' | 'base' | 'none';
-  /** HCS zaman çizelgesi. Varsayılan açık; latency ölçen kapılar kapatabilir. */
+  /** The HCS timeline. On by default; latency-measuring gates may turn it off. */
   timeline?: boolean;
   log?: (line: string) => void;
 }
 
 export interface DemoReport {
   fraudMode: FraudMode;
-  /** Alice'in imzaladığı taahhüt. */
+  /** The commitment Alice signed. */
   signedIntentHash: string;
-  /** Enclave'in gövdeye yazdığı taahhüt (fraud'da farklı olabilir). */
+  /** The commitment the enclave wrote into the body (may differ under fraud). */
   bodyIntentHash: string;
   match: boolean;
   clientSigOk: boolean;
   bindingSigOk: boolean;
   computeProvider: string;
   ogVerified: boolean;
-  /** Alice'in çözüp okuduğu çıktı. */
+  /** The output Alice decrypted and read. */
   output: string;
-  /** Kontratın verdiği karar kodu. */
+  /** The verdict code the contract returned. */
   code: number;
   codeName: string;
   verified: boolean;
   txHash?: string;
   blockNumber?: number;
   basescanUrl?: string;
-  /** Alice'in ilk isteğinden zincirdeki karara kadar geçen süre. */
+  /** The time from Alice's first request to the verdict on chain. */
   totalMs: number;
   /**
-   * P0-G: sürenin aşamalara dağılımı. Alice'in gördüğü aşamalar + enclave'in
-   * İÇ aşamaları (`enclave_*` önekiyle) + zincir onayı.
+   * P0-G: the distribution of the elapsed time across stages. The stages Alice sees + the
+   * enclave's INTERNAL stages (prefixed `enclave_`) + the chain confirmation.
    *
-   * `http_task_work` Bob'un tüm işini kapsar; `enclave_*` onun içini açar.
-   * İkisi ÜST ÜSTE binmez diye toplamı almıyoruz — baskın kalemi arıyoruz.
+   * `http_task_send*` wraps all of Bob's work; `enclave_*` opens it up.
+   * Because the two OVERLAP we do not sum them — we look for the dominant line item.
    */
   stageMs: StageMs;
   discoveredAgentId?: string;
-  /** Ödeme sonucu. Fraud koşusunda `settled: false` ve `receipt` YOK. */
+  /** The payment outcome. On a fraud run `settled: false` and there is NO receipt. */
   payment?: {
     rail: string;
     quoted: boolean;
     authorized: boolean;
     settled: boolean;
-    /** Neden settle edilmedi — fraud koşusunda burası dolu olur. */
+    /** Why it did not settle — populated on a fraud run. */
     skippedReason?: string;
     txRef?: string;
     explorerUrl?: string;
   };
-  /** HCS zaman çizelgesi sonucu. */
+  /** The HCS timeline outcome. */
   timeline?: {
     topicId: string;
     hashscanUrl: string;
-    /** Yazılan aşamalar, gönderim sırasıyla. */
+    /** The stages written, in submission order. */
     stages: string[];
   };
 }
 
 let cachedBob: BobAgent | undefined;
 
-/** HCS zaman çizelgesini aç. Sırları verip kaza eseri sızıntıyı ağa çıkmadan yakalat. */
+/** Open the HCS timeline. Pass the secrets so an accidental leak is caught before the network. */
 async function openTimeline(brief: string, data: string, log: (l: string) => void) {
   const cfg = loadConfig();
   const topicId = process.env.HEDERA_TOPIC_ID;
   if (!topicId) {
-    log('[hcs] HEDERA_TOPIC_ID boş — zaman çizelgesi atlandı');
+    log('[hcs] HEDERA_TOPIC_ID is empty — timeline skipped');
     return undefined;
   }
   const { createHcsTimeline } = await import('../packages/payment/src/hcs-timeline.js');
@@ -134,8 +134,8 @@ async function openTimeline(brief: string, data: string, log: (l: string) => voi
 }
 
 /**
- * Ödeme backend'i kur. AYNI fabrikayı hem Bob (doğrulama+settle) hem Alice
- * (yetkilendirme) kullanıyor — ray farkı Alice'in kodunda görünmüyor (P4-A kriteri).
+ * Build the payment backend. The SAME factory serves Bob (verify+settle) and Alice
+ * (authorise) — the rail difference is invisible in Alice's code (a P4-A criterion).
  */
 export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolean) {
   const cfg = loadConfig();
@@ -162,13 +162,13 @@ export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolea
     usdcAddress: cfg.USDC_BASE_SEPOLIA,
     verifierAddress,
     recipientMetaAddress: bobKeys.metaAddress,
-    // Bob tarafı: gelen ödemenin KENDİSİNE ait olduğunu doğrulamak için.
+    // The Bob side: for verifying that an incoming payment is HIS.
     viewingPrivateKey: forBob ? bobKeys.viewingPrivateKey : undefined,
     spendingPublicKey: forBob ? bobKeys.spendingPublicKey : undefined,
   });
 }
 
-/** Bob'u zincirde kayıtlı endpoint'inin portunda ayağa kaldır (bir kez). */
+/** Bring Bob up on the port of his on-chain registered endpoint (once). */
 export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base' | 'none' = 'none'): Promise<BobAgent> {
   if (cachedBob) return cachedBob;
   loadDotenv();
@@ -179,7 +179,7 @@ export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base
   const registry = identityRegistry(cfg.ERC8004_IDENTITY, provider);
   const agentId = requireEnv('BOB_AGENT_ID');
   const endpoint = await readUtf8Metadata(registry, agentId, METADATA_KEYS.endpoint);
-  if (!endpoint) throw new Error('Bob\'un zincirde endpoint metadata\'sı yok — pnpm gate:P2-A');
+  if (!endpoint) throw new Error('Bob has no endpoint metadata on chain — run pnpm gate:P2-A');
 
   const { backend: computeBackend, reason: computeReason } = await selectComputeBackend(process.env, {
     fixtureDir: resolve(repoRoot(), 'fixtures/og'),
@@ -201,8 +201,8 @@ export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base
     publicUrl: `${url.protocol}//${url.host}`,
     fraudMode: 'none',
     hederaAccount: process.env.BOB_HEDERA_ACCOUNT,
-    // ÖDEME KAPISI: yetki olmadan iş yok. Yetkiyi Bob tutar, JobVerified sonrası
-    // POST /settle ile kendisi gönderir (CLAUDE.md §7).
+    // THE PAYMENT GATE: no authorisation, no work. Bob holds the authorisation and submits it
+    // himself via POST /settle after JobVerified (CLAUDE.md §7).
     payment:
       rail === 'none'
         ? undefined
@@ -214,11 +214,11 @@ export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base
                 : deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob').metaAddress,
             network: rail === 'hedera' ? 'hedera:testnet' : 'base-sepolia',
           },
-    // Bob'un ERC-5564 meta-adresi kök cüzdanından DETERMİNİSTİK türetiliyor —
-    // ayrı sır saklamak gerekmiyor, meta-adres her koşuda aynı.
+    // Bob's ERC-5564 meta-address is derived DETERMINISTICALLY from his root wallet — no separate
+    // secret to store, and the meta-address is identical on every run.
     stealthMetaAddress: deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob').metaAddress,
-    // Modelin nerede koştuğu ORTAMDAN seçiliyor; hangisi seçilirse seçilsin
-    // sonuç kendini doğru etiketliyor (none / fixture-replay / 0g-sealed-inference).
+    // Where the model runs is chosen FROM THE ENVIRONMENT; whichever is selected, the result
+    // labels itself correctly (none / fixture-replay / 0g-sealed-inference).
     compute: computeBackend,
     log: () => {},
   });
@@ -261,13 +261,13 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   const started = Date.now();
   const sw = createStopwatch();
 
-  // --- 0. Zaman çizelgesi (HCS) — HER koşuda yazılır ---
-  // "Hedera = the timeline" ancak ödeme rayından bağımsız yazarsak doğru olur.
-  // İçerik değil TAAHHÜT gider; brief/veri/çıktı topic'e asla çıkmaz.
+  // --- 0. The timeline (HCS) — written on EVERY run ---
+  // "Hedera = the timeline" is only true if we write it independently of the payment rail.
+  // COMMITMENTS go, not content; brief/data/output never reach the topic.
   const timeline = options.timeline === false ? undefined : await openTimeline(brief, data, log);
   sw.mark('hcs_open_topic');
 
-  // --- 1-5. Keşif → intent → ECIES → Bob → enclave → Alice çözer ---
+  // --- 1-5. Discovery → intent → ECIES → Bob → enclave → Alice decrypts ---
   const job = await runAliceJob({
     discover: { subgraphUrl: requireEnv('SUBGRAPH_QUERY_URL'), skill: SKILL },
     brief,
@@ -285,18 +285,18 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   sw.mark('alice_job_total');
 
   const result: EchoResult = job.result;
-  // Alice, zincire gönderilecek alanları Bob'un SÖZÜNDEN değil, enclave'in
-  // İMZALADIĞI gövdeden çözer.
-  // Zincire giden, Bob'un İDDİA ETTİĞİ gövdedir — enclave'in Alice'e şifrelediği
-  // kopya değil. `forge` modunda ikisi ayrışır ve fark tam da orada görünür.
+  // Alice decodes the fields going on chain from the body the enclave SIGNED, not from Bob's
+  // WORD.
+  // What goes on chain is the body Bob CLAIMS — not the copy the enclave encrypted to Alice.
+  // In `forge` mode the two diverge, and that is exactly where the difference shows.
   const body = decodeBody(job.claimedBodyHex);
 
   log(
     `[demo] enclave: match=${body.match} · ${describeCompute({ provider: result.computeProvider, ogVerified: result.ogVerified })}`,
   );
 
-  // --- Zaman çizelgesi: 402 → intent → enclave → çıktı ---
-  // Sıra mantıksal sıradır; consensus sırası gönderim sırasını izler.
+  // --- Timeline: 402 → intent → enclave → output ---
+  // The order is the logical order; consensus order follows submission order.
   const agentIdDecimal = BigInt(job.intent.agentId).toString();
   timeline?.record({
     v: 1,
@@ -322,10 +322,10 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     intentHash: job.intent.intentHash,
     by: 'agent',
     agentId: agentIdDecimal,
-    // Ölçülmüş bir imaj yok — UYDURMUYORUZ. Gerçek Tapp gelince dolar.
+    // There is no measured image — WE DO NOT FABRICATE ONE. It fills in with a real Tapp.
     imageHash: null,
     attestation: 'none',
-    // Elimizde GERÇEKTEN olan şey: gövdeyi imzalayan anahtar.
+    // What we ACTUALLY have: the key that signed the body.
     bindingSigner: result.bindingSigner,
   });
   timeline?.record({
@@ -334,15 +334,15 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     intentHash: job.intent.intentHash,
     by: 'agent',
     outputHash: body.outputHash,
-    // Hile yapılsa bile buraya GERÇEK sonuç yazılır — red de zaman çizelgesinde.
+    // Even under fraud the REAL outcome is written here — the rejection is in the timeline too.
     match: body.match,
     ogVerified: result.ogVerified,
     computeProvider: result.computeProvider,
   });
 
-  // --- 6. Zincire götür ---
+  // --- 6. Take it to the chain ---
   const intent = {
-    intentHash: body.intentHash, // fraud'da Bob'un uydurduğu hash olabilir
+    intentHash: body.intentHash, // under fraud this may be the hash Bob fabricated
     client: job.intent.client,
     agentId: job.intent.agentId,
     price: job.intent.price,
@@ -380,7 +380,7 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
 
   const collectStages = (): StageMs => ({
     ...job.stageMs,
-    // Enclave'in İÇ dağılımı — `http_task_work` kaleminin içini açar.
+    // The enclave's INTERNAL breakdown — it opens up the `http_task_send*` line item.
     ...Object.fromEntries(
       Object.entries(result.stageMs ?? {}).map(([k, v]) => [`enclave_${k}`, v]),
     ),
@@ -393,9 +393,9 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     return report;
   }
 
-  // Dürüst iş KATI yolu kullanır (settlement bunu okuyacak).
-  // Fraud MÜSAMAHALI yolu kullanır: revert etmez, JobRejected yayar, subgraph
-  // indeksler ve Basescan'de başarılı görünür (BUILD-PLAN P3-A gerekçesi).
+  // An honest job uses the STRICT path (settlement will read it).
+  // Fraud uses the LENIENT path: it does not revert, it emits JobRejected, the subgraph indexes
+  // it and it appears successful on Basescan (the BUILD-PLAN P3-A rationale).
   const tx = code === 0 ? await verifier.verifyJob(...args) : await verifier.verifyJobLenient(...args);
   const receipt = await tx.wait();
   sw.mark('chain_verify_tx');
@@ -410,13 +410,13 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   );
   log(`[demo] ${report.basescanUrl}`);
 
-  // --- 7. SETTLEMENT — BOB tetikler, yalnızca JobVerified'tan SONRA ---
+  // --- 7. SETTLEMENT — BOB triggers it, and only AFTER JobVerified ---
   if (rail !== 'none') {
     report.payment = await settleViaBob(bob.url(), job, report, log);
   }
 
-  // SETTLED yalnızca gerçekten settle olduysa yazılır. Fraud koşusunda bu satır
-  // hiç çalışmaz — zaman çizelgesinde de "ödeme olmadı" görünür.
+  // SETTLED is written only if settlement actually happened. On a fraud run this line never
+  // executes — so the timeline also shows "no payment".
   if (report.payment?.settled && report.payment.txRef && report.txHash) {
     timeline?.record({
       v: 1,
@@ -437,17 +437,18 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
       hashscanUrl: timeline.hashscanUrl,
       stages: written.map((w) => w.event.stage),
     };
-    log(`[hcs] zaman çizelgesi: ${report.timeline.stages.join(' → ')}`);
+    log(`[hcs] timeline: ${report.timeline.stages.join(' → ')}`);
   }
 
   return report;
 }
 
 /**
- * Settlement'ı BOB tetikler — ekonomik teşvik onda: JobVerified olmadan parasını alamıyor.
+ * BOB triggers settlement — the economic incentive is his: without JobVerified he does not get
+ * paid.
  *
- * Yetki zaten Bob'da (402 kapısından geçerken bıraktık). Fraud koşusunda JobVerified
- * hiç oluşmaz, dolayısıyla bu çağrı 402 ile döner ve para HİÇ hareket etmez.
+ * The authorisation is already with Bob (left there when passing the 402 gate). On a fraud run
+ * JobVerified never appears, so this call returns 402 and NO money moves at all.
  */
 async function settleViaBob(
   bobUrl: string,
@@ -457,10 +458,10 @@ async function settleViaBob(
 ): Promise<DemoReport['payment']> {
   const rail = job.paymentRequired ? 'x402' : 'none';
 
-  // KURAL: doğrulanmamış iş için settle YOK. Fraud koşusu buradan döner ve
-  // Bob'un elindeki yetki HİÇ gönderilmez — "ödeme asla settle olmadı".
+  // THE RULE: NO settle for an unverified job. The fraud run turns back here and the
+  // authorisation in Bob's hands is NEVER submitted — "the payment never settled".
   if (!report.verified || !report.txHash) {
-    log(`[demo] ÖDEME SETTLE EDİLMEDİ — iş doğrulanmadı (${report.codeName})`);
+    log(`[demo] PAYMENT NOT SETTLED — the job was not verified (${report.codeName})`);
     return {
       rail,
       quoted: true,
@@ -481,7 +482,7 @@ async function settleViaBob(
     return { rail, quoted: true, authorized: true, settled: false, skippedReason: `HTTP ${res.status}` };
   }
   const { receipt } = (await res.json()) as { receipt: { rail: string; txRef: string; explorerUrl: string } };
-  log(`[demo] ödeme settle oldu: ${receipt.explorerUrl}`);
+  log(`[demo] payment settled: ${receipt.explorerUrl}`);
   return {
     rail: receipt.rail,
     quoted: true,
@@ -492,27 +493,27 @@ async function settleViaBob(
   };
 }
 
-/** `pnpm demo:base` girişi. */
+/** The `pnpm demo:base` entry point. */
 export async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const modeArg = args[args.indexOf('--fraud') + 1];
   const fraudMode = (args.includes('--fraud') ? modeArg : 'none') as FraudMode;
 
-  console.log(`\n=== Confidential Agents · uçtan uca demo (fraud: ${fraudMode}) ===\n`);
+  console.log(`\n=== Confidential Agents · end-to-end demo (fraud: ${fraudMode}) ===\n`);
   const report = await runDemo({ fraudMode });
   await closeBob();
 
-  console.log('\n--- Alice ne gördü ---');
-  console.log(`keşif        : The Graph → agentId ${report.discoveredAgentId} (adres verilmedi)`);
+  console.log('\n--- what Alice saw ---');
+  console.log(`discovery    : The Graph → agentId ${report.discoveredAgentId} (no address supplied)`);
   console.log(`imzalanan    : ${report.signedIntentHash}`);
-  console.log(`enclave gövde: ${report.bodyIntentHash}`);
+  console.log(`enclave body : ${report.bodyIntentHash}`);
   console.log(`match        : ${report.match}`);
   console.log(`compute      : ${report.computeProvider} · ogVerified=${report.ogVerified}`);
-  console.log(`çıktı        : ${report.output.slice(0, 120)}${report.output.length > 120 ? '…' : ''}`);
+  console.log(`output       : ${report.output.slice(0, 120)}${report.output.length > 120 ? '…' : ''}`);
   console.log('\n--- Zincir ne dedi ---');
-  console.log(`karar        : ${report.codeName}${report.verified ? '' : '  (REDDEDİLDİ)'}`);
+  console.log(`verdict      : ${report.codeName}${report.verified ? '' : '  (REJECTED)'}`);
   console.log(`tx           : ${report.basescanUrl ?? '-'}`);
-  console.log(`süre         : ${report.totalMs} ms\n`);
+  console.log(`elapsed      : ${report.totalMs} ms\n`);
 
   if (!report.verified && fraudMode === 'none') process.exit(1);
 }

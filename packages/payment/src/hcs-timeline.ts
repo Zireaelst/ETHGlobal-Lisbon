@@ -1,16 +1,16 @@
-// hcs-timeline.ts — iş yaşam döngüsünü HCS topic'ine yazar (BUILD-PLAN P4-D).
+// hcs-timeline.ts — writes the job lifecycle to an HCS topic (BUILD-PLAN P4-D).
 //
-// SIFIR SOLIDITY: HCS yerel bir Hedera servisi, EVM'in üstünde değil. Kontrat, deploy,
-// ABI yok — yalnızca `TopicMessageSubmitTransaction` ve mirror node REST okuması.
+// ZERO SOLIDITY: HCS is a native Hedera service, not something on top of the EVM. No
+// contract, no deploy, no ABI — only `TopicMessageSubmitTransaction` and mirror node REST reads.
 //
-// Roadmap'in Hedera farklılaştırıcısı burada: referans x402-hedera-example'da hiç
-// HCS attestation yok; olsaydı bile bir ÖDEMEYİ attest ederdi. Biz 402'den settle'a
-// kadar İŞİN TAMAMINI attest ediyoruz.
+// This is the roadmap's Hedera differentiator: the reference x402-hedera-example has no HCS
+// attestation at all; and even if it did, it would attest a PAYMENT. We attest THE WHOLE JOB,
+// from the 402 all the way to settlement.
 //
-// SIRA GARANTİSİ + LATENCY: consensus sırası gönderim sırasını izliyor, o yüzden
-// mesajlar ARDIŞIK gönderilmeli. Ama demoyu 5×~2 sn bekletmemek için `record()`
-// gönderimi bir söz zincirine ekleyip HEMEN dönüyor; `flush()` hepsini bekliyor.
-// Böylece hem sıra korunuyor hem kritik yol tıkanmıyor.
+// ORDERING GUARANTEE + LATENCY: consensus order follows submission order, so messages must be
+// submitted SEQUENTIALLY. But to avoid stalling the demo by 5×~2 s, `record()` appends the
+// submission to a promise chain and returns IMMEDIATELY; `flush()` waits for all of them.
+// That keeps the ordering while leaving the critical path unblocked.
 
 import { TopicMessageSubmitTransaction, type Client } from '@hiero-ledger/sdk';
 import {
@@ -24,12 +24,12 @@ const MIRROR_NODE_URL = 'https://testnet.mirrornode.hedera.com';
 const HASHSCAN = 'https://hashscan.io/testnet';
 
 export interface HcsTimelineConfig {
-  /** Operatör client'ı — anahtar signer modülünde kalır (createHederaOperatorClient). */
+  /** The operator client — the key stays in the signer module (createHederaOperatorClient). */
   client: Client;
   topicId: string;
   /**
-   * Topic'e çıkmaması gereken düz metinler (brief, veri, çıktı). Her olay
-   * gönderilmeden ÖNCE bunlara karşı taranır — kaza eseri sızıntı ağa çıkmaz.
+   * Plaintexts that must never reach the topic (brief, data, output). Every event is scanned
+   * against these BEFORE submission — an accidental leak never reaches the network.
    */
   secrets?: string[];
   log?: (line: string) => void;
@@ -43,9 +43,9 @@ export interface SubmittedTimelineEvent {
 export interface HcsTimeline {
   readonly topicId: string;
   readonly hashscanUrl: string;
-  /** Olayı sıraya koy ve HEMEN dön. Gönderim arka planda, sırayı bozmadan yapılır. */
+  /** Queue the event and return IMMEDIATELY. Submission happens in the background, in order. */
   record(event: TimelineEvent): void;
-  /** Bekleyen tüm gönderimleri tamamla. */
+  /** Complete all pending submissions. */
   flush(): Promise<SubmittedTimelineEvent[]>;
   close(): void;
 }
@@ -55,7 +55,7 @@ export function createHcsTimeline(config: HcsTimelineConfig): HcsTimeline {
   const secrets = config.secrets ?? [];
   const submitted: SubmittedTimelineEvent[] = [];
   const errors: Error[] = [];
-  // Ardışıklığı garantileyen söz zinciri — consensus sırası gönderim sırasını izler.
+  // The promise chain that guarantees sequencing — consensus order follows submission order.
   let chain: Promise<void> = Promise.resolve();
 
   return {
@@ -63,7 +63,7 @@ export function createHcsTimeline(config: HcsTimelineConfig): HcsTimeline {
     hashscanUrl: `${HASHSCAN}/topic/${config.topicId}`,
 
     record(event: TimelineEvent): void {
-      // Şema + sızıntı denetimi SENKRON: hatalı olay ağa hiç çıkmasın.
+      // Schema + leak checks are SYNCHRONOUS: a malformed event must never reach the network.
       const parsed = TimelineEventSchema.parse(event);
       assertNoPlaintext(parsed, secrets);
 
@@ -87,7 +87,7 @@ export function createHcsTimeline(config: HcsTimelineConfig): HcsTimeline {
     async flush(): Promise<SubmittedTimelineEvent[]> {
       await chain;
       if (errors.length) {
-        throw new Error(`HCS zaman çizelgesi ${errors.length} olayı yazamadı: ${errors[0]?.message}`);
+        throw new Error(`the HCS timeline failed to write ${errors.length} event(s): ${errors[0]?.message}`);
       }
       return [...submitted];
     },
@@ -99,9 +99,9 @@ export function createHcsTimeline(config: HcsTimelineConfig): HcsTimeline {
 }
 
 /**
- * Bir işin zaman çizelgesini mirror node'dan oku.
+ * Read a job's timeline from the mirror node.
  *
- * Mirror node indekslemesi anlık değil; `expect` kadar olay görene kadar yoklar.
+ * Mirror node indexing is not instantaneous; it polls until it sees `expect` events.
  */
 export async function readTimeline(
   topicId: string,
@@ -123,7 +123,7 @@ export async function readTimeline(
         try {
           parsed = TimelineEventSchema.parse(JSON.parse(Buffer.from(m.message, 'base64').toString('utf8')));
         } catch {
-          continue; // bu topic'te başka mesajlar da olabilir (ör. P0-E test mesajı)
+          continue; // this topic may carry other messages too (e.g. the P0-E test message)
         }
         if (parsed.intentHash.toLowerCase() !== wanted) continue;
         found.push({

@@ -1,13 +1,14 @@
-// timeline.ts — iş yaşam döngüsü taahhütleri (BUILD-PLAN P4-D).
+// timeline.ts — job lifecycle commitments (BUILD-PLAN P4-D).
 //
-// Beş aşama, her biri Hedera'nın consensus timestamp'iyle HCS topic'ine yazılıyor.
-// Topic'e YALNIZCA TAAHHÜT gider: brief, veri ve çıktı asla. Gizlenen şey işin NE
-// olduğu; gizlenmeyen şey işin OLDUĞU. Zaman çizelgesi bilerek şeffaflık katmanı.
+// Five stages, each written to an HCS topic with Hedera's consensus timestamp.
+// ONLY COMMITMENTS go to the topic: never the brief, the data or the output. What is hidden
+// is WHAT the job was; what is not hidden is THAT the job happened. The timeline is
+// deliberately a transparency layer.
 //
-// Bu dosyada Hedera SDK'sı YOK — sadece tipler ve doğrulama. Sebebi mimari:
-// `@ca/bob-binding` (enclave, imageHash ile ölçülüyor) `@ca/shared`'a bağımlı;
-// buraya Hedera SDK'sı koysaydık enclave imajı gereksiz şişerdi. Yazma/okuma işi
-// `@ca/payment/src/hcs-timeline.ts` içinde.
+// There is NO Hedera SDK in this file — only types and validation. The reason is
+// architectural: `@ca/bob-binding` (the enclave, measured by imageHash) depends on
+// `@ca/shared`; putting the Hedera SDK here would needlessly bloat the enclave image. The
+// read/write work lives in `@ca/payment/src/hcs-timeline.ts`.
 
 import { z } from 'zod';
 
@@ -21,9 +22,9 @@ export const TIMELINE_STAGES = [
 
 export type TimelineStage = (typeof TIMELINE_STAGES)[number];
 
-const Bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/, '0x + 64 hex hane olmalı');
+const Bytes32 = z.string().regex(/^0x[0-9a-fA-F]{64}$/, 'must be 0x + 64 hex digits');
 
-/** Taahhüdü kimin yazdığı — kayıt kimin iddiası olduğu konusunda dürüst kalsın. */
+/** Who wrote the commitment — so the record stays honest about whose claim it is. */
 export const TimelineAuthorSchema = z.enum(['client', 'agent']);
 
 const base = {
@@ -52,12 +53,12 @@ export const TimelineEventSchema = z.discriminatedUnion('stage', [
     stage: z.literal('ENCLAVE_INVOKED'),
     agentId: z.string().regex(/^\d+$/),
     /**
-     * Ölçülmüş enclave imajının hash'i. Gerçek Tapp bağlanana kadar `null` —
-     * UYDURULMAZ. `attestation` alanı neyimiz olduğunu açıkça söylüyor.
+     * The hash of the measured enclave image. `null` until a real Tapp is connected —
+     * NEVER FABRICATED. The `attestation` field states plainly what we have.
      */
     imageHash: Bytes32.nullable(),
     attestation: z.enum(['none', 'tee-attested']),
-    /** Gövdeyi imzalayan anahtar — elimizde GERÇEKTEN olan şey. */
+    /** The key that signed the body — the thing we ACTUALLY have. */
     bindingSigner: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
   }),
   z.object({
@@ -65,7 +66,7 @@ export const TimelineEventSchema = z.discriminatedUnion('stage', [
     stage: z.literal('OUTPUT_COMMIT'),
     outputHash: Bytes32,
     match: z.boolean(),
-    /** 0G TEE imza durumu — yoksa false, sessizce true yazılmaz. */
+    /** 0G TEE signature status — false when absent, never silently true. */
     ogVerified: z.boolean(),
     computeProvider: z.enum(['none', '0g-sealed-inference', 'fixture-replay']),
   }),
@@ -74,14 +75,14 @@ export const TimelineEventSchema = z.discriminatedUnion('stage', [
     stage: z.literal('SETTLED'),
     rail: z.string().min(1),
     txId: z.string().min(1),
-    /** Ödemeyi serbest bırakan JobVerified işlemi — sıra kanıtının çıpası. */
+    /** The JobVerified transaction that released the payment — the anchor of the ordering proof. */
     jobVerifiedTx: z.string().min(1),
   }),
 ]);
 
 export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
 
-/** Mirror node'dan okunan, consensus bilgisi eklenmiş kayıt. */
+/** A record read back from the mirror node, with consensus information attached. */
 export interface RecordedTimelineEvent {
   event: TimelineEvent;
   sequenceNumber: number;
@@ -89,31 +90,31 @@ export interface RecordedTimelineEvent {
 }
 
 /**
- * Bir taahhüdün düz metin sızdırmadığını doğrula.
+ * Verify that a commitment leaks no plaintext.
  *
- * Kapı bunu kullanıyor ama üretim yolunda da çağrılıyor: yanlışlıkla brief ya da
- * çıktı eklenmiş bir olay topic'e ÇIKMADAN önce burada patlar.
+ * The gate uses this, but it is also called on the production path: an event that
+ * accidentally includes the brief or the output throws HERE, before it reaches the topic.
  */
 export function assertNoPlaintext(event: TimelineEvent, secrets: string[]): void {
   const serialized = JSON.stringify(event);
   for (const secret of secrets) {
     if (!secret || secret.length < 8) continue;
-    // Uzun metinlerin parçaları da sızıntıdır; 16 karakterlik pencerelerle bak.
+    // Fragments of long texts are leaks too; scan in 16-character windows.
     for (let i = 0; i + 16 <= secret.length; i += 16) {
       if (serialized.includes(secret.slice(i, i + 16))) {
         throw new Error(
-          `timeline: ${event.stage} olayı düz metin sızdırıyor ("${secret.slice(i, i + 16)}") — ` +
-            'topic\'e yalnızca taahhüt gider',
+          `timeline: the ${event.stage} event leaks plaintext ("${secret.slice(i, i + 16)}") — ` +
+            'only commitments go to the topic',
         );
       }
     }
     if (serialized.includes(secret)) {
-      throw new Error(`timeline: ${event.stage} olayı düz metin sızdırıyor`);
+      throw new Error(`timeline: the ${event.stage} event leaks plaintext`);
     }
   }
 }
 
-/** Aşamaların beklenen mantıksal sırası. */
+/** The expected logical order of the stages. */
 export function stageOrder(stage: TimelineStage): number {
   return TIMELINE_STAGES.indexOf(stage);
 }

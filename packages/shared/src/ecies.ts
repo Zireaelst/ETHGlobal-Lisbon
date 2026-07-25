@@ -1,27 +1,29 @@
-// ecies.ts — gizli mesajlaşma katmanı (BUILD-PLAN P1-B).
+// ecies.ts — the confidential messaging layer (BUILD-PLAN P1-B).
 //
-// `eth-crypto` sarmalayıcı. Şifreli paket tel üzerinde `EthCrypto.cipher.stringify`
-// formatında (tek hex string) taşınır.
+// A wrapper around `eth-crypto`. The encrypted payload travels over the wire in
+// `EthCrypto.cipher.stringify` format (a single hex string).
 //
-// ANAHTAR FORMATI — iki farklı gösterim var, karıştırmak sessiz hataya yol açar:
-//   - eth-crypto public key: 0x ÖNEKSİZ 128 hex hane (04 öneki de yok).
-//   - Bizim tel/registry formatımız: 0x04 + 128 hex (standart SEC1 uncompressed).
-// ERC-8004'e `eciesPubKey` olarak KANONİK biçim yazılır; bu modül sınırda çevirir.
-// Karşılaştırmalar daima kanonik biçim üzerinden yapılmalı.
+// KEY FORMAT — there are two different representations, and mixing them up causes a
+// silent failure:
+//   - eth-crypto public key: 128 hex digits with NO 0x prefix (and no 04 prefix either).
+//   - Our wire/registry format: 0x04 + 128 hex (standard SEC1 uncompressed).
+// The CANONICAL form is what gets written to ERC-8004 as `eciesPubKey`; this module
+// converts at the boundary. Comparisons must always be done on the canonical form.
 //
-// Gizlilik sınırı (CLAUDE.md §11): bu katman içeriği gizler. Kimin kiminle konuştuğu
-// (endpoint, IP, zamanlama) gizlenmez — onun cevabı stealth ödeme, bu değil.
+// Privacy boundary (CLAUDE.md §11): this layer hides the content. It does NOT hide who
+// is talking to whom (endpoint, IP, timing) — the answer to that is stealth payments,
+// not this.
 
 import EthCryptoDefault from 'eth-crypto';
 import { computeAddress } from 'ethers';
 
-// eth-crypto CJS/ESM köprüsü: `default` altında da gelebiliyor.
+// eth-crypto CJS/ESM bridge: it may also arrive under `default`.
 const EthCrypto = (EthCryptoDefault as unknown as { default?: typeof EthCryptoDefault }).default ?? EthCryptoDefault;
 
 export interface EciesIdentity {
   /** 0x + 64 hex. */
   privateKey: string;
-  /** Kanonik biçim: 0x04 + 128 hex. */
+  /** Canonical form: 0x04 + 128 hex. */
   publicKey: string;
   address: string;
 }
@@ -29,18 +31,18 @@ export interface EciesIdentity {
 const RAW_PUBKEY = /^[0-9a-fA-F]{128}$/;
 const CANONICAL_PUBKEY = /^0x04[0-9a-fA-F]{128}$/;
 
-/** Herhangi bir kabul edilen gösterimden eth-crypto'nun beklediği ham 128 hex'e. */
+/** From any accepted representation to the raw 128 hex that eth-crypto expects. */
 export function toRawPublicKey(publicKey: string): string {
   const v = publicKey.trim();
   if (RAW_PUBKEY.test(v)) return v.toLowerCase();
   if (CANONICAL_PUBKEY.test(v)) return v.slice(4).toLowerCase();
   if (/^04[0-9a-fA-F]{128}$/.test(v)) return v.slice(2).toLowerCase();
   throw new Error(
-    `ECIES public key biçimi tanınmadı (uzunluk ${v.length}). Beklenen: 0x04+128 hex, 04+128 hex ya da çıplak 128 hex.`,
+    `unrecognised ECIES public key format (length ${v.length}). Expected: 0x04+128 hex, 04+128 hex or bare 128 hex.`,
   );
 }
 
-/** Kanonik biçim: 0x04 + 128 hex. Registry'ye ve agent card'a bu yazılır. */
+/** Canonical form: 0x04 + 128 hex. This is what goes into the registry and the agent card. */
 export function toCanonicalPublicKey(publicKey: string): string {
   return `0x04${toRawPublicKey(publicKey)}`;
 }
@@ -53,7 +55,7 @@ function normalizePrivateKey(privateKey: string): string {
   const v = privateKey.trim();
   const withPrefix = v.startsWith('0x') ? v : `0x${v}`;
   if (!/^0x[0-9a-fA-F]{64}$/.test(withPrefix)) {
-    throw new Error('ECIES private key 0x + 64 hex hane olmalı');
+    throw new Error('ECIES private key must be 0x + 64 hex digits');
   }
   return withPrefix;
 }
@@ -67,35 +69,35 @@ export function createEciesIdentity(): EciesIdentity {
   };
 }
 
-/** Public key'in ima ettiği EVM adresi — kayıt ile anahtarın eşleştiğini doğrulamak için. */
+/** The EVM address implied by the public key — used to check a registration matches the key. */
 export function addressFromPublicKey(publicKey: string): string {
   return computeAddress(toCanonicalPublicKey(publicKey));
 }
 
-/** Ham string'i şifrele. */
+/** Encrypt a raw string. */
 export async function encryptStringFor(publicKey: string, plaintext: string): Promise<string> {
   const encrypted = await EthCrypto.encryptWithPublicKey(toRawPublicKey(publicKey), plaintext);
   return EthCrypto.cipher.stringify(encrypted);
 }
 
 /**
- * Şifreyi çöz.
+ * Decrypt.
  *
- * Yanlış anahtar ya da kurcalanmış ciphertext `Bad MAC` ile PATLAR — sessizce bozuk
- * veri dönmez. Bu davranış kapı kriteridir (P1-B), tesadüf değil: gövde bütünlüğü
- * intent-binding'in altındaki varsayım.
+ * A wrong key or tampered ciphertext THROWS with `Bad MAC` — it does not silently
+ * return corrupt data. That behaviour is a gate criterion (P1-B), not an accident:
+ * payload integrity is the assumption underneath intent-binding.
  */
 export async function decryptStringWith(privateKey: string, cipher: string): Promise<string> {
   const parsed = EthCrypto.cipher.parse(cipher);
   return EthCrypto.decryptWithPrivateKey(normalizePrivateKey(privateKey), parsed);
 }
 
-/** Nesneyi JSON'a çevirip şifrele. */
+/** Serialise the object to JSON and encrypt it. */
 export async function encryptFor(publicKey: string, payload: unknown): Promise<string> {
   return encryptStringFor(publicKey, JSON.stringify(payload));
 }
 
-/** Çöz ve JSON'u parse et. Şema doğrulaması ÇAĞIRANIN işi (schema.ts parseOrThrow). */
+/** Decrypt and parse the JSON. Schema validation is the CALLER's job (schema.ts parseOrThrow). */
 export async function decryptWith<T = unknown>(privateKey: string, cipher: string): Promise<T> {
   return JSON.parse(await decryptStringWith(privateKey, cipher)) as T;
 }

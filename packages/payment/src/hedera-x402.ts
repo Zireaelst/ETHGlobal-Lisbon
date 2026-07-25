@@ -40,25 +40,25 @@ const HASHSCAN = 'https://hashscan.io/testnet';
 
 export interface HederaX402Config {
   /**
-   * DELEGATED imzalayıcı. Private key BU MODÜLE GİRMİYOR — signer/hedera-signer.ts
-   * onu env'den kendisi okuyup kapanışta tutuyor (BUILD-PLAN P4-C).
-   * Buraya ham anahtar geçirmenin bir yolu bilerek yok.
+   * The DELEGATED signer. The private key DOES NOT ENTER THIS MODULE — signer/hedera-signer.ts
+   * reads it from the env itself and keeps it in a closure (BUILD-PLAN P4-C).
+   * There is deliberately no way to pass a raw key in here.
    */
   signer: HederaSignerHandle;
   /** blocky402 (or compatible) facilitator base URL, from BLOCKY402_URL. */
   facilitatorUrl: string;
   /**
-   * Base Sepolia sağlayıcısı — settlement öncesi `JobVerified`'ı doğrulamak için.
-   * Ödeme Hedera'da akıyor ama KARAR Base'de veriliyor (temiz ayrım: roadmap v3 §08).
+   * The Base Sepolia provider — used to verify `JobVerified` before settlement.
+   * The payment flows on Hedera but the VERDICT is given on Base (clean separation: roadmap v3 §08).
    */
   verifierProvider: JsonRpcProvider;
   verifierAddress: string;
   /**
-   * Bu agent'ın ödeme aldığı Hedera hesabı.
+   * The Hedera account this agent receives payment on.
    *
-   * Bob tarafı gelen yetkinin GERÇEKTEN kendisine ödeme yaptığını kontrol etmek
-   * için kullanır — başkasına yapılmış bir ödeme yetkisiyle iş yaptırılamasın.
-   * Alice tarafında gerekmez.
+   * The Bob side uses it to check that an incoming authorisation REALLY pays him — so that
+   * an authorisation made out to someone else cannot buy work from him.
+   * Not needed on Alice's side.
    */
   payoutAccountId?: string;
 }
@@ -77,7 +77,7 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
   const resourceServer = new x402ResourceServer(facilitatorClient);
   resourceServer.register(HEDERA_NETWORK, new ExactHederaServerScheme());
 
-  // "Client" tarafı: transferi imzalar — ama anahtarı GÖRMEZ, delegated signer'ı kullanır.
+  // The "client" side: it signs the transfer — but it never SEES the key, it uses the delegated signer.
   const clientScheme = new ExactHederaClientScheme(config.signer.signer);
 
   let initialized: Promise<void> | null = null;
@@ -86,7 +86,7 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
     return initialized;
   };
 
-  /** quote → authorize arasında taşınan, henüz gönderilmemiş yetki. */
+  /** The as-yet unsubmitted authorisation carried between quote and authorize. */
   interface HederaAuthPayload {
     requirements: unknown;
     paymentPayload: unknown;
@@ -111,7 +111,7 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
         maxTimeoutSeconds: 60,
       });
       if (!requirements) {
-        throw new Error(`hedera-x402: facilitator ${HEDERA_NETWORK} için payment requirements döndürmedi`);
+        throw new Error(`hedera-x402: the facilitator returned no payment requirements for ${HEDERA_NETWORK}`);
       }
       return {
         rail: 'hedera-x402',
@@ -119,7 +119,7 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
         amount: request.amount,
         asset: 'HBAR',
         decimals: 8, // tinybar
-        // Düz hesap kimliği — alıcı gizliliği YOK. Bilinçli: roadmap v3 §07.
+        // A plain account id — NO recipient privacy. Deliberate: roadmap v3 §07.
         payTo: request.recipient,
         http402: requirements,
         expiresAt: Date.now() + 60_000,
@@ -129,7 +129,7 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
     async authorize(quote: PaymentQuote): Promise<AuthProof> {
       await ensureInitialized();
       const requirements = quote.http402;
-      // Kısmi imzalı transfer kurulur — PARA HAREKET ETMEZ. Gönderimi settle() yapar.
+      // A partially signed transfer is built — NO MONEY MOVES. settle() submits it.
       const payloadResult = await clientScheme.createPaymentPayload(2, requirements as never);
       const paymentPayload = {
         x402Version: 2 as const,
@@ -150,18 +150,18 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
     },
 
     async verifyAuthorization(proof, expected) {
-      if (proof.rail !== 'hedera-x402') return { ok: false, reason: `yanlış ray: ${proof.rail}` };
+      if (proof.rail !== 'hedera-x402') return { ok: false, reason: `wrong rail: ${proof.rail}` };
       if (proof.intentHash.toLowerCase() !== expected.intentHash.toLowerCase()) {
-        return { ok: false, reason: 'yetki başka bir işe ait' };
+        return { ok: false, reason: 'the authorisation belongs to a different job' };
       }
       if (proof.amount !== expected.amount) {
         return { ok: false, reason: `tutar ${proof.amount}, beklenen ${expected.amount}` };
       }
-      // Alıcı BU agent olmalı — başka birine ödeme yetkisi bize iş yaptırmaz.
+      // The recipient must be THIS agent — an authorisation paying someone else buys no work here.
       if (proof.payTo !== config.payoutAccountId) {
-        return { ok: false, reason: `alıcı ${proof.payTo}, beklenen ${config.payoutAccountId}` };
+        return { ok: false, reason: `recipient is ${proof.payTo}, expected ${config.payoutAccountId}` };
       }
-      // Facilitator'a verify ettir: imza geçerli mi, bakiye yeterli mi. Para HAREKET ETMEZ.
+      // Let the facilitator verify: is the signature valid, is the balance sufficient. NO MONEY MOVES.
       await ensureInitialized();
       const { requirements, paymentPayload } = proof.payload as HederaAuthPayload;
       const result = await resourceServer.verifyPayment(paymentPayload as never, requirements as never);
@@ -171,7 +171,7 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
     },
 
     async settle(proof: AuthProof, jobVerifiedTx: string): Promise<Receipt> {
-      // KAPI: iş zincirde doğrulanmadıysa buradan öteye geçilmez.
+      // THE GATE: if the job was not verified on chain, nothing proceeds past here.
       const verified = await assertJobVerified(
         config.verifierProvider,
         config.verifierAddress,
@@ -183,7 +183,7 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
       const { requirements, paymentPayload } = proof.payload as HederaAuthPayload;
       const settleResult = await resourceServer.settlePayment(paymentPayload as never, requirements as never);
       if (!settleResult.success) {
-        throw new Error(`hedera-x402 settle başarısız: ${settleResult.errorReason ?? 'bilinmiyor'}`);
+        throw new Error(`hedera-x402 settle failed: ${settleResult.errorReason ?? 'unknown'}`);
       }
 
       return {
@@ -198,9 +198,9 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
     },
 
     async verify(receipt: Receipt): Promise<boolean> {
-      // txRef "0.0.7162784@1784936701.955111199" biçiminde. Mirror Node REST
-      // "shard.realm.num-seconds-nanos" istiyor — yalnızca '@' ve TIMESTAMP içindeki
-      // nokta tireye döner; hesap kimliğindeki noktalar kalır.
+      // txRef looks like "0.0.7162784@1784936701.955111199". The Mirror Node REST API wants
+      // "shard.realm.num-seconds-nanos" — only the '@' and the dot INSIDE THE TIMESTAMP become
+      // dashes; the dots in the account id stay.
       const [account, stamp] = receipt.txRef.split('@');
       if (!account || !stamp) return false;
       const mirrorId = `${account}-${stamp.replace('.', '-')}`;

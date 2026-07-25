@@ -1,13 +1,13 @@
-// scripts/og-probe-h1.ts — imzalı demetteki h1 ve h3 NE?
+// scripts/og-probe-h1.ts — WHAT are h1 and h3 in the signed tuple?
 //
-// Neden önemli: demet "<h1>:<sha256(yanıt)>:<tip>:<kimlik>:<h3>". h2'nin yanıt
-// olduğunu biliyoruz. h1 koşudan koşuya DEĞİŞİYOR (isteğe bağlı), h3 SABİT.
+// Why it matters: the tuple is "<h1>:<sha256(response)>:<type>:<identity>:<h3>". We know h2 is
+// the response. h1 CHANGES from run to run (request-dependent); h3 is CONSTANT.
 //
-// Eğer h1 === sha256(gönderdiğimiz istek gövdesi) ise, 0G TEE'si istek↔yanıt
-// bağını KENDİSİ imzalıyor demektir. O zaman intentHash'i prompt'a koyduğumuzda
-// bağlama attested TEE'nin içine girer — kendi TDX makinemiz olmadan.
+// If h1 === sha256(the request body we sent), then the 0G TEE is signing the request↔response
+// binding ITSELF. In that case putting the intentHash in the prompt moves the binding inside the
+// attested TEE — without a TDX machine of our own.
 //
-// Bu yüzden burada isteğin TAM baytlarını saklayıp h1'i ona karşı deniyoruz.
+// So here we keep the EXACT bytes of the request and test h1 against them.
 
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
@@ -34,8 +34,8 @@ const broker = await createZGComputeNetworkBroker(wallet);
 const { endpoint, model } = await broker.inference.getServiceMetadata(signerFixture.provider);
 const headers = (await broker.inference.getRequestHeaders(signerFixture.provider)) as Record<string, string>;
 
-// TAM baytları elimizde tutuyoruz — sonradan yeniden serileştirmek anahtar
-// sırasını değiştirebilir ve karşılaştırmayı sessizce bozar.
+// We hold on to the EXACT bytes — re-serialising later could change key order and silently break
+// the comparison.
 const requestBytes = JSON.stringify({
   model,
   messages: [{ role: 'user', content: 'Reply with the single word: bound.' }],
@@ -56,21 +56,21 @@ const sigRes = await fetch(`${signerFixture.url}/v1/proxy/signature/${chatID}?mo
 const sig = (await sigRes.json()) as { text: string; signature: string };
 const [h1, h2, ptype, pid, h3] = sig.text.split(':');
 
-console.log(`demet: ${sig.text}\n`);
-console.log(`h2 === sha256(ham yanıt)?  ${h2 === sha(rawResponseText)}`);
+console.log(`tuple: ${sig.text}\n`);
+console.log(`h2 === sha256(raw response)?  ${h2 === sha(rawResponseText)}`);
 console.log(`\nh1 = ${h1}`);
 
 const messagesOnly = JSON.stringify([{ role: 'user', content: 'Reply with the single word: bound.' }]);
 const promptOnly = 'Reply with the single word: bound.';
 
 const candidates: Record<string, string> = {
-  'sha256(gönderilen ham istek)': sha(requestBytes),
-  'sha256(messages dizisi)': sha(messagesOnly),
-  'sha256(sadece prompt metni)': sha(promptOnly),
+  'sha256(raw request as sent)': sha(requestBytes),
+  'sha256(messages array)': sha(messagesOnly),
+  'sha256(prompt text only)': sha(promptOnly),
   'sha256(model)': sha(model),
   'sha256(chatID)': sha(chatID ?? ''),
-  'sha256(istek + model başlığı)': sha(`${model}${requestBytes}`),
-  'sha256(ham istek + ham yanıt)': sha(requestBytes + rawResponseText),
+  'sha256(request + model prefix)': sha(`${model}${requestBytes}`),
+  'sha256(raw request + raw response)': sha(requestBytes + rawResponseText),
 };
 
 let hit = false;
@@ -82,8 +82,8 @@ for (const [name, value] of Object.entries(candidates)) {
     console.log(`  ✅ ${m1 ? 'h1' : 'h3'} === ${name}`);
   }
 }
-if (!hit) console.log('  (hiçbir aday tutmadı)');
+if (!hit) console.log('  (no candidate matched)');
 
-console.log(`\nh3 = ${h3}   (önceki koşularla aynıysa SABİT bir kimlik)`);
-console.log(`sağlayıcı tipi/kimliği: ${ptype}/${pid}`);
-console.log(`\nisteğin ham baytları (${requestBytes.length} b):\n${requestBytes}`);
+console.log(`\nh3 = ${h3}   (if identical to earlier runs, it is a CONSTANT identity)`);
+console.log(`provider type/identity: ${ptype}/${pid}`);
+console.log(`\nraw request bytes (${requestBytes.length} b):\n${requestBytes}`);

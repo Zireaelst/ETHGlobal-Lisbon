@@ -1,4 +1,4 @@
-// scripts/probe-stealth.ts — ERC-5564 türetme matematiğini doğrula (ağa çıkmaz).
+// scripts/probe-stealth.ts — verify the ERC-5564 derivation maths (no network access).
 import { ethers } from 'ethers';
 import {
   checkAnnouncement,
@@ -15,19 +15,19 @@ console.log('meta-adres uzunluk:', bob.metaAddress.length, '·', `${bob.metaAddr
 
 const eph = ethers.keccak256(ethers.toUtf8Bytes('alice/ephemeral/1'));
 const pay = deriveStealthPayment(bob.metaAddress, eph);
-console.log('Alice türetti  :', pay.stealthAddress, '· viewTag', pay.viewTag);
+console.log('Alice derived  :', pay.stealthAddress, '· viewTag', pay.viewTag);
 
 const found = checkAnnouncement(bob, pay.ephemeralPublicKey, pay.viewTag);
 console.log('Bob buldu      :', found?.stealthAddress);
-console.log('EŞLEŞTİ        :', found?.stealthAddress === pay.stealthAddress ? 'EVET' : 'HAYIR');
+console.log('MATCHED        :', found?.stealthAddress === pay.stealthAddress ? 'YES' : 'NO');
 
 const sk = computeStealthPrivateKey(bob, pay.ephemeralPublicKey);
 const addrFromKey = new ethers.Wallet(sk).address;
 console.log('anahtardan adres:', addrFromKey);
-console.log('HARCANABİLİR   :', addrFromKey === pay.stealthAddress ? 'EVET' : 'HAYIR');
+console.log('SPENDABLE      :', addrFromKey === pay.stealthAddress ? 'YES' : 'NO');
 
 console.log(
-  'yanlış viewTag elendi:',
+  'wrong viewTag filtered out:',
   checkAnnouncement(bob, pay.ephemeralPublicKey, (pay.viewTag + 1) % 256) === null ? 'EVET' : 'HAYIR',
 );
 
@@ -38,10 +38,10 @@ const stranger = createStealthKeys(
 const strangerPay = deriveStealthPayment(stranger.metaAddress, eph);
 const shouldNotMatch = checkAnnouncement(bob, strangerPay.ephemeralPublicKey);
 console.log(
-  'başkasının ödemesi bize çıktı mı:',
-  shouldNotMatch?.stealthAddress === strangerPay.stealthAddress ? 'EVET (HATA!)' : 'hayır (doğru)',
+  'did someone else\'s payment resolve to us:',
+  shouldNotMatch?.stealthAddress === strangerPay.stealthAddress ? 'YES (BUG!)' : 'no (correct)',
 );
 
-// Aynı meta-adres + FARKLI ephemeral → farklı adres (tekrar kullanım bağlantı yaratmaz)
+// Same meta-address + a DIFFERENT ephemeral → a different address (no linkage from reuse)
 const pay2 = deriveStealthPayment(bob.metaAddress, ethers.keccak256(ethers.toUtf8Bytes('alice/ephemeral/2')));
-console.log('ikinci ödeme farklı adres:', pay2.stealthAddress !== pay.stealthAddress ? 'EVET' : 'HAYIR');
+console.log('second payment has a different address:', pay2.stealthAddress !== pay.stealthAddress ? 'YES' : 'NO');

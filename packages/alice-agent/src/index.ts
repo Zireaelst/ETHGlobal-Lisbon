@@ -1,10 +1,11 @@
 // alice-agent — istemci agent (BUILD-PLAN §2.1).
 //
-// FAZ 1 kapsamı: Bob'un kartını çek → intent kur → EIP-712 imzala → ECIES'le şifrele →
-// /task'a gönder → /result'tan sonucu al → çöz. Keşif (The Graph) P2-C'de, ödeme P4'te.
+// PHASE 1 scope: fetch Bob's card → build the intent → sign with EIP-712 → ECIES-encrypt →
+// POST to /task → read the result from /result → decrypt. Discovery (The Graph) arrives in
+// P2-C, payment in P4.
 //
-// Alice'in imzaladığı şey İÇERİK DEĞİL, `intentHash` taahhüdüdür (BUILD-PLAN §2.3).
-// Bob'un yeniden hesapladığı taahhüt bununla tutmazsa iş "sipariş edilen iş" değildir.
+// What Alice signs is NOT THE CONTENT but the `intentHash` commitment (BUILD-PLAN §2.3).
+// If the commitment Bob recomputes does not match it, the job is not "the job that was ordered".
 
 import {
   AgentCardSchema,
@@ -35,21 +36,21 @@ import { Wallet } from 'ethers';
 
 export interface AliceJobOptions {
   /**
-   * Bob'un temel URL'i. VERİLMEZSE `discover` üzerinden The Graph'ten bulunur.
-   * İkisinden biri zorunlu.
+   * Bob's base URL. WHEN ABSENT it is discovered from The Graph via `discover`.
+   * One of the two is required.
    */
   bobUrl?: string;
   /**
-   * Keşif: skill ile ara, subgraph'ın verdiği endpoint ve ECIES pubkey'i kullan.
-   * Alice'in Bob'un adresini bilmemesi The Graph'ın load-bearing olduğunun kanıtı.
+   * Discovery: search by skill and use the endpoint and ECIES pubkey the subgraph reports.
+   * Alice not knowing Bob's address is the proof that The Graph is load-bearing.
    */
   discover?: { subgraphUrl: string; skill: string };
   brief: string;
   data: string;
   constraints: Constraints;
-  /** Alice'in imzalama cüzdanı (PRIVATE_KEY_ALICE). */
+  /** Alice's signing wallet (PRIVATE_KEY_ALICE). */
   wallet: Wallet;
-  /** Alice'in ECIES private key'i — sonuç buna şifrelenir. */
+  /** Alice's ECIES private key — the result is encrypted to it. */
   eciesPrivateKey: string;
   verifyingContract: string;
   chainId?: number;
@@ -57,70 +58,70 @@ export interface AliceJobOptions {
   /** Unix saniye. Verilmezse +1 saat. */
   deadline?: bigint;
   /**
-   * Ödeme backend'i. Bob 402 dönerse Alice bununla yetkilendirir.
-   * Verilmezse ve Bob ödeme isterse iş HATA ile durur — sessizce devam etmez.
+   * The payment backend. If Bob returns 402, Alice authorises with this.
+   * When absent and Bob asks for payment, the job stops with an ERROR — it does not silently continue.
    */
   payment?: { backend: PaymentBackend };
-  /** Testlerin gönderilen paketi bozabilmesi için kanca (fraud/mutasyon senaryoları). */
+  /** A hook letting tests corrupt the sent payload (fraud/mutation scenarios). */
   tamper?: (envelope: Record<string, unknown>) => Record<string, unknown>;
   fetchImpl?: typeof fetch;
   log?: (line: string) => void;
 }
 
 export interface AliceJobReport {
-  /** Keşif kullanıldıysa subgraph'tan gelen kayıt. */
+  /** The record from the subgraph, when discovery was used. */
   discovered?: DiscoveredAgent;
   card: AgentCard;
   intent: Intent;
   signature: string;
-  /** Ağa çıkan şifreli gövdenin kendisi — sızıntı taraması için. */
+  /** The encrypted body that went on the wire — for leak scanning. */
   sentCipher: string;
   postStatus: number;
   result: EchoResult;
-  /** Alice'in imzaladığı taahhüt ile Bob'un yeniden hesapladığı aynı mı? */
+  /** Is the commitment Alice signed the same as the one Bob recomputed? */
   matched: boolean;
   /**
-   * Bob'un zincire götürülmesini İDDİA ETTİĞİ gövde ve seal.
+   * The body and seal Bob CLAIMS should be taken to the chain.
    *
-   * Zincire giden bunlardır — enclave'in Alice'e şifrelediği kopya değil.
-   * `forge` modunda ikisi ayrışır ve `sealTampered` true olur.
+   * These are what actually go on chain — not the copy the enclave encrypted to Alice.
+   * In `forge` mode the two diverge and `sealTampered` becomes true.
    */
   claimedBodyHex: string;
   claimedSeal: Seal;
-  /** Bob çıkan imzayı/gövdeyi değiştirdi mi? */
+  /** Did Bob alter the outgoing signature/body? */
   sealTampered: boolean;
-  /** P0-G: Alice'in gördüğü aşama süreleri. */
+  /** P0-G: the stage durations as Alice sees them. */
   stageMs: StageMs;
-  /** Bob 402 döndü mü — yani ödeme kapısı gerçekten çalıştı mı? */
+  /** Did Bob return 402 — i.e. did the payment gate actually engage? */
   paymentRequired: boolean;
 }
 
-/** Bob'un keşif kartını çek ve doğrula. */
+/** Fetch and validate Bob's discovery card. */
 export async function fetchAgentCard(bobUrl: string, fetchImpl: typeof fetch = fetch): Promise<AgentCard> {
   const res = await fetchImpl(`${bobUrl.replace(/\/$/, '')}/.well-known/agent-card.json`);
-  if (!res.ok) throw new Error(`agent card alınamadı: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`could not fetch the agent card: HTTP ${res.status}`);
   return parseOrThrow(AgentCardSchema, await res.json(), 'AgentCard');
 }
 
-/** Uçtan uca bir iş: (keşif →) kart → intent → şifreli gönderim → şifreli sonuç. */
+/** One end-to-end job: (discovery →) card → intent → encrypted send → encrypted result. */
 export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobReport> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const log = options.log ?? ((line: string) => console.log(line));
-  // P0-G: aşama süreleri. Ölçüm Alice tarafında çünkü "uçtan uca" onun beklediği süre.
+  // P0-G: stage durations. Measured on Alice's side because "end to end" is the time SHE waits.
   const sw = createStopwatch();
 
-  // --- keşif: adresi bilmiyorsak The Graph'ten bul ---
+  // --- discovery: if we do not know the address, find it via The Graph ---
   let discovered: DiscoveredAgent | undefined;
   let base: string;
   if (options.bobUrl) {
     base = options.bobUrl.replace(/\/$/, '');
   } else if (options.discover) {
     discovered = await pickBestAgent(options.discover.subgraphUrl, options.discover.skill);
-    if (!discovered.endpoint) throw new Error(`keşfedilen agent ${discovered.agentId} endpoint taşımıyor`);
-    // Kayıtlı endpoint iş ucudur (`.../task`); temel adres onun bir üstü.
+    if (!discovered.endpoint) throw new Error(`discovered agent ${discovered.agentId} carries no endpoint`);
+    // The registered endpoint is the work endpoint (`.../task`); the base URL is one level up.
     base = discovered.endpoint.replace(/\/task\/?$/, '').replace(/\/$/, '');
     log(
-      `[alice] The Graph'ten keşfedildi: agentId=${discovered.agentId} ` +
+      `[alice] discovered via The Graph: agentId=${discovered.agentId} ` +
         `skills=${discovered.skills.join(',')} verifiedDeliveries=${discovered.verifiedDeliveries}`,
     );
   } else {
@@ -131,16 +132,16 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
 
   const card = await fetchAgentCard(base, fetchImpl);
   sw.mark('agent_card');
-  log(`[alice] agent card alındı: agentId=${card.agentId} skills=${card.skills.join(',')}`);
+  log(`[alice] agent card received: agentId=${card.agentId} skills=${card.skills.join(',')}`);
 
-  // Keşif ile kartın anlaşmadığı bir durumda SESSİZCE devam etmek, yanlış alıcıya
-  // şifrelemek demektir. Uyuşmazlığı hata olarak veriyoruz.
+  // Silently continuing when discovery and the card disagree would mean encrypting to the
+  // wrong recipient. We surface the mismatch as an error.
   if (discovered) {
     if (card.agentId !== discovered.agentId) {
-      throw new Error(`keşif agentId ${discovered.agentId} ≠ kart agentId ${card.agentId}`);
+      throw new Error(`discovery agentId ${discovered.agentId} ≠ card agentId ${card.agentId}`);
     }
     if (discovered.eciesPubKey && card.eciesPubKey !== discovered.eciesPubKey) {
-      throw new Error('keşfedilen eciesPubKey ile karttaki anahtar farklı — hangisinin güncel olduğu belirsiz');
+      throw new Error('the discovered eciesPubKey differs from the one in the card — which is current is undefined');
     }
   }
 
@@ -166,7 +167,7 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
 
   const signature = await signIntent(intent, options.wallet, options.verifyingContract, options.chainId);
   sw.mark('intent_sign');
-  log(`[alice] intent imzalandı: ${intentHash.slice(0, 14)}…`);
+  log(`[alice] intent signed: ${intentHash.slice(0, 14)}…`);
 
   let envelope: Record<string, unknown> = {
     v: 1,
@@ -178,19 +179,19 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
     nonce: nonce.toString(),
     replyPubKey: eciesPublicKeyOf(options.eciesPrivateKey),
   };
-  // Kurcalama KANCASI: imza atıldıktan SONRA uygulanır — tam da bir saldırganın
-  // yapabileceği şey. Böylece "tek karakter değişti" senaryosu gerçekçi olur.
+  // The tamper HOOK: applied AFTER the signature is made — exactly what an attacker could do.
+  // That makes the "one character changed" scenario realistic.
   if (options.tamper) envelope = options.tamper(envelope);
 
-  // Keşif kullanıldıysa ZİNCİRDEN indekslenen anahtarla şifrele: kaynak The Graph,
-  // Bob'un kendi beyanı değil. (Yukarıda ikisinin eşit olduğu zaten doğrulandı.)
+  // When discovery was used, encrypt with the key indexed FROM THE CHAIN: the source is The
+  // Graph, not Bob's own claim. (Their equality was already verified above.)
   const encryptTo = discovered?.eciesPubKey ?? card.eciesPubKey;
   const sentCipher = await encryptFor(encryptTo, envelope);
   sw.mark('ecies_encrypt');
 
-  // `intentHash` ve `replyPubKey` şifre DIŞINDA gidiyor: Bob'un dış katmanı paketi
-  // çözemiyor (anahtar enclave'de) ama işi yönlendirip sonucu teslim edebilmeli.
-  // Sızıntı yok — ikisi de zaten herkese açık (zincirde ve Alice'in 8004 kaydında).
+  // `intentHash` and `replyPubKey` travel OUTSIDE the ciphertext: Bob's outer layer cannot
+  // decrypt the payload (the key is in the enclave) yet must route the job and deliver the
+  // result. Nothing leaks — both are already public (on chain and in Alice's 8004 record).
   const taskBody = {
     to: card.agentId,
     intentHash,
@@ -204,73 +205,73 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
       body: JSON.stringify(payment ? { ...taskBody, payment } : taskBody),
     });
 
-  // x402 akışı: önce ödemesiz dene. Bob 402 dönerse yetkilendirip TEKRAR gönder.
+  // The x402 flow: try without payment first. If Bob returns 402, authorise and send AGAIN.
   let postRes = await send();
-  // Bu ilk istek İKİ farklı şey olabilir:
-  //   ödeme kapısı açıksa → sadece 402 turu (hızlı)
-  //   kapalıysa            → işin TAMAMI (0G çağrısı dahil)
-  // O yüzden nötr isimlendiriyoruz; hangisi olduğunu `paymentRequired` söylüyor.
+  // This first request can be TWO different things:
+  //   payment gate on  → only the 402 round trip (fast)
+  //   payment gate off → the ENTIRE job (including the 0G call)
+  // So we name it neutrally; `paymentRequired` tells you which it was.
   sw.mark('http_task_send1');
   let paymentAuthorized: PaymentAuthorization | undefined;
 
   if (postRes.status === 402) {
     if (!options.payment) {
-      throw new Error('Bob ödeme istedi (402) ama Alice\'e ödeme backend\'i verilmedi');
+      throw new Error('Bob asked for payment (402) but Alice was given no payment backend');
     }
     const body = (await postRes.json()) as { accepts?: PaymentRequirements[] };
     const requirements = body.accepts?.[0];
-    if (!requirements) throw new Error('402 yanıtında ödeme şartları yok');
-    log(`[alice] 402 alındı: ${requirements.amount} ${requirements.asset} (${requirements.rail})`);
+    if (!requirements) throw new Error('the 402 response carries no payment requirements');
+    log(`[alice] received 402: ${requirements.amount} ${requirements.asset} (${requirements.rail})`);
 
-    // Yetkilendirme — PARA HAREKET ETMEZ. Bob bunu tutar, JobVerified sonrası gönderir.
+    // Authorisation — NO MONEY MOVES. Bob holds it and submits it after JobVerified.
     const quote = await options.payment.backend.quote({
       intentHash: requirements.intentHash,
       amount: requirements.amount,
       recipient: requirements.recipient,
     });
     paymentAuthorized = (await options.payment.backend.authorize(quote)) as unknown as PaymentAuthorization;
-    log('[alice] ödeme yetkisi imzalandı — para henüz Alice\'te');
+    log('[alice] payment authorisation signed — the money is still Alice\'s');
 
     sw.mark('payment_authorize');
 
     postRes = await send(paymentAuthorized);
-    // Bu aşama Bob'un TÜM işini kapsıyor: enclave + 0G çağrısı + seal imzası.
-    // İç dağılımı `result.stageMs` ayrıca veriyor.
+    // This stage covers ALL of Bob's work: enclave + 0G call + seal signature.
+    // Its internal breakdown is reported separately in `result.stageMs`.
     sw.mark('http_task_send2');
   }
 
   if (postRes.status !== 202) {
     const body = await postRes.text().catch(() => '');
-    throw new Error(`/task 202 dönmedi: HTTP ${postRes.status} ${body}`);
+    throw new Error(`/task did not return 202: HTTP ${postRes.status} ${body}`);
   }
-  log(`[alice] paket gönderildi (${(sentCipher.length / 1024).toFixed(1)} KB şifreli)`);
+  log(`[alice] payload sent (${(sentCipher.length / 1024).toFixed(1)} KB encrypted)`);
 
   const resultRes = await fetchImpl(`${base}/result/${intentHash}`);
   sw.mark('http_result');
-  if (!resultRes.ok) throw new Error(`/result alınamadı: HTTP ${resultRes.status}`);
+  if (!resultRes.ok) throw new Error(`could not fetch /result: HTTP ${resultRes.status}`);
   const claimed = (await resultRes.json()) as { cipher: string; bodyHex: string; seal: Seal };
 
-  // Enclave'in Alice'e ŞİFRELEDİĞİ sonuç — Bob buna dokunamaz.
+  // The result the enclave ENCRYPTED to Alice — Bob cannot touch it.
   const result = parseOrThrow(
     EchoResultSchema,
     await decryptWith(options.eciesPrivateKey, claimed.cipher),
     'EchoResult',
   );
 
-  // Bob'un zincire götürülmesini istediği artefaktlar enclave'inkiyle aynı mı?
-  // Farklıysa Bob çıkan imzayı/gövdeyi değiştirmiş demektir (`forge` modu).
+  // Are the artifacts Bob wants taken to the chain the same as the enclave's?
+  // If they differ, Bob altered the outgoing signature/body (`forge` mode).
   const sealTampered =
     claimed.bodyHex !== result.bodyHex ||
     claimed.seal.r !== result.seal.r ||
     claimed.seal.s !== result.seal.s;
   if (sealTampered) {
-    log('[alice] UYARI: Bob\'un ilettiği gövde/seal enclave\'in imzaladığından FARKLI');
+    log('[alice] WARNING: the body/seal Bob forwarded DIFFERS from what the enclave signed');
   }
 
   sw.mark('ecies_decrypt_result');
 
   const matched = result.match && result.recomputedIntentHash === intentHash && !sealTampered;
-  log(`[alice] sonuç çözüldü: match=${result.match} clientSig=${result.clientSigOk ? 'ok' : 'HATALI'}`);
+  log(`[alice] result decrypted: match=${result.match} clientSig=${result.clientSigOk ? 'ok' : 'INVALID'}`);
 
   return {
     discovered,
@@ -289,7 +290,7 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
   };
 }
 
-/** Doğrudan çalıştırılırsa .env'den kurulup tek iş koşar. */
+/** When run directly, it configures itself from .env and runs a single job. */
 export async function main(): Promise<void> {
   const { readFileSync } = await import('node:fs');
   const { loadConfig, optionalEnv, requireEnv } = await import('@ca/shared');
@@ -306,12 +307,12 @@ export async function main(): Promise<void> {
   const verifyingContract = optionalEnv('VERIFIER_ADDRESS') ?? PLACEHOLDER_VERIFIER;
   if (verifyingContract === PLACEHOLDER_VERIFIER) {
     console.warn(
-      `[alice] UYARI: VERIFIER_ADDRESS boş — yer tutucu ${PLACEHOLDER_VERIFIER} ile imzalanıyor.\n` +
-        `        Bu imza gerçek Verifier kontratında DOĞRULANAMAZ (P3-A deploy edilince .env'e yazın).`,
+      `[alice] WARNING: VERIFIER_ADDRESS is empty — signing with the placeholder ${PLACEHOLDER_VERIFIER}.\n` +
+        `        This signature CANNOT BE VERIFIED by the real Verifier contract (write it to .env once P3-A is deployed).`,
     );
   }
 
-  // VARSAYILAN YOL KEŞİFTİR. `--bob` yalnızca yerel hata ayıklama içindir; Alice'in
+  // DISCOVERY IS THE DEFAULT PATH. `--bob` exists only for local debugging; Alice's
   // Bob'un adresini bilmesi gerekmiyor (BUILD-PLAN P2-C).
   const explicitBob = arg('bob') ?? process.env.BOB_URL;
   const skill = arg('skill') ?? 'market-analysis';
@@ -325,14 +326,14 @@ export async function main(): Promise<void> {
     data: dataFile ? readFileSync(dataFile, 'utf8') : 'Q3-2026 revenue 12,400,000 EUR; deferred 3,100,000 EUR.',
     constraints: { model: 'qwen2.5-omni-7b', maxTokens: 2048, temperature: 0.2 },
     wallet: new Wallet(cfg.PRIVATE_KEY_ALICE),
-    eciesPrivateKey: requireEnv('ALICE_ECIES_PRIV', 'pnpm gate:P1-B üretir'),
+    eciesPrivateKey: requireEnv('ALICE_ECIES_PRIV', 'generated by pnpm gate:P1-B'),
     verifyingContract,
   });
 
-  console.log('\n--- sonuç ---');
+  console.log('\n--- result ---');
   if (report.discovered) {
     console.log(
-      `keşif: The Graph → agentId ${report.discovered.agentId} ` +
+      `discovery: The Graph → agentId ${report.discovered.agentId} ` +
         `(verifiedDeliveries ${report.discovered.verifiedDeliveries})`,
     );
   }

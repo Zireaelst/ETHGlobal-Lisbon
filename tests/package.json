@@ -1,5 +1,5 @@
 {
-  "//": "Kapı testleri ESM. Kök package.json CJS kalıyor ki scripts/recover.js (CJS) bozulmasın.",
+  "//": "The gate tests are ESM. The root package.json stays CJS so scripts/recover.js (CJS) keeps working.",
   "name": "@ca/tests",
   "private": true,
   "type": "module"

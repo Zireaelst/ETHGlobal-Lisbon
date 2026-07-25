@@ -8,7 +8,7 @@
     "build": "tsc -b",
     "start": "node dist/chat.js"
   },
-  "//": "ENCLAVE İÇİ kod — imageHash ile ölçülür. Bağımlılıkları MİNİMAL tut (BUILD-PLAN §2.1).",
+  "//": "Code that runs INSIDE THE ENCLAVE — measured by imageHash. Keep its dependencies MINIMAL (BUILD-PLAN §2.1).",
   "dependencies": {
     "@ca/shared": "workspace:*",
     "ethers": "^6.17.0"

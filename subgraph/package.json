@@ -2,7 +2,7 @@
   "name": "@ca/subgraph",
   "version": "0.0.0",
   "private": true,
-  "//": "Bilerek `build` adında script YOK: kök `pnpm -r build` (gate:P0-A kriteri) subgraph derlemesine bağlanmasın. Derleme: pnpm --filter @ca/subgraph compile",
+  "//": "There is DELIBERATELY no script named `build`: the root `pnpm -r build` (a gate:P0-A criterion) must not depend on compiling the subgraph. To compile: pnpm --filter @ca/subgraph compile",
   "scripts": {
     "codegen": "graph codegen",
     "compile": "graph codegen && graph build"

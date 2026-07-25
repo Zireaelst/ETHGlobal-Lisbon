@@ -1,27 +1,27 @@
-// binding.ts — DÜRÜST binding mantığı. Bu dosya enclave'in içinde çalışacak kod.
+// binding.ts — the HONEST binding logic. This file is the code that runs inside the enclave.
 //
-// İKİ SINIR birden burada:
+// TWO BOUNDARIES live here at once:
 //
-// 1. BÜTÜNLÜK (P1-D): "Enclave'de FRAUD_MODE YOK. Fraud dış katmanda." Burada hile
-//    anahtarı, ortam değişkeni okuması ya da koşullu davranış yok. Ne aldıysa onu
-//    yeniden hesaplar ve dürüstçe raporlar.
+// 1. INTEGRITY (P1-D): "There is NO FRAUD_MODE in the enclave. Fraud lives in the outer
+//    layer." There is no cheat switch here, no environment-variable read, no conditional
+//    behaviour. It recomputes whatever it received and reports honestly.
 //
-// 2. GİZLİLİK (CLAUDE.md §2): ECIES çözümü BURADA. Dış katman (bob-agent) paketi
-//    ÇÖZEMEZ — anahtarı yok, eline yalnızca ciphertext geçer. "Altyapı veriyi
-//    göremez" iddiası ancak böyle doğru olur.
+// 2. PRIVACY (CLAUDE.md §2): ECIES decryption happens HERE. The outer layer (bob-agent)
+//    CANNOT decrypt the payload — it holds no key, only ciphertext ever reaches it. That is
+//    the only way the claim "the infrastructure cannot see the data" becomes true.
 //
-//    Dış katmana geri dönen şey de bilerek dar: gövde, seal, ve zincire zaten
-//    çıkacak alanlar. `brief`, `data` ve `output` DIŞARI ÇIKMAZ — sonuç doğrudan
-//    Alice'in anahtarına şifrelenip öyle teslim edilir.
+//    What goes back to the outer layer is deliberately narrow too: the body, the seal, and
+//    fields that are going on chain anyway. `brief`, `data` and `output` NEVER LEAVE — the
+//    result is encrypted directly to Alice's key and delivered that way.
 //
-// P3-B kuralı geçerli ve kasıtlı: `match === false` olsa bile akış DEVAM EDER ve
-// gövde İMZALANIR. Enclave yalan söylemez, sadece raporlar; reddi kontrat verir.
+// The P3-B rule applies and is intentional: even when `match === false` the flow CONTINUES
+// and the body IS SIGNED. The enclave does not lie, it only reports; the contract rejects.
 //
-// FAZ 1 SINIRI — dürüstlük notu:
-//   - Burada 0G Sealed Inference çağrısı YOK; çıktı `compute.ts` sınırından gelir ve
-//     0G bağlı değilken yer tutucudur, `ogSigHash` sıfır kalır.
-//   - İmza formatı CLAUDE.md §3.1(B) seal formatı ama imzalayan anahtar attested
-//     enclave seal key'i DEĞİL, yerel bir binding anahtarı (P3-C değiştirecek).
+// PHASE 1 BOUNDARY — honesty note:
+//   - There is no 0G Sealed Inference call here; the output arrives from the `compute.ts`
+//     boundary and, while 0G is not connected, it is a placeholder and `ogSigHash` stays zero.
+//   - The signature format is the CLAUDE.md §3.1(B) seal format, but the signing key is NOT
+//     an attested enclave seal key — it is a local binding key (P3-C will replace it).
 
 import { AbiCoder, Wallet, keccak256, recoverAddress, toUtf8Bytes } from 'ethers';
 import {
@@ -46,71 +46,71 @@ import {
   createStopwatch,
 } from '@ca/shared';
 
-/** Enclave'e giren iş emri — İÇERİK DEĞİL, ŞİFRELİ PAKET. */
+/** The work order entering the enclave — NOT THE CONTENT, the ENCRYPTED PAYLOAD. */
 export interface BindingRequest {
-  /** Alice'in ECIES ile şifrelediği paket. Enclave dışında çözülmez. */
+  /** The payload Alice ECIES-encrypted. It is not decrypted outside the enclave. */
   cipher: string;
-  /** Seal preimage'ının ilk alanı — wrapper'ın agent kimliği (ERC-8004 agentId'si DEĞİL). */
+  /** The first field of the seal preimage — the wrapper's agent id (NOT the ERC-8004 agentId). */
   agentId: string;
-  /** Konteyner ömrü başına bir kez üretilen seal kimliği. */
+  /** The seal id, issued once per container lifetime. */
   sealId: string;
-  /** Ondalık saniye. */
+  /** Decimal seconds. */
   timestamp: string;
-  /** EIP-712 domain — Alice'in imzasını enclave İÇİNDE doğrulamak için. */
+  /** The EIP-712 domain — for verifying Alice's signature INSIDE the enclave. */
   verifyingContract: string;
   chainId?: number;
 }
 
-/** Enclave'in sahip olduğu anahtarlar. İkisi de dış katmana verilmez. */
+/** The keys the enclave owns. Neither is handed to the outer layer. */
 export interface EnclaveKeys {
-  /** Paketi ÇÖZEN anahtar. Kart'ta duyurulan pubkey bunun eşi. */
+  /** The key that DECRYPTS the payload. The pubkey published in the card is its counterpart. */
   ecies: string;
-  /** Gövdeyi imzalayan binding/seal anahtarı. */
+  /** The binding/seal key that signs the body. */
   binding: string;
 }
 
 /**
- * Enclave'in dış katmana döndürdüğü şey.
+ * What the enclave returns to the outer layer.
  *
- * BİLEREK DAR: hepsi ya zincire çıkacak ya da gizli olmayan alanlar. `brief`,
- * `data`, `output` burada YOK — onlar `resultCipher` içinde, Alice'in anahtarıyla.
+ * DELIBERATELY NARROW: every field is either going on chain or is not secret. `brief`,
+ * `data` and `output` are NOT here — they sit inside `resultCipher`, under Alice's key.
  */
 export interface BindingResponse {
-  /** İstemcinin paket içinde taahhüt ettiği hash. */
+  /** The hash the client committed to inside the payload. */
   claimedIntentHash: string;
-  /** İçerikten YENİDEN hesaplanan taahhüt. */
+  /** The commitment RECOMPUTED from the content. */
   recomputedIntentHash: string;
   match: boolean;
   outputHash: string;
-  /** keccak256(ogSig) — 0G imzası yoksa sıfır (uydurulmuş taahhüt yazılmaz). */
+  /** keccak256(ogSig) — zero when there is no 0G signature (no fabricated commitment is written). */
   ogSigHash: string;
   ogSig?: string;
   ogSigner?: string;
   ogVerified: boolean;
   computeProvider: ComputeProvider;
   computeLatencyMs: number;
-  /** Çıktı Alice'in `intentHash`'ini birebir taşıyor mu (Level 0 bağlama). */
+  /** Does the output carry Alice's `intentHash` verbatim (Level 0 binding)? */
   intentEchoed: boolean;
   /**
-   * Enclave İÇİNDEKİ aşama süreleri (P0-G dağılımı).
-   * Sadece SÜRE — içerik değil; gizlilik sınırını delmiyor.
+   * Stage durations INSIDE the enclave (the P0-G distribution).
+   * Durations ONLY — never content; the privacy boundary stays intact.
    */
   stageMs: StageMs;
-  /** İmzalanan ham gövde: abi.encode(bytes32,bytes32,bool,bytes32). */
+  /** The raw signed body: abi.encode(bytes32,bytes32,bool,bytes32). */
   bodyHex: string;
-  /** Seal imzası — `v` wrapper gibi atılmış (CLAUDE.md §3.1B). */
+  /** The seal signature — `v` discarded just as the wrapper does (CLAUDE.md §3.1B). */
   seal: SealSignature;
   signer: string;
-  /** Alice'in EIP-712 imzasından kurtarılan adres (enclave İÇİNDE doğrulandı). */
+  /** The address recovered from Alice's EIP-712 signature (verified INSIDE the enclave). */
   recoveredClient: string;
   clientSigOk: boolean;
-  /** Alice'in `replyPubKey`'ine şifrelenmiş sonuç. Dış katman bunu çözemez. */
+  /** The result, encrypted to Alice's `replyPubKey`. The outer layer cannot decrypt it. */
   resultCipher: string;
 }
 
 const ZERO32 = `0x${'00'.repeat(32)}`;
 
-/** §2.3: gövde JSON DEĞİL — kontrat alanlardan yeniden üretebilsin diye abi.encode. */
+/** §2.3: the body is NOT JSON — abi.encode, so the contract can rebuild it from the fields. */
 export function encodeBody(intentHash: string, outputHash: string, match: boolean, ogSigHash: string): string {
   return AbiCoder.defaultAbiCoder().encode(
     ['bytes32', 'bytes32', 'bool', 'bytes32'],
@@ -134,10 +134,10 @@ export function decodeBody(bodyHex: string): {
 }
 
 /**
- * Gövdeyi imzalayan adresi kurtar (`v` brute-force).
+ * Recover the address that signed the body (brute-forcing `v`).
  *
- * Beklenen adres verilirse ona eşleşen adayı döndürür; verilmezse ilk adayı.
- * Wrapper `v`'yi attığı için tek bir "doğru" cevap yoktur.
+ * When an expected address is given it returns the matching candidate; otherwise the first.
+ * Because the wrapper discards `v`, there is no single "correct" answer.
  */
 export function recoverBindingSigner(bodyHex: string, seal: SealSignature, expectedSigner?: string): string {
   const candidates = recoverSealCandidates(seal, bodyHex, seal.r, seal.s);
@@ -149,7 +149,7 @@ export function recoverBindingSigner(bodyHex: string, seal: SealSignature, expec
   return candidates[0]?.address ?? '0x0000000000000000000000000000000000000000';
 }
 
-/** Enclave'in duyurduğu ECIES public key — Alice bununla şifreler. */
+/** The ECIES public key the enclave publishes — what Alice encrypts to. */
 export function enclavePublicKey(keys: Pick<EnclaveKeys, 'ecies'>): string {
   return eciesPublicKeyOf(keys.ecies);
 }
@@ -157,24 +157,24 @@ export function enclavePublicKey(keys: Pick<EnclaveKeys, 'ecies'>): string {
 export interface RunBindingOptions {
   compute?: ComputeBackend;
   /**
-   * Test kancası: enclave'in ÇÖZDÜĞÜ düz metin.
+   * Test hook: the plaintext the enclave DECRYPTED.
    *
-   * Enclave İÇİNDE çalışır; dış katmana hiçbir şey sızdırmaz. Kapı testleri
-   * "paket doğru çözüldü mü"yu görebilsin diye var.
+   * It runs INSIDE the enclave and leaks nothing to the outer layer. It exists so gate tests
+   * can see whether the payload was decrypted correctly.
    */
   onDecrypted?: (envelope: { brief: string; data: string; nonce: string }) => void;
 }
 
 /**
- * Dürüst binding akışı — ARTIK ÇÖZME DE BURADA.
+ * The honest binding flow — DECRYPTION NOW HAPPENS HERE TOO.
  *
- * 1. Paketi ÇÖZ (dış katman bunu yapamaz)
- * 2. Şemadan geçir
- * 3. İçerikten intentHash'i YENİDEN hesapla → match
- * 4. Alice'in EIP-712 imzasını doğrula (bilgilendirme; asıl karar kontratta)
- * 5. Modeli çağır (compute sınırı)
- * 6. Gövdeyi kur ve İMZALA — match false olsa bile
- * 7. Sonucu ALICE'İN anahtarına şifrele
+ * 1. DECRYPT the payload (the outer layer cannot)
+ * 2. Validate against the schema
+ * 3. RECOMPUTE intentHash from the content → match
+ * 4. Verify Alice's EIP-712 signature (informational; the real decision is the contract's)
+ * 5. Call the model (the compute boundary)
+ * 6. Build the body and SIGN it — even when match is false
+ * 7. Encrypt the result to ALICE's key
  */
 export async function runBinding(
   request: BindingRequest,
@@ -184,13 +184,13 @@ export async function runBinding(
   const compute = options.compute ?? createNoComputeBackend();
   const sw = createStopwatch();
 
-  // 1-2. ÇÖZ ve doğrula. Bozuk paket burada patlar; dış katman içeriği hiç görmez.
+  // 1-2. DECRYPT and validate. A malformed payload throws here; the outer layer never sees the content.
   const decrypted = await decryptWith(keys.ecies, request.cipher);
   const envelope = parseOrThrow(TaskEnvelopeSchema, decrypted, 'TaskEnvelope');
   sw.mark('ecies_decrypt');
   options.onDecrypted?.({ brief: envelope.brief, data: envelope.data, nonce: envelope.nonce });
 
-  // 3. Taahhüdü İDDİADAN değil, GELEN İÇERİKTEN yeniden hesapla.
+  // 3. Recompute the commitment from the RECEIVED CONTENT, not from the CLAIM.
   const claimedIntentHash = envelope.intent.intentHash;
   const recomputedIntentHash = buildIntentHash({
     brief: envelope.brief,
@@ -202,7 +202,7 @@ export async function runBinding(
   const match = recomputedIntentHash === claimedIntentHash;
   sw.mark('recompute');
 
-  // 4. Alice gerçekten bunu mu imzaladı? Nihai kararı kontrat verir.
+  // 4. Did Alice really sign this? The final decision belongs to the contract.
   let recoveredClient = '0x0000000000000000000000000000000000000000';
   let clientSigOk = false;
   try {
@@ -224,28 +224,28 @@ export async function runBinding(
   }
   sw.mark('client_sig_verify');
 
-  // 5. Modeli çağır. `match === false` olsa BİLE çağrılır ve sonuç imzalanır —
-  //    enclave yalan söylemez, sadece raporlar.
+  // 5. Call the model. It is called EVEN IF `match === false`, and the result is signed —
+  //    the enclave does not lie, it only reports.
   const computed = await compute.run({
     brief: envelope.brief,
     data: envelope.data,
     constraints: envelope.constraints as Constraints,
-    // LEVEL 0 BAĞLAMA: taahhüdü modele taşıt. Kendi attested makinemiz olmadığı
-    // için bağlamanın bir ucunu 0G'nin GERÇEK enclave'inin içinden geçiriyoruz.
+    // LEVEL 0 BINDING: carry the commitment through the model. Because we have no attested
+    // machine of our own, we route one end of the binding through 0G's REAL enclave.
     commitment: claimedIntentHash,
   });
 
-  // Taahhüt gerçekten çıktıda mı? Bu kontrolü BACKEND'E BIRAKMIYORUZ — backend
-  // "koydum" diyebilir. Enclave ham çıktıya kendisi bakıyor.
+  // Is the commitment really in the output? We do NOT LEAVE this check TO THE BACKEND — a
+  // backend could simply claim it inserted it. The enclave looks at the raw output itself.
   //
-  // Birebir arıyoruz: 64 haneli hex'te tek karakter kayması bağlamayı çökertir,
-  // "yaklaşık geçiyor" diye bir şey yok.
+  // We look for an exact match: in a 64-digit hex value a one-character shift breaks the
+  // binding, and there is no such thing as "approximately passing".
   const intentEchoed = computed.output.includes(claimedIntentHash);
 
   const output = match
     ? computed.output
-    : `[binding] Yeniden hesaplanan taahhüt istemcinin imzaladığıyla uyuşmuyor — ` +
-      `iş sipariş edilen iş değil. (compute: ${computed.provider})`;
+    : `[binding] The recomputed commitment does not match what the client signed — ` +
+      `this is not the job that was ordered. (compute: ${computed.provider})`;
 
   sw.mark('compute_0g');
 
@@ -253,7 +253,7 @@ export async function runBinding(
   const ogSigHash = computed.ogSig ? keccak256(computed.ogSig) : ZERO32;
   const bodyHex = encodeBody(claimedIntentHash, outputHash, match, ogSigHash);
 
-  // 6. Seal formatında imzala. `v` bilerek atılıyor; kontrat 27/28'i kendisi dener.
+  // 6. Sign in the seal format. `v` is discarded deliberately; the contract tries 27/28 itself.
   const wallet = new Wallet(keys.binding);
   const fields: SealFields = {
     agentId: request.agentId,
@@ -286,8 +286,8 @@ export async function runBinding(
     stageMs: sw.stages(),
   };
 
-  // 7. Sonucu ALICE'İN anahtarına şifrele. Paketin İÇİNDEKİ replyPubKey kullanılır —
-  //    dış katmanın tel üzerinde ilettiği kopya değil (o kurcalanabilir).
+  // 7. Encrypt the result to ALICE's key. The replyPubKey from INSIDE the payload is used —
+  //    not the copy the outer layer forwarded over the wire (that one can be tampered with).
   const resultCipher = await encryptFor(envelope.replyPubKey, result);
   sw.mark('ecies_encrypt_result');
 
@@ -313,7 +313,7 @@ export async function runBinding(
   };
 }
 
-/** Enclave'in kendi imzasını doğruladığını gösteren yardımcı (testler için). */
+/** Helper showing that the enclave verifies its own signature (for tests). */
 export function selfCheckSeal(response: BindingResponse): boolean {
   return verifySeal(response.seal, response.bodyHex, response.signer);
 }

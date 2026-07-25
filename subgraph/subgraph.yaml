@@ -1,23 +1,23 @@
 specVersion: 1.0.0
 description: >
-  Confidential Agents — ERC-8004 kimlik keşfi + doğrulanmış teslimat sayacı.
-  Kararlar ve bağlayıcı bulgular: subgraph/DECISION.md (pnpm gate:P0-F üretir).
+  Confidential Agents — ERC-8004 identity discovery + verified-delivery counter.
+  Decisions and binding findings: subgraph/DECISION.md (produced by pnpm gate:P0-F).
 repository: https://github.com/Zireaelst/ETHGlobal-Lisbon
 schema:
   file: ./schema.graphql
 
 dataSources:
-  # ERC-8004 IdentityRegistry — Base Sepolia'daki CANLI referans deployment.
-  # Adres bir UUPS proxy'dir; proxy adresini indeksliyoruz, implementasyon
-  # yükseltilse de sabit kalır (DECISION.md).
+  # ERC-8004 IdentityRegistry — the LIVE reference deployment on Base Sepolia.
+  # The address is a UUPS proxy; we index the proxy address, which stays constant even if the
+  # implementation is upgraded (DECISION.md).
   - kind: ethereum/contract
     name: IdentityRegistry
     network: base-sepolia
     source:
       address: "0x8004A818BFB912233c491871b3d84c89A494BD9e"
       abi: IdentityRegistry
-      # P0-F'te not edilen kayıt bloğu. Daha ileri bir blok seçmek subgraph'ı
-      # BOŞ indeksletir — plan bunu ayrıca uyarıyor.
+      # The registration block noted in P0-F. Choosing a later block would make the subgraph
+      # index NOTHING — the plan warns about this separately.
       startBlock: 44584172
     mapping:
       kind: ethereum/events
@@ -34,9 +34,9 @@ dataSources:
       eventHandlers:
         - event: Registered(indexed uint256,string,indexed address)
           handler: handleRegistered
-        # Metadata BURADAN geliyor; sadece Registered indekslemek skill/endpoint'siz
-        # agent üretir. `keyHash` indexed string olduğu için topic'te anahtarın HASH'i
-        # durur — mapping non-indexed `key` alanını okur (DECISION.md tuzağı).
+        # Metadata comes from HERE; indexing only Registered produces agents with no skill/
+        # endpoint. Because `keyHash` is an indexed string, the topic holds the HASH of the key —
+        # the mapping reads the non-indexed `key` field (the DECISION.md trap).
         - event: MetadataSet(indexed uint256,indexed string,string,bytes)
           handler: handleMetadataSet
         - event: URIUpdated(indexed uint256,string,indexed address)
@@ -44,17 +44,17 @@ dataSources:
         - event: Transfer(indexed address,indexed address,indexed uint256)
           handler: handleTransfer
 
-  # Verifier.sol — itibarın TEK kaynağı. `verifiedDeliveries` sadece buradan artıyor;
-  # kullanıcı girdisi ya da review UI'ı yok. Fraud yolu (`JobRejected`) da indeksleniyor,
-  # çünkü demo canlı bir reddi göstermek zorunda.
+  # Verifier.sol — the ONLY source of reputation. `verifiedDeliveries` increments from here
+  # alone; there is no user input and no review UI. The fraud path (`JobRejected`) is indexed too,
+  # because the demo has to show a live rejection.
   - kind: ethereum/contract
     name: Verifier
     network: base-sepolia
     source:
       address: "0x3B116D648B710f551e37223c4c4d39879AFEEb96"
       abi: Verifier
-      # Kontratın deploy bloğu (.env VERIFIER_DEPLOY_BLOCK). Registry'nin startBlock'undan
-      # ileride — bu yüzden Verifier mapping'i de Agent oluşturabilmeli (src/entities.ts).
+      # The contract's deploy block (.env VERIFIER_DEPLOY_BLOCK). It is ahead of the registry's
+      # startBlock — which is why the Verifier mapping must be able to create Agents (src/entities.ts).
       startBlock: 44593559
     mapping:
       kind: ethereum/events
@@ -69,8 +69,8 @@ dataSources:
         - name: Verifier
           file: ./abis/Verifier.json
       eventHandlers:
-        # agentId BILEREK uint256 — Agent.id ondalık string, eşleşme tek satır.
-        # Gerekçe: subgraph/README.md Karar 2.
+        # agentId is DELIBERATELY uint256 — Agent.id is a decimal string and the match is one line.
+        # Rationale: Decision 2 in subgraph/README.md.
         - event: JobVerified(indexed bytes32,bytes32,indexed address,indexed uint256,uint256)
           handler: handleJobVerified
         - event: JobRejected(indexed bytes32,indexed address,indexed uint256,uint8)

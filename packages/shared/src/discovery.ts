@@ -1,15 +1,16 @@
-// discovery.ts — The Graph üzerinden keşif (BUILD-PLAN P2-B/P2-C).
+// discovery.ts — discovery through The Graph (BUILD-PLAN P2-B/P2-C).
 //
-// Alice Bob'un adresini BİLMİYOR. Skill ile arıyor, subgraph endpoint'i ve ECIES
-// pubkey'i veriyor, iş oradan yürüyor. Kodda hard-coded agent adresi olmaması
-// The Graph'ın "load-bearing" olduğunun kanıtı — kapı bunu grep ile doğruluyor.
+// Alice does NOT know Bob's address. She searches by skill, the subgraph supplies the
+// endpoint and the ECIES pubkey, and the job proceeds from there. The absence of a
+// hard-coded agent address in the code is the proof that The Graph is load-bearing — the
+// gate verifies this with a grep.
 //
-// Sıralama `verifiedDeliveries`'e göre: itibar Verifier.sol'ün yaydığı `JobVerified`
-// event'inden geliyor, kullanıcı girdisinden değil. (CLAUDE.md §11: bu "Sybil-proof"
-// değil — şişirmek pahalı, imkânsız değil.)
+// Ranking is by `verifiedDeliveries`: reputation comes from the `JobVerified` event emitted
+// by Verifier.sol, not from user input. (CLAUDE.md §11: this is not "Sybil-proof" —
+// inflating it is expensive, not impossible.)
 
 export interface DiscoveredAgent {
-  /** ERC-8004 agentId, ondalık string. */
+  /** ERC-8004 agentId, decimal string. */
   agentId: string;
   owner: string;
   skills: string[];
@@ -39,8 +40,8 @@ async function query<T>(url: string, gql: string, variables?: Record<string, unk
   });
   if (!res.ok) throw new Error(`subgraph HTTP ${res.status}`);
   const body = (await res.json()) as GraphQLResponse<T>;
-  if (body.errors?.length) throw new Error(`subgraph hatası: ${body.errors.map((e) => e.message).join('; ')}`);
-  if (!body.data) throw new Error('subgraph boş yanıt döndü');
+  if (body.errors?.length) throw new Error(`subgraph error: ${body.errors.map((e) => e.message).join('; ')}`);
+  if (!body.data) throw new Error('subgraph returned an empty response');
   return body.data;
 }
 
@@ -82,7 +83,7 @@ function toAgent(raw: RawAgent): DiscoveredAgent {
   };
 }
 
-/** Subgraph'ın indeksleme durumu — kapı bunu senkron kanıtı olarak kullanıyor. */
+/** The subgraph's indexing status — the gate uses this as proof of sync. */
 export async function subgraphMeta(url: string): Promise<SubgraphMeta> {
   const data = await query<{ _meta: { block: { number: number }; hasIndexingErrors: boolean } }>(
     url,
@@ -92,10 +93,10 @@ export async function subgraphMeta(url: string): Promise<SubgraphMeta> {
 }
 
 /**
- * Skill ile agent ara, doğrulanmış teslimat sayısına göre sırala.
+ * Search for agents by skill, ranked by verified delivery count.
  *
- * `endpoint` ve `eciesPubKey` olmayan kayıtlar elenir — onlarla iş yapılamaz.
- * (Registry'de bizim dışımızda, metadata'sı boş kayıtlar da var.)
+ * Records without an `endpoint` and an `eciesPubKey` are filtered out — no work can be done
+ * with them. (The registry also contains records from others, with empty metadata.)
  */
 export async function discoverBySkill(
   subgraphUrl: string,
@@ -119,7 +120,7 @@ export async function discoverBySkill(
   const agents = data.agents.map(toAgent);
   const usable = requireUsable ? agents.filter((a) => a.endpoint && a.eciesPubKey) : agents;
 
-  // Subgraph zaten sıralıyor; eşitlikte daha erken kayıt öne gelsin (deterministik olsun).
+  // The subgraph already sorts; on a tie put the earlier registration first (be deterministic).
   return usable.sort(
     (a, b) =>
       b.verifiedDeliveries - a.verifiedDeliveries ||
@@ -127,7 +128,7 @@ export async function discoverBySkill(
   );
 }
 
-/** agentId ile tek bir agent getir. */
+/** Fetch a single agent by agentId. */
 export async function findAgentById(subgraphUrl: string, agentId: string): Promise<DiscoveredAgent | null> {
   const data = await query<{ agent: RawAgent | null }>(
     subgraphUrl,
@@ -137,10 +138,10 @@ export async function findAgentById(subgraphUrl: string, agentId: string): Promi
   return data.agent ? toAgent(data.agent) : null;
 }
 
-/** Keşfin döndürdüğü ilk kullanılabilir agent — Alice'in varsayılan seçimi. */
+/** The first usable agent discovery returns — Alice's default choice. */
 export async function pickBestAgent(subgraphUrl: string, skill: string): Promise<DiscoveredAgent> {
   const found = await discoverBySkill(subgraphUrl, skill);
   const best = found[0];
-  if (!best) throw new Error(`"${skill}" yeteneğine sahip, endpoint ve pubkey'i olan agent bulunamadı`);
+  if (!best) throw new Error(`no agent with the "${skill}" skill, an endpoint and a pubkey was found`);
   return best;
 }

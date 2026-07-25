@@ -1,4 +1,4 @@
-// @ca/shared — her iki agent'ın da kullandığı tek gerçek kaynak (BUILD-PLAN §2.1).
+// @ca/shared — the single source of truth used by both agents (BUILD-PLAN §2.1).
 export * from './config.js';
 export * from './canonical.js';
 export * from './schema.js';

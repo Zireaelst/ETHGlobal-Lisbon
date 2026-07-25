@@ -4,10 +4,10 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {IntentLib} from "../src/IntentLib.sol";
 
-/// @notice TS ↔ Solidity hash eşitliği (BUILD-PLAN gate:P1-A son kriteri).
-/// @dev Fixture'ı `pnpm gate:P1-A` TypeScript tarafından ÜRETİR. Yani bu test
-///      uydurma değerlere değil, agent'ların gerçekten kullanacağı koda karşı koşar.
-///      Fixture elle düzenlenirse test anlamını kaybeder.
+/// @notice TS ↔ Solidity hash equality (the final BUILD-PLAN gate:P1-A criterion).
+/// @dev The fixture is PRODUCED by `pnpm gate:P1-A` from the TypeScript side. So this test runs
+///      against the code the agents actually use, not against invented values.
+///      If the fixture is edited by hand the test loses its meaning.
 contract IntentLibTest is Test {
     string constant FIXTURE = "/test/fixtures/intent.json";
 
@@ -67,7 +67,7 @@ contract IntentLibTest is Test {
         });
     }
 
-    /// @notice ANA KRİTER: TS'in ürettiği intentHash Solidity'de birebir çıkıyor.
+    /// @notice THE MAIN CRITERION: the intentHash TS produced comes out identical in Solidity.
     function testIntentHashMatchesTS() public view {
         Fixture memory f = _load();
         bytes32 recomputed =
@@ -75,23 +75,23 @@ contract IntentLibTest is Test {
         assertEq(recomputed, f.intentHash, "intentHash TS ile uyusmuyor");
     }
 
-    /// @notice Kodlama tam olarak 5 kelime (5 x 32 byte) - yani her alan sabit boyutlu.
+    /// @notice The encoding is exactly 5 words (5 x 32 bytes) - i.e. every field is fixed-size.
     /// @dev Dinamik bir alan eklenirse uzunluk buyur ve offset/length kelimeleri girer;
     ///      bu test o degisikligi aninda yakalar.
     function testEncodingIsExactlyFiveWords() public view {
         Fixture memory f = _load();
         bytes memory encoded = abi.encode(f.briefHash, f.dataHash, f.constraintsHash, f.price, f.nonce);
-        assertEq(encoded.length, 160, "kodlama 5 x 32 byte degil - sabit boyutlu olmayan alan eklenmis");
+        assertEq(encoded.length, 160, "encoding is not 5 x 32 bytes - a non-fixed-size field was added");
     }
 
-    /// @notice BU duzende abi.encode ile abi.encodePacked byte-identik.
-    /// @dev Bes alanin hepsi 32-byte hizali oldugu icin padding yok. BUILD-PLAN'in
-    ///      "encode kullan, packed kullanma" uyarisi dogru bir aliskanlik ama bu ALAN
-    ///      SETINDE o hata sinifi isleyemez - yani gate:P1-A yesilken bile "packed'e
-    ///      gectik ama test yakalamadi" diye bir risk yok, cunku fark yok.
-    ///      TRIPWIRE: biri dinamik (string/bytes) ya da kisa (address/uint64) bir alan
-    ///      eklerse bu test kirilir; o an packed ile encode ayrisir ve TS tarafiyla
-    ///      sessiz uyusmazlik riski geri doner.
+    /// @notice IN THIS LAYOUT abi.encode and abi.encodePacked are byte-identical.
+    /// @dev All five fields are 32-byte aligned, so there is no padding. BUILD-PLAN's
+    ///      "use encode, not packed" warning is a good habit, but with THIS FIELD SET that
+    ///      class of bug cannot occur - i.e. even with gate:P1-A green there is no risk of
+    ///      "we switched to packed and the test missed it", because there is no difference.
+    ///      TRIPWIRE: if anyone adds a dynamic (string/bytes) or short (address/uint64) field
+    ///      this test breaks; at that moment packed and encode diverge and, against the TS side,
+    ///      the silent-mismatch risk comes back.
     function testPackedEqualsEncodeForThisLayout() public view {
         Fixture memory f = _load();
         bytes32 packed = keccak256(abi.encodePacked(f.briefHash, f.dataHash, f.constraintsHash, f.price, f.nonce));
@@ -132,13 +132,13 @@ contract IntentLibTest is Test {
         assertEq(signer, f.expectedSigner, "kurtarilan imzaci TS ile uyusmuyor");
     }
 
-    /// @notice Bob intent'in bir alanini degistirirse imza artik Alice'i vermez.
-    /// @dev P3-A adim 3'un temeli: imza+intent ciftine guvenmiyoruz.
+    /// @notice If Bob changes a field of the intent, the signature no longer yields Alice.
+    /// @dev The basis of P3-A step 3: we do not trust the signature+intent pair.
     function testTamperedIntentDoesNotRecoverAlice() public view {
         Fixture memory f = _load();
         IntentLib.Intent memory tampered = _intent(f);
         tampered.price = f.price + 1;
         address signer = IntentLib.recoverSigner(f.domainSeparator, tampered, f.signature);
-        assertTrue(signer != f.expectedSigner, "fiyat degistigi halde ayni imzaci kurtarildi");
+        assertTrue(signer != f.expectedSigner, "the same signer was recovered despite the price changing");
     }
 }

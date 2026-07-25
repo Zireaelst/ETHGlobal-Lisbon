@@ -228,7 +228,7 @@ gate.check('Farklı istekler farklı fixture anahtarı üretiyor', () => {
 // ---------------------------------------------------------------------------
 gate.check('0G Storage bonusu (P3-E) kararı verildi ve yazıldı', () => {
   const b = readBudget();
-  if (b.storageBonusDecision !== 'VAR' && b.storageBonusDecision !== 'YOK') {
+  if (b.storageBonusDecision !== 'YES' && b.storageBonusDecision !== 'NO') {
     return fail(`karar "${b.storageBonusDecision}" — VAR ya da YOK olmalı`);
   }
   return pass(`${b.storageBonusDecision} — ${b.storageBonusReason}`);

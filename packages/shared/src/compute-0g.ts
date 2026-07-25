@@ -1,20 +1,21 @@
-// compute-0g.ts — GERÇEK 0G Sealed Inference backend'i (enclave içinden çağrılır).
+// compute-0g.ts — the REAL 0G Sealed Inference backend (called from inside the enclave).
 //
-// BUILD-PLAN P3-B/4: 0G imzası ENCLAVE İÇİNDE doğrulanır; kontrat bu bayrağa güvenir.
-// Doğrulanamıyorsa `ogVerified: false` girer — sessizce true YAZILMAZ.
+// BUILD-PLAN P3-B/4: the 0G signature is verified INSIDE THE ENCLAVE; the contract trusts
+// that flag. When it cannot be verified, `ogVerified: false` is written — never silently
+// true.
 //
-// İMZA NEYİ KAPSIYOR (P0-B'de ölçüldü, CLAUDE.md §3.1):
-//     "<h1>:<sha256(ham yanıt gövdesi)>:<ProviderType>:<ProviderIdentity>:<h3>"
-// Bu yüzden doğrulama İKİ adımlı ve ikisi de şart:
-//   (a) verifyMessage(demet, imza) === beklenen imzacı
-//         → gerçek bir 0G TEE'si BİR ŞEY imzalamış
-//   (b) sha256(ham yanıt) demetin içinde
-//         → imzaladığı şey BİZİM yanıtımız
-// (a) tek başına yetseydi, saldırgan başka bir isteğe ait geçerli bir TEE imzasını
-// bize verip "işte kanıt" diyebilirdi. (b) o kapıyı kapatıyor.
+// WHAT THE SIGNATURE COVERS (measured in P0-B, CLAUDE.md §3.1):
+//     "<h1>:<sha256(raw response body)>:<ProviderType>:<ProviderIdentity>:<h3>"
+// That is why verification takes TWO steps, and both are required:
+//   (a) verifyMessage(tuple, signature) === expected signer
+//         → a genuine 0G TEE signed SOMETHING
+//   (b) sha256(raw response) appears in the tuple
+//         → what it signed is OUR response
+// If (a) alone were enough, an attacker could hand us a valid TEE signature belonging to a
+// different request and call it proof. (b) closes that door.
 //
-// AĞ ÇIKIŞI: bu modül yalnızca 0G RPC'sine ve seçilen sağlayıcının endpoint'ine
-// çıkar (P3-B kriteri — `imageHash` iddiasını kirletmemek için).
+// NETWORK EGRESS: this module only reaches the 0G RPC and the selected provider's endpoint
+// (a P3-B criterion — so as not to pollute the `imageHash` claim).
 
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -23,19 +24,19 @@ import { verifyMessage } from 'ethers';
 import type { ComputeBackend, ComputeRequest, ComputeResult } from './compute.js';
 import { recordRun, computeRequestKey } from './compute-fixture.js';
 
-// SDK v0.9.0'ın ESM build'i kırık (lib.esm/index.mjs, CJS chunk'tan isimlendirilmiş
-// export çekiyor → SyntaxError). CJS build'i sağlam.
+// The SDK's ESM build is broken in v0.9.0 (lib.esm/index.mjs pulls named exports from a CJS
+// chunk → SyntaxError). The CJS build is sound.
 const require = createRequire(import.meta.url);
 
 export interface ZeroGBackendOptions {
   rpcUrl: string;
-  /** 0G ödemelerini yapan cüzdanın anahtarı. Enclave dışına ÇIKMAZ. */
+  /** The key of the wallet paying for 0G. It NEVER leaves the enclave. */
   privateKey: string;
-  /** Sabitlenmiş sağlayıcı. Boşsa onaylı TeeML'ler arasından en ucuzu seçilir. */
+  /** Pinned provider. When empty, the cheapest acknowledged TeeML provider is selected. */
   providerAddress?: string;
-  /** Her gerçek çağrıyı buraya kaydet (P0-D/4 fixture disiplini). Boşsa kayıt yok. */
+  /** Record every real call here (P0-D/4 fixture discipline). No recording when empty. */
   recordDir?: string;
-  /** Çağrı üst sınırı — sağlayıcı takılırsa enclave sonsuza kadar beklemesin. */
+  /** Call ceiling — so the enclave does not wait forever if the provider stalls. */
   timeoutMs?: number;
 }
 
@@ -51,12 +52,12 @@ type Service = {
   teeSignerAcknowledged: boolean;
 };
 
-/** P0-G bütçesi 60 sn; tek çağrı için yarısını üst sınır alıyoruz. */
+/** The P0-G budget is 60 s; we take half of that as the ceiling for a single call. */
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 const IMAGE_MODEL_HINT = /image|vision|diffusion/i;
 
-/** İmzanın hangi adrese ait olması gerektiğini `additionalInfo`'dan çöz. */
+/** Work out from `additionalInfo` which address the signature should belong to. */
 function resolveExpectedSigner(svc: Service): string {
   if (!svc.additionalInfo) return svc.teeSignerAddress;
   try {
@@ -66,27 +67,27 @@ function resolveExpectedSigner(svc: Service): string {
       TargetTeeAddress?: string;
     };
     const centralized = (info.ProviderType ?? 'decentralized') === 'centralized';
-    // Ayrık ve merkezi DEĞİLSE model kendi enclave'inde koşuyor demektir ve
-    // imzayı o atar; merkezi sağlayıcıda broker TEE'si imzalar.
+    // If it is separated and NOT centralized, the model runs in its own enclave and signs
+    // there; with a centralized provider the broker TEE signs.
     if (info.TargetSeparated === true && !centralized && info.TargetTeeAddress) {
       return info.TargetTeeAddress;
     }
   } catch {
-    // additionalInfo bozuksa kontrattaki adrese düşüyoruz — uydurmuyoruz.
+    // If additionalInfo is malformed we fall back to the address in the contract — we do not
+    // invent one.
   }
   return svc.teeSignerAddress;
 }
 
+/** Turn brief + data + constraints into the single prompt sent to the model. */
 /**
- * Brief + veri + kısıtları modele verilecek tek isteme çevir.
+ * LEVEL 0 BINDING: when `commitment` is supplied the instruction goes at the VERY TOP of the
+ * prompt. Putting it at the end creates two risks at once — `max_tokens` may truncate a long
+ * answer, and the model may lose track of the instruction after a long generation. At the
+ * top it held 5/5 (scripts/og-probe-echo.ts).
  *
- * LEVEL 0 BAĞLAMA: `commitment` verilirse talimat prompt'un EN BAŞINA konur.
- * Sona koymak iki riski birden doğuruyor — uzun cevaplarda `max_tokens` kesebilir
- * ve model uzun üretim sonunda talimatı gözden kaçırabilir. Başta 5/5 tuttu
- * (scripts/og-probe-echo.ts).
- *
- * Talimat "karakteri karakterine kopyala" diyor: 64 haneli hex'te tek karakter
- * kayması bağlamayı çökertir, "yaklaşık doğru" işe yaramaz.
+ * The instruction says "copy character for character": in a 64-digit hex value a one
+ * character shift breaks the binding, and "approximately right" is useless here.
  */
 function buildPrompt(request: ComputeRequest): string {
   const head = request.commitment
@@ -107,7 +108,7 @@ function buildPrompt(request: ComputeRequest): string {
 export function createZeroGComputeBackend(options: ZeroGBackendOptions): ComputeBackend {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-  // Broker kurulumu pahalı (zincir okumaları) — ilk çağrıda kurup saklıyoruz.
+  // Broker setup is expensive (chain reads) — build it on the first call and keep it.
   let ready: Promise<{ broker: any; svc: Service; expectedSigner: string }> | undefined;
 
   async function init() {
@@ -118,33 +119,34 @@ export function createZeroGComputeBackend(options: ZeroGBackendOptions): Compute
     const wallet = new ethers.Wallet(options.privateKey, provider);
     const broker = await createZGComputeNetworkBroker(wallet);
 
-    // DİKKAT: inference tarafının imzası (offset, limit, includeUnacknowledged);
-    // kontrat limit'i 50 ile sınırlıyor. Dönen değer donmuş bir ethers Result.
+    // CAREFUL: the inference-side signature is (offset, limit, includeUnacknowledged) and the
+    // contract caps limit at 50. The return value is a frozen ethers Result.
     const services: Service[] = Array.from(await broker.inference.listService(0, 50, true));
 
     let picked: Service | undefined;
     if (options.providerAddress) {
       picked = services.find((s) => s.provider.toLowerCase() === options.providerAddress!.toLowerCase());
-      if (!picked) throw new Error(`0G sağlayıcısı listede yok: ${options.providerAddress}`);
+      if (!picked) throw new Error(`0G provider not in the list: ${options.providerAddress}`);
     } else {
       const eligible = Array.from(
         services.filter(
           (s) => s.verifiability === 'TeeML' && s.teeSignerAcknowledged && !IMAGE_MODEL_HINT.test(s.model),
         ),
       );
-      if (eligible.length === 0) throw new Error('onaylı TeeML metin sağlayıcısı yok');
+      if (eligible.length === 0) throw new Error('no acknowledged TeeML text provider available');
       picked = eligible.sort((a, b) => Number(a.outputPrice - b.outputPrice))[0];
     }
-    if (!picked) throw new Error('0G sağlayıcısı seçilemedi');
+    if (!picked) throw new Error('could not select a 0G provider');
     const svc: Service = picked;
 
-    // TeeTLS "operatör veriyi göremez" iddiasını taşımıyor — kabul etmiyoruz.
+    // TeeTLS does not carry the "the operator cannot see the data" claim — we do not accept it.
     if (svc.verifiability !== 'TeeML') {
-      throw new Error(`sağlayıcı TeeML değil: ${svc.verifiability}`);
+      throw new Error(`provider is not TeeML: ${svc.verifiability}`);
     }
-    // Onaysızda teeSignerAddress sağlayıcının kendi beyanıdır; kontrat kefil değildir.
+    // When unacknowledged, teeSignerAddress is the provider's own claim and the contract has
+    // not vouched for it.
     if (!svc.teeSignerAcknowledged) {
-      throw new Error(`sağlayıcının TEE signer'ı kontratta onaylı değil: ${svc.provider}`);
+      throw new Error(`the provider's TEE signer is not acknowledged in the contract: ${svc.provider}`);
     }
 
     return { broker, svc, expectedSigner: resolveExpectedSigner(svc) };
@@ -158,7 +160,7 @@ export function createZeroGComputeBackend(options: ZeroGBackendOptions): Compute
       const { broker, svc, expectedSigner } = await ready;
 
       const { endpoint, model } = await broker.inference.getServiceMetadata(svc.provider);
-      // Header'lar TEK KULLANIMLIK — her istek için yeniden alınır.
+      // Headers are SINGLE-USE — fetched again for every request.
       const headers = (await broker.inference.getRequestHeaders(svc.provider)) as Record<string, string>;
 
       const body = {
@@ -177,12 +179,12 @@ export function createZeroGComputeBackend(options: ZeroGBackendOptions): Compute
       const latencyMs = Date.now() - started;
 
       if (!res.ok) {
-        throw new Error(`0G çağrısı başarısız: HTTP ${res.status} — ${(await res.text()).slice(0, 200)}`);
+        throw new Error(`0G call failed: HTTP ${res.status} — ${(await res.text()).slice(0, 200)}`);
       }
 
-      // HAM gövdeyi saklıyoruz: imza sha256(ham gövde) üzerine atılıyor. JSON'u
-      // parse edip tekrar stringify etmek anahtar sırasına bağlı kalır ve
-      // sağlayıcı alan sırasını değiştirdiği gün sessizce bozulur.
+      // We keep the RAW body: the signature is over sha256(raw body). Parsing the JSON and
+      // stringifying it again depends on key order and would break silently the day the
+      // provider reorders its fields.
       const rawResponseText = await res.text();
       const completion = JSON.parse(rawResponseText) as {
         choices?: Array<{ message?: { content?: string } }>;
@@ -190,11 +192,11 @@ export function createZeroGComputeBackend(options: ZeroGBackendOptions): Compute
       };
       const output = completion.choices?.[0]?.message?.content ?? '';
 
-      // chatID `completion.id` DEĞİL: imza sunucusu `ZG-Res-Key` başlığındaki
-      // kimliği tanıyor, diğerine "chat_id_not_found" diyor.
+      // chatID is NOT `completion.id`: the signature server recognises the id in the
+      // `ZG-Res-Key` header and answers "chat_id_not_found" for the other one.
       const chatId = res.headers.get('ZG-Res-Key') ?? undefined;
 
-      // --- İMZA: ENCLAVE İÇİNDE, iki adımda ---
+      // --- SIGNATURE: INSIDE THE ENCLAVE, in two steps ---
       let ogSig: string | undefined;
       let ogSigner: string | undefined;
       let ogVerified = false;
@@ -209,20 +211,20 @@ export function createZeroGComputeBackend(options: ZeroGBackendOptions): Compute
             const sig = (await sigRes.json()) as { text: string; signature: string };
             ogSig = sig.signature;
 
-            // (a) gerçek bir TEE bir şey imzalamış mı?
+            // (a) did a genuine TEE sign something?
             ogSigner = verifyMessage(sig.text, sig.signature);
             const signerOk = ogSigner.toLowerCase() === expectedSigner.toLowerCase();
 
-            // (b) imzaladığı şey BİZİM yanıtımız mı?
+            // (b) is what it signed OUR response?
             const digest = createHash('sha256').update(rawResponseText).digest('hex');
             const coversThisResponse = sig.text.split(':').includes(digest);
 
             ogVerified = signerOk && coversThisResponse;
 
             if (signerOk && !coversThisResponse) {
-              // Geçerli imza + başka yanıt = tam olarak engellemek istediğimiz saldırı.
+              // Valid signature + a different response = exactly the attack we want to block.
               throw new Error(
-                'GEÇERLİ TEE imzası ama BAŞKA bir yanıta ait — bu yanıtın sha256\'sı demette yok',
+                'VALID TEE signature but it belongs to a DIFFERENT response — this response\'s sha256 is not in the tuple',
               );
             }
 
@@ -240,10 +242,11 @@ export function createZeroGComputeBackend(options: ZeroGBackendOptions): Compute
             }
           }
         } catch (err) {
-          // İmza alınamadı ya da tutmadı: `ogVerified` false kalır. Çıktı yine
-          // döner çünkü enclave yalan söylemez, EKSİĞİ RAPORLAR (P3-B kuralı).
+          // The signature could not be fetched or did not check out: `ogVerified` stays false.
+          // The output is still returned, because the enclave does not lie — it REPORTS THE
+          // GAP (the P3-B rule).
           ogVerified = false;
-          if (err instanceof Error && err.message.startsWith('GEÇERLİ TEE imzası')) throw err;
+          if (err instanceof Error && err.message.startsWith('VALID TEE signature')) throw err;
         }
       }
 

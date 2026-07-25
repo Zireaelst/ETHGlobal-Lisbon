@@ -1,5 +1,5 @@
 {
-  "//": "Deploy/yardımcı TS scriptleri ESM. Kök CJS kalıyor (scripts/recover.js CJS).",
+  "//": "The deploy/helper TS scripts are ESM. The root stays CJS (scripts/recover.js is CJS).",
   "name": "@ca/scripts",
   "private": true,
   "type": "module"

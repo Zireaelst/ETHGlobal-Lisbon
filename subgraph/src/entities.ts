@@ -1,8 +1,8 @@
-// subgraph/src/entities.ts — iki mapping'in (identity + verifier) paylaştığı yardımcılar.
+// subgraph/src/entities.ts — helpers shared by the two mappings (identity + verifier).
 //
-// Agent'ı HER İKİ data source da oluşturabilmeli: bir iş, agent'ın kaydı indekslenmeden
-// önce doğrulanabilir (Verifier'ın startBlock'u registry'ninkinden ileride). O yüzden
-// `getOrCreateAgent` tek yerde ve her iki taraftan çağrılıyor.
+// BOTH data sources must be able to create an Agent: a job can be verified before the agent's
+// registration is indexed (the Verifier's startBlock is ahead of the registry's). Hence
+// `getOrCreateAgent` lives in one place and is called from both sides.
 
 import { BigInt, Bytes, ethereum } from '@graphprotocol/graph-ts';
 import { Agent, Registry } from '../generated/schema';
@@ -22,11 +22,11 @@ export function getRegistry(): Registry {
 }
 
 /**
- * Agent'ı getir, yoksa oluştur.
+ * Get the Agent, creating it when absent.
  *
- * `registeredBlock == 0` "henüz Registered event'i görülmedi" demektir. Gerçek bir
- * register() receipt'inde Transfer, Registered'dan ÖNCE geliyor; ayrıca Verifier
- * tarafı da kayıttan önce bir agent'a rastlayabilir. Bu yüzden sıradan bağımsız.
+ * `registeredBlock == 0` means "no Registered event seen yet". In a real register() receipt
+ * Transfer arrives BEFORE Registered; and the Verifier side may encounter an agent before its
+ * registration. Hence this is order-independent.
  */
 export function getOrCreateAgent(agentId: BigInt, event: ethereum.Event): Agent {
   const id = agentId.toString();

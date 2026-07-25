@@ -1,13 +1,13 @@
-// scripts/og-probe-echo.ts — Level 0 fizibilite deneyi.
+// scripts/og-probe-echo.ts — the Level 0 feasibility experiment.
 //
-// SORU: intentHash'i prompt'a koyup modelden çıktısında AYNEN tekrarlamasını
-// istersek, model bunu güvenilir şekilde yapar mı — ve o çıktı 0G TEE imzasının
-// kapsamına girer mi?
+// THE QUESTION: if we put the intentHash in the prompt and ask the model to reproduce it
+// VERBATIM in its output, does it do so reliably — and does that output fall within the scope of
+// the 0G TEE signature?
 //
-// Bu, "yapabilir miyiz" sorusunun belgeyle değil DENEYLE cevabı. 5 koşu yapıp
-// kaç tanesinde hash'in tam ve bozulmadan çıktığına bakıyoruz. Model 64 karakterlik
-// bir hex diziyi tekrarlarken tek karakter kaydırırsa fikir çöker — o yüzden
-// "yaklaşık doğru" saymıyoruz, birebir arıyoruz.
+// This answers "can we do it" BY EXPERIMENT rather than by documentation. We make 5 runs and
+// check in how many the hash comes out complete and uncorrupted. If the model shifts a single
+// character while reproducing a 64-character hex string, the idea collapses — so we do not accept
+// "approximately right", we require an exact match.
 
 import { createRequire } from 'node:module';
 import { createHash } from 'node:crypto';
@@ -41,11 +41,11 @@ let ok = 0;
 const results: string[] = [];
 
 for (let i = 0; i < ROUNDS; i += 1) {
-  // Her turda FARKLI bir intentHash — model ezberleyemesin.
+  // A DIFFERENT intentHash each round — so the model cannot memorise it.
   const intentHash = ethers.keccak256(ethers.toUtf8Bytes(`intent/${i}/${Date.now()}`));
 
-  // Talimatı çıktının EN BAŞINA sabitliyoruz: sonda olsa model uzun cevaplarda
-  // kırpabilir; başta olması hem kesme riskini hem "unuttu" riskini azaltıyor.
+  // We pin the instruction to the VERY TOP of the output: at the end, a long answer could be
+  // truncated; putting it first reduces both the truncation risk and the "it forgot" risk.
   const prompt = [
     `ORDER-ID: ${intentHash}`,
     '',
@@ -66,7 +66,7 @@ for (let i = 0; i < ROUNDS; i += 1) {
     body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens: 400 }),
   });
   if (!res.ok) {
-    results.push(`tur ${i + 1}: HTTP ${res.status}`);
+    results.push(`round ${i + 1}: HTTP ${res.status}`);
     continue;
   }
 
@@ -75,10 +75,10 @@ for (let i = 0; i < ROUNDS; i += 1) {
   const output = completion.choices?.[0]?.message?.content ?? '';
   const chatID = res.headers.get('ZG-Res-Key');
 
-  // 1) Hash çıktıda BİREBİR geçiyor mu?
+  // 1) Does the hash appear VERBATIM in the output?
   const echoed = output.includes(intentHash);
 
-  // 2) TEE imzası bu yanıtı kapsıyor mu?
+  // 2) Does the TEE signature cover this response?
   const sigRes = await fetch(
     `${signerFixture.url}/v1/proxy/signature/${chatID}?model=${signerFixture.model}`,
     { headers: { 'Content-Type': 'application/json' } },
@@ -91,15 +91,15 @@ for (let i = 0; i < ROUNDS; i += 1) {
   const good = echoed && covers && signerOk;
   if (good) ok += 1;
   results.push(
-    `tur ${i + 1}: tekrar=${echoed ? 'EVET' : 'HAYIR'} · imza-kapsıyor=${covers} · imzacı=${signerOk} ` +
-      `${good ? '✅' : '❌'}${echoed ? '' : `\n   çıktı başı: ${JSON.stringify(output.slice(0, 100))}`}`,
+    `round ${i + 1}: echoed=${echoed ? 'YES' : 'NO'} · signature-covers=${covers} · signer=${signerOk} ` +
+      `${good ? '✅' : '❌'}${echoed ? '' : `\n   start of output: ${JSON.stringify(output.slice(0, 100))}`}`,
   );
 }
 
 console.log(results.join('\n'));
-console.log(`\nSONUÇ: ${ok}/${ROUNDS} turda zincir tam kuruldu.`);
+console.log(`\nRESULT: the chain was fully established in ${ok}/${ROUNDS} rounds.`);
 console.log(
   ok === ROUNDS
-    ? 'Level 0 uygulanabilir: model sipariş numarasını birebir taşıyor ve TEE imzası onu kapsıyor.'
-    : 'DİKKAT: tekrar güvenilir değil — talimat güçlendirilmeli ya da fikir gözden geçirilmeli.',
+    ? 'Level 0 is viable: the model carries the order id verbatim and the TEE signature covers it.'
+    : 'WARNING: the echo is not reliable — the instruction must be strengthened or the idea reconsidered.',
 );

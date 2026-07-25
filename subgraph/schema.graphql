@@ -1,22 +1,22 @@
 """
-Keşif ve doğrulanmış-teslimat itibarı (BUILD-PLAN P2-B).
+Discovery and verified-delivery reputation (BUILD-PLAN P2-B).
 
-Tasarım notu: `verifiedDeliveries` bir kullanıcı girdisi DEĞİL — yalnızca Verifier.sol'ün
-yaydığı `JobVerified` event'i artırabilir. Yani itibar, ödenmiş ve doğrulanmış işlere
-bağlıdır. (CLAUDE.md §11 sınırı: bu "Sybil-proof" değil; şişirmek PAHALI, imkânsız değil.)
+Design note: `verifiedDeliveries` is NOT a user input — only the `JobVerified` event emitted by
+Verifier.sol can increment it. So reputation is tied to paid, verified jobs.
+(CLAUDE.md §11 boundary: this is not "Sybil-proof"; inflating it is EXPENSIVE, not impossible.)
 
-Plandan tek sapma: `Agent.id` Bytes değil String (ondalık agentId).
-Sebebi: agentId bir uint256 ve AssemblyScript'te BigInt→Bytes dönüşümünün
-endianlığı sessiz hataya açık. Ondalık string hem tek anlamlı hem sorgularda
-okunaklı: agent(id: "8429"). `Job.id` doğal olarak bytes32 olduğu için Bytes kaldı.
+The single deviation from the plan: `Agent.id` is a String, not Bytes (the decimal agentId).
+Why: agentId is a uint256 and the endianness of a BigInt→Bytes conversion in AssemblyScript is
+open to silent error. A decimal string is both unambiguous and readable in queries:
+agent(id: "8429"). `Job.id` is naturally bytes32 so it stayed Bytes.
 """
 type Agent @entity(immutable: false) {
-  "ERC-8004 agentId (NFT token id), ondalık string."
+  "ERC-8004 agentId (the NFT token id), as a decimal string."
   id: String!
   owner: Bytes!
-  "Kayıt sırasında verilen URI (agent card'a işaret edebilir)."
+  "The URI supplied at registration (may point at the agent card)."
   agentURI: String
-  "On-chain `skill` metadata'sından. Karar (a): metadata zincirde — bkz. DECISION.md."
+  "From the on-chain `skill` metadata. Decision (a): metadata lives on chain — see DECISION.md."
   skills: [String!]!
   endpoint: String
   eciesPubKey: String
@@ -24,12 +24,12 @@ type Agent @entity(immutable: false) {
   stealthMetaAddress: String
   registeredAt: BigInt!
   registeredBlock: BigInt!
-  "Kayıt/metadata en son ne zaman güncellendi."
+  "When the registration/metadata was last updated."
   updatedAt: BigInt!
 
-  "Verifier.sol `JobVerified` sayacı — P3-A deploy edilince dolmaya başlar."
+  "The Verifier.sol `JobVerified` counter — it starts filling once P3-A is deployed."
   verifiedDeliveries: Int!
-  "`JobRejected` sayacı — fraud yolu da indeksleniyor (demo bunu gösteriyor)."
+  "The `JobRejected` counter — the fraud path is indexed too (the demo shows this)."
   rejectedAttempts: Int!
 
   jobs: [Job!]! @derivedFrom(field: "agent")
@@ -37,8 +37,8 @@ type Agent @entity(immutable: false) {
 }
 
 """
-Ham key/value metadata. Ayrı entity, çünkü registry keyfi anahtar yazmaya izin veriyor;
-şemaya sabitlediğimiz dört alanın dışındakileri de kaybetmeden indekslemek istiyoruz.
+Raw key/value metadata. A separate entity, because the registry permits arbitrary keys; we want
+to index everything without losing the keys beyond the four we fixed in the schema.
 """
 type AgentMetadata @entity(immutable: false) {
   "<agentId>-<key>"
@@ -57,7 +57,7 @@ type Job @entity(immutable: false) {
   outputHash: Bytes
   "VERIFIED | REJECTED"
   status: String!
-  "Yalnızca REJECTED için: MatchFalse | BadEnclaveSig | BadClientSig | Expired | AlreadyVerified"
+  "For REJECTED only: MatchFalse | BadEnclaveSig | BadClientSig | Expired | AlreadyVerified"
   rejectionCode: String
   price: BigInt!
   timestamp: BigInt!
@@ -65,7 +65,7 @@ type Job @entity(immutable: false) {
   txHash: Bytes!
 }
 
-"Tek satırlık global sayaçlar — demo dApp'in üst şeridi için."
+"Single-row global counters — for the demo dApp's top strip."
 type Registry @entity(immutable: false) {
   id: String!
   agentCount: Int!

@@ -1,37 +1,38 @@
-// identity.ts — ERC-8004 (Trustless Agents) IdentityRegistry erişimi.
+// identity.ts — access to the ERC-8004 (Trustless Agents) IdentityRegistry.
 //
-// Kaynak: github.com/erc-8004/erc-8004-contracts — abis/IdentityRegistry.json.
-// Base Sepolia'daki canlı deployment bir UUPS proxy'dir (kod boyutu ~130 byte;
-// `upgradeToAndCall` / `proxiableUUID` / `Upgraded` ABI'de var). Subgraph proxy
-// adresini indeksler — implementasyon değişse de adres sabit kalır.
+// Source: github.com/erc-8004/erc-8004-contracts — abis/IdentityRegistry.json.
+// The live deployment on Base Sepolia is a UUPS proxy (code size ~130 bytes;
+// `upgradeToAndCall` / `proxiableUUID` / `Upgraded` are present in the ABI). The subgraph
+// indexes the proxy address — it stays constant even if the implementation changes.
 //
-// P0-F kararı (a): registry ON-CHAIN key/value metadata destekliyor ve `setMetadata`
-// ile güncellenebiliyor. Yani skill/endpoint/eciesPubKey doğrudan zincirde durur ve
-// subgraph hepsini indeksleyebilir — agent card'ı HTTP'den çekmeye gerek yok.
-// Ayrıntı: subgraph/DECISION.md
+// P0-F decision (a): the registry supports ON-CHAIN key/value metadata and it can be
+// updated with `setMetadata`. So skill/endpoint/eciesPubKey live directly on chain and the
+// subgraph can index all of them — there is no need to fetch the agent card over HTTP.
+// Details: subgraph/DECISION.md
 
 import { Contract, type ContractRunner, Interface, toUtf8Bytes, toUtf8String } from 'ethers';
 
 /**
- * İhtiyacımız olan ABI dilimi.
+ * The slice of the ABI we need.
  *
- * Not: `MetadataSet` üç değil DÖRT alan taşır — `keyHash` indexed olduğu için topic'te
- * anahtarın hash'i durur, okunabilir anahtar ise ayrıca non-indexed `key` alanında gelir.
- * Subgraph metadata'yı indekslerken `key` alanını kullanmalı, topic'i değil.
+ * Note: `MetadataSet` carries FOUR fields, not three — because `keyHash` is indexed, the
+ * topic holds the hash of the key, while the readable key arrives separately in the
+ * non-indexed `key` field. When indexing metadata the subgraph must use the `key` field,
+ * not the topic.
  */
 export const IDENTITY_REGISTRY_ABI = [
-  // --- kayıt ---
+  // --- registration ---
   'function register(string agentURI, tuple(string metadataKey, bytes metadataValue)[] metadata) returns (uint256 agentId)',
   'function register(string agentURI) returns (uint256 agentId)',
   'function setMetadata(uint256 agentId, string key, bytes value)',
   'function setAgentURI(uint256 agentId, string agentURI)',
-  // --- okuma ---
+  // --- reads ---
   'function getMetadata(uint256 agentId, string key) view returns (bytes)',
   'function ownerOf(uint256 tokenId) view returns (address)',
   'function balanceOf(address owner) view returns (uint256)',
   'function tokenURI(uint256 tokenId) view returns (string)',
   'function getAgentWallet(uint256 agentId) view returns (address)',
-  // --- event'ler (subgraph bunları indeksleyecek) ---
+  // --- events (the subgraph will index these) ---
   'event Registered(uint256 indexed agentId, string agentURI, address indexed owner)',
   'event MetadataSet(uint256 indexed agentId, string indexed keyHash, string key, bytes value)',
   'event URIUpdated(uint256 indexed agentId, string agentURI, address indexed owner)',
@@ -40,17 +41,17 @@ export const IDENTITY_REGISTRY_ABI = [
 
 export const identityRegistryInterface = new Interface(IDENTITY_REGISTRY_ABI);
 
-/** Bir agent kaydının metadata anahtarları — iki dev de aynı isimleri kullanır. */
+/** Metadata keys of an agent registration — both devs use the same names. */
 export const METADATA_KEYS = {
   skill: 'skill',
   endpoint: 'endpoint',
-  /** ECIES public key (0x04… uncompressed) — Alice bununla şifreler. */
+  /** ECIES public key (0x04… uncompressed) — what Alice encrypts to. */
   eciesPubKey: 'eciesPubKey',
-  /** ERC-5564 stealth meta-address (Base gizlilik koşusu, P4-B). */
+  /** ERC-5564 stealth meta-address (the Base privacy run, P4-B). */
   stealthMetaAddress: 'stealthMetaAddress',
-  /** Hedera ödeme hesabı (agentic koşu, P4-C). Alıcı gizliliği YOK — bilinçli. */
+  /** Hedera payment account (the agentic run, P4-C). NO recipient privacy — deliberate. */
   hederaAccount: 'hederaAccount',
-  /** Registry'nin kayıt sırasında kendi eklediği alan — biz yazmıyoruz. */
+  /** A field the registry adds itself during registration — we do not write it. */
   agentWallet: 'agentWallet',
 } as const;
 
@@ -61,7 +62,7 @@ export interface MetadataEntry {
   metadataValue: string; // 0x-hex
 }
 
-/** UTF-8 string metadata girdisi kur. */
+/** Build a UTF-8 string metadata entry. */
 export function utf8Metadata(key: string, value: string): MetadataEntry {
   return { metadataKey: key, metadataValue: hexlifyUtf8(value) };
 }
@@ -74,7 +75,7 @@ export function identityRegistry(address: string, runner: ContractRunner): Contr
   return new Contract(address, IDENTITY_REGISTRY_ABI, runner);
 }
 
-/** Metadata'yı oku ve UTF-8 çöz. Alan boşsa undefined. */
+/** Read metadata and UTF-8 decode it. Undefined when the field is empty. */
 export async function readUtf8Metadata(
   registry: Contract,
   agentId: bigint | string,
@@ -86,12 +87,12 @@ export async function readUtf8Metadata(
 }
 
 /**
- * Metadata'yı okur, beklenen değere ulaşana kadar yeniden dener.
+ * Read metadata, retrying until the expected value appears.
  *
- * Base Sepolia public RPC'si yük dengeli: `tx.wait()` döndükten hemen sonra yapılan bir
- * okuma, yazmayı henüz görmemiş bir replikaya düşebiliyor (P0-F'te canlı olarak yaşandı —
- * okuma bir önceki koşunun değerini döndürdü). Yazmanın kanıtı işlemin kendi
- * `MetadataSet` event'idir; bu fonksiyon yalnızca okuma tutarlılığını bekler.
+ * The Base Sepolia public RPC is load-balanced: a read issued immediately after `tx.wait()`
+ * returns can land on a replica that has not yet seen the write (we hit this live in P0-F —
+ * the read returned the previous run's value). The proof of the write is the transaction's
+ * own `MetadataSet` event; this function only waits for read consistency.
  */
 export async function readUtf8MetadataUntil(
   registry: Contract,

@@ -5,8 +5,8 @@ import {Test} from "forge-std/Test.sol";
 import {IntentLib} from "../src/IntentLib.sol";
 import {Verifier} from "../src/Verifier.sol";
 
-/// @notice BUILD-PLAN gate:P3-A — cift imza dogrulamasinin tam test seti.
-/// @dev Fixture'i `pnpm gate:P3-A` TypeScript tarafindan URETIR: intent Alice'in
+/// @notice BUILD-PLAN gate:P3-A — the full test set for dual-signature verification.
+/// @dev The fixture is PRODUCED by `pnpm gate:P3-A` from the TypeScript side: the intent is
 ///      gercek EIP-712 imzasiyla, seal ise packages/bob-binding'in gercekten urettigi
 ///      imzayla gelir. Uydurma imzayla test SAYILMAZ (planin kendi kurali).
 contract VerifierTest is Test {
@@ -29,11 +29,11 @@ contract VerifierTest is Test {
 
     /// @dev Alice'in imzasi kontrat ADRESINE bagli (EIP-712 domain'inde
     ///      verifyingContract = address(this)). Fixture'i TS uretirken adres henuz
-    ///      bilinmiyor, o yuzden client imzasini TESTIN ICINDE, gercek domain'e karsi
+    ///      is unknown, so the client signature is produced INSIDE THE TEST against the real domain
     ///      atiyoruz — ayni ozel anahtarla. TS ile Solidity'nin ayni EIP-712 digest'ini
-    ///      urettigi zaten gate:P1-A'da fixture'a karsi kanitlaniyor.
-    ///      SEAL imzasi adresten bagimsiz oldugu icin CANLI olarak packages/bob-binding'den
-    ///      geliyor — P3-A'nin asil konusu olan imza budur.
+    ///      what it produces is already proven against the fixture in gate:P1-A.
+    ///      Because the SEAL signature is address-independent, it comes LIVE from packages/bob-binding
+    ///      arrives — that signature is what P3-A is really about.
     function _signIntent(uint256 pk, IntentLib.Intent memory i) internal view returns (bytes memory) {
         bytes32 digest = IntentLib.digest(verifier.DOMAIN_SEPARATOR(), i);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
@@ -92,13 +92,13 @@ contract VerifierTest is Test {
     /// @notice Seal digest'i TS tarafiyla birebir ayni.
     function testSealDigestMatchesTS() public view {
         bytes memory body = verifier.encodeBody(intent.intentHash, outputHash, matchFlag, ogSigHash);
-        assertEq(keccak256(body), vm.parseJsonBytes32(json, ".bodyKeccak"), "govde TS ile uyusmuyor");
+        assertEq(keccak256(body), vm.parseJsonBytes32(json, ".bodyKeccak"), "body does not match TS");
         assertEq(
             verifier.sealDigestOf(seal, body), vm.parseJsonBytes32(json, ".sealDigest"), "seal digest uyusmuyor"
         );
     }
 
-    /// @notice Govde alanlardan yeniden uretilebiliyor (kontratin yaptigi sey).
+    /// @notice The body can be rebuilt from the fields (which is what the contract does).
     function testBodyIsReproducibleFromFields() public view {
         bytes memory body = verifier.encodeBody(intent.intentHash, outputHash, matchFlag, ogSigHash);
         (bytes32 ih, bytes32 oh, bool mf, bytes32 og) = abi.decode(body, (bytes32, bytes32, bool, bytes32));
@@ -115,7 +115,7 @@ contract VerifierTest is Test {
     /// @notice Bob'un uydurdugu intent+output cifti BadClientSig.
     function testRejectsWrongClientSig() public {
         IntentLib.Intent memory forged = intent;
-        forged.price = intent.price + 1; // imza artik bu yapiya ait degil
+        forged.price = intent.price + 1; // the signature no longer belongs to this struct
         vm.expectRevert(Verifier.BadClientSig.selector);
         verifier.verifyJob(forged, clientSig, outputHash, matchFlag, ogSigHash, seal);
     }
@@ -127,14 +127,14 @@ contract VerifierTest is Test {
         verifier.verifyJob(intent, clientSig, outputHash, matchFlag, ogSigHash, seal);
     }
 
-    /// @notice Kayitsiz anahtarla imzali govde BadEnclaveSig.
+    /// @notice A body signed with an unregistered key gives BadEnclaveSig.
     function testRejectsNonEnclaveSigner() public {
         verifier.setEnclaveSigner(intent.agentId, address(0xBEEF));
         vm.expectRevert(Verifier.BadEnclaveSig.selector);
         verifier.verifyJob(intent, clientSig, outputHash, matchFlag, ogSigHash, seal);
     }
 
-    /// @notice Hic kayit yapilmamis agentId BadEnclaveSig.
+    /// @notice An agentId that was never registered gives BadEnclaveSig.
     function testRejectsUnknownAgent() public {
         IntentLib.Intent memory other = intent;
         other.agentId = bytes32(uint256(999999));
@@ -165,7 +165,7 @@ contract VerifierTest is Test {
         verifier.verifyJob(intent, clientSig, tampered, matchFlag, ogSigHash, seal);
     }
 
-    /// @notice ogSigHash degisince de govde bozulur -> BadEnclaveSig.
+    /// @notice Changing ogSigHash also corrupts the body -> BadEnclaveSig.
     function testRejectsTamperedOgSigHash() public {
         vm.expectRevert(Verifier.BadEnclaveSig.selector);
         verifier.verifyJob(intent, clientSig, outputHash, matchFlag, bytes32(uint256(1)), seal);
@@ -212,33 +212,33 @@ contract VerifierTest is Test {
         emit Verifier.JobRejected(intent.intentHash, intent.client, uint256(intent.agentId), 5);
         (bool ok, uint8 code) = verifier.verifyJobLenient(intent, clientSig, falseOutputHash, false, ogSigHash, falseSeal);
         assertFalse(ok);
-        assertEq(code, 5, "MatchFalse kodu degil");
+        assertEq(code, 5, "not the MatchFalse code");
 
         // BadEnclaveSig (4)
         verifier.setEnclaveSigner(intent.agentId, address(0xBEEF));
         (, uint8 code4) = verifier.verifyJobLenient(intent, clientSig, outputHash, matchFlag, ogSigHash, seal);
-        assertEq(code4, 4, "BadEnclaveSig kodu degil");
+        assertEq(code4, 4, "not the BadEnclaveSig code");
         verifier.setEnclaveSigner(intent.agentId, enclaveSigner);
 
         // BadClientSig (3)
         verifier.setRegisteredClient(aliceAddr, false);
         (, uint8 code3) = verifier.verifyJobLenient(intent, clientSig, outputHash, matchFlag, ogSigHash, seal);
-        assertEq(code3, 3, "BadClientSig kodu degil");
+        assertEq(code3, 3, "not the BadClientSig code");
         verifier.setRegisteredClient(aliceAddr, true);
 
         // Expired (1)
         vm.warp(intent.deadline + 1);
         (, uint8 code1) = verifier.verifyJobLenient(intent, clientSig, outputHash, matchFlag, ogSigHash, seal);
-        assertEq(code1, 1, "Expired kodu degil");
+        assertEq(code1, 1, "not the Expired code");
         vm.warp(intent.deadline - 1);
 
         // AlreadyVerified (2)
         verifier.verifyJob(intent, clientSig, outputHash, matchFlag, ogSigHash, seal);
         (, uint8 code2) = verifier.verifyJobLenient(intent, clientSig, outputHash, matchFlag, ogSigHash, seal);
-        assertEq(code2, 2, "AlreadyVerified kodu degil");
+        assertEq(code2, 2, "not the AlreadyVerified code");
     }
 
-    /// @notice Lenient yol REVERT ETMEZ — fraud tx'i Basescan'de basarili gorunmeli.
+    /// @notice The lenient path DOES NOT REVERT — the fraud tx must appear successful on Basescan.
     function testLenientNeverReverts() public {
         verifier.setEnclaveSigner(intent.agentId, address(0xBEEF));
         verifier.setRegisteredClient(aliceAddr, false);
@@ -253,7 +253,7 @@ contract VerifierTest is Test {
 
     /// @notice Hem 27 hem 28 ile uretilmis fixture geciyor.
     /// @dev Wrapper `v`'yi attigi icin kontrat iki pariteyi de denemek ZORUNDA.
-    ///      Fixture uretici, iki pariteyi de kapsayan iki ornek yaziyor.
+    ///      The fixture generator writes two samples covering both parities.
     function testBothVParities() public {
         string memory vJson = vm.readFile(string.concat(vm.projectRoot(), "/test/fixtures/verifier-parities.json"));
         uint256 count = vm.parseJsonUint(vJson, ".count");
@@ -301,6 +301,6 @@ contract VerifierTest is Test {
         verifier.setEnclaveSigner(intent.agentId, enclaveSigner);
         assertEq(verifier.enclaveSignerOf(intent.agentId), enclaveSigner);
         verifier.verifyJob(intent, clientSig, outputHash, matchFlag, ogSigHash, seal);
-        assertTrue(verifier.verified(intent.intentHash), "yeniden kayit sonrasi is gecmedi");
+        assertTrue(verifier.verified(intent.intentHash), "the job did not pass after re-registration");
     }
 }

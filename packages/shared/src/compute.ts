@@ -1,15 +1,16 @@
-// compute.ts — modelin NEREDE koştuğunu binding mantığından ayıran sınır.
+// compute.ts — the boundary that separates WHERE the model runs from the binding logic.
 //
-// Neden ayrı bir sınır: `runBinding` işin taahhüdünü yeniden hesaplayıp gövdeyi
-// imzalıyor; modelin 0G TEE'sinde mi, bir fixture'dan mı, yoksa hiç mi koştuğu onu
-// ilgilendirmiyor. Bu sınır sayesinde gerçek 0G backend'i geldiğinde `runBinding`,
-// gövde kodlaması, `Verifier.sol`, subgraph ve kapılar DEĞİŞMİYOR — yalnızca
-// bob-agent'ın hangi backend'i seçtiği değişiyor.
+// Why a separate boundary: `runBinding` recomputes the job's commitment and signs the body;
+// whether the model ran in a 0G TEE, from a fixture, or not at all is none of its business.
+// Thanks to this boundary, when the real 0G backend arrives `runBinding`, the body encoding,
+// `Verifier.sol`, the subgraph and the gates DO NOT CHANGE — only which backend bob-agent
+// selects changes.
 //
-// DÜRÜSTLÜK KURALI (BUILD-PLAN P3-B): `ogVerified` ancak imzayı KENDİMİZ kurtarıp
-// broker'ın verdiği `teeSignerAddress` ile eşleştirdiğimizde true olabilir.
-// İmza yoksa alan `undefined` kalır — sahte imza ÜRETİLMEZ. `provider` alanı da
-// arayüze kadar taşınır ki "0G attestation'ı var mı" sorusu gösterilsin, çıkarsanmasın.
+// HONESTY RULE (BUILD-PLAN P3-B): `ogVerified` may only be true once WE have recovered the
+// signature ourselves and matched it against the `teeSignerAddress` the broker reports.
+// When there is no signature the field stays `undefined` — a fake signature is NEVER
+// produced. The `provider` field is also carried all the way to the UI so that "is there a
+// 0G attestation?" is displayed rather than inferred.
 
 import type { Constraints } from './intent.js';
 
@@ -18,54 +19,54 @@ export interface ComputeRequest {
   data: string;
   constraints: Constraints;
   /**
-   * İstemcinin sipariş taahhüdü (`intentHash`) — LEVEL 0 BAĞLAMA.
+   * The client's order commitment (`intentHash`) — LEVEL 0 BINDING.
    *
-   * Verilirse prompt'un başına konur ve modelden çıktısında AYNEN tekrarlaması
-   * istenir. Böylece 0G TEE'sinin imzaladığı gövde bu değeri de kapsar:
-   *     TEE imzası → yanıt gövdesi → çıktı → intentHash → Alice'in EIP-712 imzası
-   * Bob bu zinciri kendi makinesinde üretemez; ilk halka 0G donanımından gelir.
+   * When supplied it is placed at the top of the prompt and the model is asked to reproduce
+   * it VERBATIM in its output. The body the 0G TEE signs then covers this value too:
+   *     TEE signature → response body → output → intentHash → Alice's EIP-712 signature
+   * Bob cannot produce that chain on his own machine; the first link comes from 0G hardware.
    *
-   * NEDEN CLAIMED (iddia edilen) hash: kontrat ve Alice ikisi de bu değere
-   * bakıyor. Yeniden hesaplanan hash zaten gövdedeki `match` bayrağıyla
-   * raporlanıyor, tekrar taşımanın bilgi katkısı yok.
+   * WHY THE CLAIMED HASH: both the contract and Alice look at this value. The recomputed
+   * hash is already reported through the `match` flag in the body, so carrying it again adds
+   * no information.
    *
-   * SINIR: bu, "hash gerçekten şu brief+data'ya ait" demek DEĞİL. Model tekrar
-   * ediyor, doğrulamıyor. O kontrol hâlâ attested olmayan kodumuzda.
+   * LIMIT: this does NOT mean "the hash really belongs to that brief+data". The model
+   * repeats it, it does not validate it. That check still runs in our unattested code.
    */
   commitment?: string;
 }
 
-/** Çıktıyı kimin ürettiği — kullanıcı arayüzüne kadar taşınan dürüstlük etiketi. */
+/** Who produced the output — an honesty label carried all the way to the user interface. */
 export type ComputeProvider = 'none' | '0g-sealed-inference' | 'fixture-replay';
 
 export interface ComputeResult {
-  /** Modelin ürettiği metin. */
+  /** The text the model produced. */
   output: string;
   /**
-   * 0G TEE'nin EIP-191 imzası. Yoksa undefined — uydurulmaz.
+   * The 0G TEE's EIP-191 signature. Undefined when absent — never fabricated.
    *
-   * NE KAPSAR (P0-B'de ÖLÇÜLDÜ, CLAUDE.md §3.1 buna göre düzeltildi): imza çıktı
-   * metnini DEĞİL, şu demeti kapsıyor:
-   *     "<h1>:<sha256(ham yanıt gövdesi)>:<ProviderType>:<ProviderIdentity>:<h3>"
-   * Yani çıktı, kendisini içeren gövdenin PARMAK İZİ olarak imza kapsamında.
-   * Kurcalamaya karşı garanti aynı; kurulan cümle farklı.
-   * `chatId` çıktı↔istek bağını 0G'nin kendi defterinde kurar.
+   * WHAT IT COVERS (MEASURED in P0-B; CLAUDE.md §3.1 was corrected accordingly): the
+   * signature does NOT cover the output text but this tuple:
+   *     "<h1>:<sha256(raw response body)>:<ProviderType>:<ProviderIdentity>:<h3>"
+   * So the output is within the signature's scope as the FINGERPRINT of the body containing
+   * it. The tamper guarantee is the same; the sentence you may say is different.
+   * `chatId` establishes the output↔request link in 0G's own ledger.
    */
   ogSig?: string;
-  /** İmzadan kurtarılan adres — broker'ın `teeSignerAddress`'i ile karşılaştırılır. */
+  /** The address recovered from the signature — compared against the broker's `teeSignerAddress`. */
   ogSigner?: string;
-  /** İmza ENCLAVE İÇİNDE doğrulandı mı. Doğrulanamadıysa false; sessizce true yazılmaz. */
+  /** Was the signature verified INSIDE THE ENCLAVE? False when it could not be; never silently true. */
   ogVerified: boolean;
   provider: ComputeProvider;
   /**
-   * `commitment` prompt'a konuldu mu — yani bu çıktının Level 0 bağlaması var mı.
-   * Çıktının taahhüdü GERÇEKTEN taşıyıp taşımadığını backend değil, enclave
-   * (`runBinding`) kendisi kontrol eder; backend'in dürüstlüğüne bağlı kalmasın.
+   * Was a `commitment` placed in the prompt — i.e. does this output have Level 0 binding?
+   * Whether the output REALLY carries the commitment is checked by the enclave
+   * (`runBinding`) itself, not by the backend, so it does not depend on the backend's honesty.
    */
   commitmentRequested?: boolean;
-  /** 0G ledger'ındaki istek kimliği (`processResponse` için). */
+  /** The request id in 0G's ledger (for `processResponse`). */
   chatId?: string;
-  /** P0-G latency bütçesi için ölçüm. */
+  /** Measurement for the P0-G latency budget. */
   latencyMs: number;
 }
 
@@ -75,14 +76,14 @@ export interface ComputeBackend {
 }
 
 /**
- * 0G erişimi olmadan çalışan backend.
+ * The backend that works without 0G access.
  *
- * Gerçek analiz ÜRETMEZ ve attestation İDDİA ETMEZ: `ogVerified: false`,
- * `provider: 'none'`. Sistem "burada 0G imzası yok" demeyi biliyor — sahte bir
- * TEE imzası üretmektense eksikliği doğru şekilde raporluyor.
+ * It PRODUCES no real analysis and CLAIMS no attestation: `ogVerified: false`,
+ * `provider: 'none'`. The system knows how to say "there is no 0G signature here" — it
+ * reports the absence correctly rather than fabricating a TEE signature.
  *
- * Gerçek backend (`createZeroGBackend`) 0G token'ı geldiğinde eklenecek; bu
- * arayüzü uygulayacağı için çağıranlarda hiçbir değişiklik gerekmeyecek.
+ * The real backend (`createZeroGComputeBackend`) implements this same interface, so callers
+ * needed no changes when it arrived.
  */
 export function createNoComputeBackend(): ComputeBackend {
   return {
@@ -90,9 +91,10 @@ export function createNoComputeBackend(): ComputeBackend {
     async run(request: ComputeRequest): Promise<ComputeResult> {
       const started = Date.now();
       const output =
-        `[compute: none] Brief ${request.brief.length} karakter, veri ${request.data.length} karakter alındı; ` +
-        `model "${request.constraints.model}" ile gerçek çıkarım YAPILMADI. ` +
-        `0G Sealed Inference bağlanınca bu metnin yerini gerçek analiz ve TEE imzası alacak.`;
+        `[compute: none] Received a ${request.brief.length}-character brief and ` +
+        `${request.data.length} characters of data; NO real inference was run with model ` +
+        `"${request.constraints.model}". Once 0G Sealed Inference is connected, real analysis ` +
+        `and a TEE signature replace this text.`;
       return {
         output,
         ogVerified: false,
@@ -103,14 +105,16 @@ export function createNoComputeBackend(): ComputeBackend {
   };
 }
 
-/** İnsan okunur özet — kapı çıktıları ve demo paneli için. */
+/** Human-readable summary — for gate output and the demo panel. */
 export function describeCompute(result: Pick<ComputeResult, 'provider' | 'ogVerified'>): string {
   switch (result.provider) {
     case '0g-sealed-inference':
-      return result.ogVerified ? '0G Sealed Inference · TEE imzası doğrulandı' : '0G Sealed Inference · imza DOĞRULANAMADI';
+      return result.ogVerified
+        ? '0G Sealed Inference · TEE signature verified'
+        : '0G Sealed Inference · signature NOT VERIFIED';
     case 'fixture-replay':
-      return 'kayıtlı 0G yanıtı (fixture replay) · canlı çağrı değil';
+      return 'recorded 0G response (fixture replay) · not a live call';
     case 'none':
-      return '0G bağlı değil · gerçek çıkarım ve TEE imzası YOK';
+      return '0G not connected · NO real inference and NO TEE signature';
   }
 }

@@ -1,23 +1,23 @@
-// bob-agent — Bob'un DIŞ katmanı (BUILD-PLAN §2.1).
+// bob-agent — Bob's OUTER layer (BUILD-PLAN §2.1).
 //
-// Bu süreç enclave DEĞİL ve İKİ ŞEYİ birden yapamaz:
+// This process is NOT the enclave, and there are TWO things it cannot do:
 //
-//   1. YALAN SÖYLETEMEZ — dürüst recompute ve imzalama `@ca/bob-binding` içinde,
-//      FRAUD_MODE burada. Bob hile yapabilir, enclave onun adına yalan söyleyemez.
+//   1. IT CANNOT MAKE THE ENCLAVE LIE — the honest recompute and signing live in
+//      `@ca/bob-binding`; FRAUD_MODE lives here. Bob can cheat; the enclave cannot lie for him.
 //
-//   2. İÇERİĞİ GÖREMEZ — ECIES anahtarı da enclave'de. Bu katmanın eline yalnızca
-//      ciphertext geçer; brief, veri ve çıktı buradan geçmez (CLAUDE.md §2).
+//   2. IT CANNOT SEE THE CONTENT — the ECIES key is in the enclave too. Only ciphertext ever
+//      reaches this layer; the brief, the data and the output never pass through (CLAUDE.md §2).
 //
-// Hile ancak şu iki yerden yapılabilir: enclave'e giden PAKETİ değiştirmek
-// (Bob kendi paketini şifreleyip yerine koyar) ya da çıkan İMZAYI değiştirmek.
+// Fraud is only possible in two places: altering the PAYLOAD going into the enclave (Bob
+// encrypts his own payload and swaps it in), or altering the SIGNATURE coming out.
 //
-// Uçlar:
-//   GET  /.well-known/agent-card.json   — keşif kartı
+// Endpoints:
+//   GET  /.well-known/agent-card.json   — the discovery card
 //   POST /task                          — { to, intentHash, replyPubKey, cipher }
 //   GET  /result/:intentHash            — { cipher, bodyHex, seal }
-//        cipher: enclave'in Alice'in anahtarına şifrelediği sonuç (Bob çözemez)
-//        bodyHex/seal: Bob'un zincire gönderilmesini İDDİA ETTİĞİ artefaktlar —
-//        Alice ikisini karşılaştırıp kurcalamayı görebilir
+//        cipher: the result the enclave encrypted to Alice's key (Bob cannot decrypt it)
+//        bodyHex/seal: the artifacts Bob CLAIMS should go on chain — Alice can compare the
+//        two and spot the tampering
 //   POST /settle                        — { intentHash, jobVerifiedTx } (Bob tetikler)
 //   POST /admin/fraud-mode              — demo fraud butonu
 //   GET  /health
@@ -53,70 +53,71 @@ export interface BobAgentOptions {
   eciesPrivateKey: string;
   /** ERC-8004 agentId, decimal string. */
   agentId: string;
-  /** Bob'un cüzdan adresi (kayıt sahibi). */
+  /** Bob's wallet address (the registration owner). */
   owner: string;
   skills: string[];
   price: { amount: string; asset: string; decimals: number };
-  /** Bob'un Hedera ödeme hesabı — kartta duyurulur, ödeme rayı bunu kullanır. */
+  /** Bob's Hedera payment account — published in the card, used by the payment rail. */
   hederaAccount?: string;
-  /** ERC-5564 stealth meta-adresi — Base gizlilik koşusu bunu kullanır. */
+  /** The ERC-5564 stealth meta-address — used by the Base privacy run. */
   stealthMetaAddress?: string;
-  /** EIP-712 domain'inin verifyingContract'ı — Alice'in imzasını doğrulamak için. */
+  /** The EIP-712 domain's verifyingContract — for verifying Alice's signature. */
   verifyingContract: string;
   /**
-   * Binding (FAZ 1'de yerel, P3'te enclave seal) imza anahtarı.
+   * The binding signing key (local in PHASE 1, the enclave seal in P3).
    *
-   * Bu anahtar bob-agent'ta DEĞİL, enclave'de yaşamalı — FAZ 1'de enclave bir
-   * fonksiyon çağrısı olduğu için buradan geçiriliyor. P3-B'de Tapp'e taşınacak
-   * ve bob-agent onu bir daha görmeyecek.
+   * This key should live in the enclave, NOT in bob-agent — it is passed through here only
+   * because in PHASE 1 the enclave is a function call. In P3-B it moves into the Tapp and
+   * bob-agent never sees it again.
    */
   bindingKey: string;
   chainId?: number;
   port?: number;
-  /** Başlangıç hile modu. Çalışırken `setFraudMode` ile değişebilir. */
+  /** The initial fraud mode. It can be changed at runtime with `setFraudMode`. */
   fraudMode?: FraudMode;
   /**
-   * Seal preimage'ının ilk alanı — wrapper'ın kendi agent kimliği.
-   * ERC-8004 `agentId`'sinden FARKLI olabilir; gerçek Tapp'te wrapper belirler.
+   * The first field of the seal preimage — the wrapper's own agent id.
+   * It may DIFFER from the ERC-8004 `agentId`; in a real Tapp the wrapper decides it.
    */
   sealAgentId?: string;
   /**
-   * Modelin nerede koşacağı. Verilmezse `none` — gerçek çıkarım ve TEE imzası YOK.
-   * 0G token'ı geldiğinde burası `createZeroGBackend(...)` olacak; başka hiçbir yer
-   * değişmeyecek (compute.ts sınırının varlık sebebi bu).
+   * Where the model runs. When absent, `none` — NO real inference and NO TEE signature.
+   * With 0G tokens available this becomes `createZeroGComputeBackend(...)`; nothing else
+   * changes (that is the whole reason the compute.ts boundary exists).
    */
   compute?: ComputeBackend;
   /**
-   * Ödeme kapısı. VERİLİRSE Bob ödeme yetkisi olmadan İŞ YAPMAZ — `/task` 402 döner
+   * The payment gate. WHEN SUPPLIED, Bob DOES NO WORK without a payment authorisation —
+   * `/task` returns 402
    * (CLAUDE.md §7: "public HTTP server: 402, forwards work to the Tapp").
    *
-   * Yetkiyi BOB tutar ve `JobVerified` çıktıktan SONRA `POST /settle` ile kendisi
-   * gönderir. Ekonomik teşvik zaten onda: doğrulama olmadan parasını alamıyor.
+   * BOB holds the authorisation and submits it himself via `POST /settle` AFTER `JobVerified`
+   * appears. The economic incentive is already his: without verification he does not get paid.
    */
   payment?: {
     backend: PaymentBackend;
-    /** 402'de duyurulan alıcı tarifi: Base'de meta-adres, Hedera'da hesap kimliği. */
+    /** The recipient recipe announced in the 402: a meta-address on Base, an account id on Hedera. */
     recipient: string;
     network: string;
   };
-  /** Kartın `endpoint` alanı; verilmezse dinlenen adresten türetilir. */
+  /** The card's `endpoint` field; derived from the listening address when absent. */
   publicUrl?: string;
   log?: (line: string) => void;
   /**
-   * Test kancası: Bob'un ÇÖZDÜĞÜ düz metin paketi.
+   * Test hook: the plaintext payload Bob DECRYPTED.
    *
-   * Kapı testi "Bob düz metni doğru çözüyor mu"yu doğrudan görebilsin diye var.
-   * Tel üzerine hiçbir şey eklemez; üretim yolunda kullanılmaz.
+   * It exists so a gate test can directly observe whether the plaintext decodes correctly.
+   * It adds nothing to the wire and is not used on the production path.
    */
   onDecrypted?: (envelope: { brief: string; data: string; nonce: string }) => void;
 }
 
 /**
- * Dış katmanın bir iş hakkında tutabildiği ÖZET.
+ * The SUMMARY the outer layer is allowed to keep about a job.
  *
- * Bilerek dar: hepsi zincire zaten çıkacak alanlar. `brief`, `data` ve `output`
- * BURADA YOK — onlar yalnızca enclave'in içinde ve Alice'in çözebildiği şifreli
- * sonuçta var. Bob'un altyapısı işin içeriğini göremiyor.
+ * Deliberately narrow: every field is going on chain anyway. `brief`, `data` and `output` are
+ * NOT HERE — they exist only inside the enclave and in the encrypted result that only Alice
+ * can decrypt. Bob's infrastructure cannot see the content of the job.
  */
 export interface BobJobSummary {
   intentHash: string;
@@ -134,37 +135,37 @@ export interface BobJobSummary {
 }
 
 export interface StoredResult {
-  /** Enclave'in Alice'in anahtarına şifrelediği sonuç. Bob bunu ÇÖZEMEZ. */
+  /** The result the enclave encrypted to Alice's key. Bob CANNOT decrypt it. */
   cipher: string;
   /**
-   * Bob'un zincire gönderilmesini İDDİA ETTİĞİ gövde ve seal.
+   * The body and seal Bob CLAIMS should be submitted on chain.
    *
-   * Enclave'in ürettiğinden FARKLI olabilir — `forge` modunda tam olarak budur.
-   * Alice bunları zincire götürür ve kendi çözdüğü sonuçtakiyle karşılaştırarak
-   * kurcalamayı görebilir.
+   * They may DIFFER from what the enclave produced — in `forge` mode that is exactly the case.
+   * Alice takes these to the chain and, by comparing them with what she decrypted herself, can
+   * see the tampering.
    */
   bodyHex: string;
   seal: Seal;
-  /** Alice'in imzaladığı, HENÜZ GÖNDERİLMEMİŞ ödeme yetkisi. Bob tutar. */
+  /** The payment authorisation Alice signed, NOT YET SUBMITTED. Bob holds it. */
   payment?: AuthProof;
-  /** Settle edildiyse makbuz — tekrar settle denemesi buna düşer. */
+  /** The receipt once settled — a repeat settle attempt lands on this. */
   settled?: Receipt;
   receivedAt: number;
 }
 
 export interface BobAgent {
   server: Server;
-  /** Dinlemeye başla, gerçek portu döndür (0 verilirse işletim sistemi seçer). */
+  /** Start listening and return the actual port (when 0 is given the OS picks one). */
   listen(): Promise<number>;
   close(): Promise<void>;
   url(): string;
   card(): AgentCard;
-  /** Test/demo için: işlenmiş işlerin düz metin özeti (ağa çıkmaz). */
+  /** For tests/demo: a plaintext summary of processed jobs (never goes on the wire). */
   readonly processed: BobJobSummary[];
-  /** Hile modunu ÇALIŞIRKEN değiştir — restart YOK (BUILD-PLAN P1-D kriteri). */
+  /** Change the fraud mode AT RUNTIME — NO restart (a BUILD-PLAN P1-D criterion). */
   setFraudMode(mode: FraudMode): void;
   fraudMode(): FraudMode;
-  /** Enclave'in (FAZ 1: binding fonksiyonunun) kayıtlı imzalayıcı adresi. */
+  /** The registered signer address of the enclave (in PHASE 1: of the binding function). */
   bindingSigner(): string;
 }
 
@@ -177,10 +178,10 @@ class HttpError extends Error {
   }
 }
 
-/** HTTP 402 — gövdede ödeme şartları taşınır, iş YAPILMAZ. */
+/** HTTP 402 — the body carries the payment requirements, and NO WORK is done. */
 class PaymentRequiredError extends HttpError {
   constructor(readonly requirements: PaymentRequirements) {
-    super(402, 'ödeme yetkisi gerekli');
+    super(402, 'payment authorisation required');
   }
 }
 
@@ -191,7 +192,7 @@ function readBody(req: IncomingMessage, limitBytes = 8 * 1024 * 1024): Promise<s
     req.on('data', (c: Buffer) => {
       size += c.length;
       if (size > limitBytes) {
-        reject(new HttpError(413, `gövde ${limitBytes} byte sınırını aştı`));
+        reject(new HttpError(413, `body exceeded the ${limitBytes} byte limit`));
         req.destroy();
         return;
       }
@@ -213,19 +214,20 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
   const results = new Map<string, StoredResult>();
   const processed: BobJobSummary[] = [];
   let boundPort = options.port ?? 0;
-  // Hile modu MUTABLE: demo sırasında restart, seal key'i kaybettirir (v3 §06),
-  // o yüzden mod çalışırken değişebilmeli.
+  // The fraud mode is MUTABLE: restarting during the demo would lose the seal key (v3 §06),
+  // so the mode has to be changeable while running.
   let fraudMode: FraudMode = options.fraudMode ?? 'none';
   const expectedBindingSigner = new Wallet(options.bindingKey).address;
-  // Seal kimliği konteyner ömrü başına bir kez üretilir (gerçek Tapp'te wrapper üretir).
-  // Süreç boyunca sabit kalması, P3-C'deki "restart etme" kuralının yerel karşılığı.
+  // The seal id is generated once per container lifetime (in a real Tapp the wrapper generates
+  // it). Keeping it constant for the process is the local counterpart of P3-C's "do not restart"
+  // rule.
   const sealId = keccak256(toUtf8Bytes(`seal/${expectedBindingSigner}/${options.agentId}`)).slice(0, 18);
   const computeBackend = options.compute ?? createNoComputeBackend();
 
-  /** Bob'un 402 gövdesi: fiyat + alıcı TARİFİ (adres değil — Base'de meta-adres). */
+  /** Bob's 402 body: the price + the recipient RECIPE (not an address — a meta-address on Base). */
   const paymentRequirementsFor = (intentHash: string): PaymentRequirements => {
     const p = options.payment;
-    if (!p) throw new Error('ödeme kapısı yapılandırılmamış');
+    if (!p) throw new Error('the payment gate is not configured');
     return {
       rail: p.backend.rail,
       intentHash,
@@ -258,13 +260,13 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
       'AgentCard',
     );
 
-  /** FAZ 1 iş akışı: çöz → yeniden hesapla → eşleştir → şifreli sonucu sakla. */
+  /** The PHASE 1 workflow: decrypt → recompute → match → store the encrypted result. */
   async function handleTask(rawBody: string): Promise<{ intentHash: string }> {
     let json: unknown;
     try {
       json = JSON.parse(rawBody);
     } catch {
-      throw new HttpError(400, 'gövde geçerli JSON değil');
+      throw new HttpError(400, 'body is not valid JSON');
     }
 
     let request;
@@ -275,10 +277,10 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
     }
 
     if (request.to !== options.agentId) {
-      throw new HttpError(404, `bu agent ${options.agentId}, paket ${request.to} için gönderilmiş`);
+      throw new HttpError(404, `this agent is ${options.agentId}, the payload was addressed to ${request.to}`);
     }
 
-    // --- ÖDEME KAPISI: yetki yoksa 402, iş YOK ---
+    // --- THE PAYMENT GATE: no authorisation → 402, and NO work ---
     let acceptedPayment: AuthProof | undefined;
     if (options.payment) {
       if (!request.payment) {
@@ -290,19 +292,19 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
         intentHash: request.intentHash,
       });
       if (!check.ok) {
-        throw new HttpError(402, `ödeme yetkisi kabul edilmedi: ${check.reason ?? 'bilinmiyor'}`);
+        throw new HttpError(402, `payment authorisation rejected: ${check.reason ?? 'unknown'}`);
       }
       acceptedPayment = proof;
-      log(`[bob] ödeme yetkisi kabul edildi (${proof.rail}) — para HENÜZ hareket etmedi`);
+      log(`[bob] payment authorisation accepted (${proof.rail}) — the money has NOT moved YET`);
     }
 
-    // BURADA ÇÖZME YOK. Anahtar enclave'de; dış katmanın eline yalnızca ciphertext
-    // geçiyor. "Altyapı veriyi göremez" iddiası ancak böyle doğru (CLAUDE.md §2).
+    // NO DECRYPTION HERE. The key is in the enclave; only ciphertext reaches the outer layer.
+    // That is the only way the claim "the infrastructure cannot see the data" holds (CLAUDE.md §2).
     const mode = fraudMode;
 
-    // --- hile katmanı: enclave'e GİRMEDEN önce ---
-    // Bob paketi çözemediği için brief'i "düzenleyemiyor"; yapabildiği tek şey
-    // enclave'in pubkey'ine KENDİ paketini şifreleyip yerine koymak.
+    // --- the fraud layer: BEFORE it ENTERS the enclave ---
+    // Because Bob cannot decrypt the payload he cannot "edit" the brief; the only thing he can
+    // do is encrypt HIS OWN payload to the enclave's pubkey and swap it in.
     let request2: BindingRequest = {
       cipher: request.cipher,
       agentId: options.sealAgentId ?? `agent-${options.agentId}`,
@@ -318,8 +320,9 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
       agentIdBytes32: agentIdToBytes32(options.agentId),
     });
 
-    // --- DÜRÜST binding (enclave) — FRAUD_MODE buraya GİRMEZ ---
-    // Çözme, şema doğrulama, recompute, imza doğrulama ve sonucu şifreleme HEP burada.
+    // --- the HONEST binding (the enclave) — FRAUD_MODE DOES NOT ENTER HERE ---
+    // Decryption, schema validation, recompute, signature verification and result encryption ALL
+    // happen inside.
     let bound;
     try {
       bound = await runBinding(request2, { ecies: options.eciesPrivateKey, binding: options.bindingKey }, {
@@ -327,19 +330,19 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
         onDecrypted: options.onDecrypted,
       });
     } catch (err) {
-      // Çözülemeyen/şemadan geçmeyen paket bir SUNUCU hatası değil — 400 döner.
-      throw new HttpError(400, `paket işlenemedi: ${err instanceof Error ? err.message : String(err)}`);
+      // A payload that cannot be decrypted or fails the schema is not a SERVER error — 400.
+      throw new HttpError(400, `payload could not be processed: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // --- hile katmanı: enclave'den DÖNDÜKTEN sonra ---
+    // --- the fraud layer: AFTER it RETURNS from the enclave ---
     const finalBinding = applyPostBindingFraud(mode, bound);
 
-    // `v` atıldığı için beklenen imzacıyı vererek doğru pariteyi seçtiriyoruz.
+    // Because `v` is discarded, we pass the expected signer so the right parity is chosen.
     const bindingSigner = recoverBindingSigner(finalBinding.bodyHex, finalBinding.seal, expectedBindingSigner);
     const bindingSigOk = bindingSigner.toLowerCase() === expectedBindingSigner.toLowerCase();
 
-    // Dış katmanın tuttuğu özet: hepsi zaten zincire çıkacak alanlar.
-    // `output` BURADA YOK — o yalnızca Alice'in çözebildiği şifreli sonuçta.
+    // The summary the outer layer keeps: every field is going on chain anyway.
+    // `output` is NOT HERE — it exists only in the encrypted result Alice can decrypt.
     processed.push({
       intentHash: finalBinding.claimedIntentHash,
       recomputedIntentHash: finalBinding.recomputedIntentHash,
@@ -355,15 +358,15 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
       ogVerified: finalBinding.ogVerified,
     });
 
-    // Sonuç, Alice'in tel üzerinde bildirdiği taahhüde göre saklanır — Bob başka bir
-    // işe cevap verse bile Alice kendi intentHash'iyle sorabilsin diye.
-    // Şifrelemeyi ENCLAVE yaptı; dış katman sadece taşıyor.
+    // The result is stored under the commitment Alice declared on the wire — so that even if
+    // Bob answered a different job, Alice can still ask for it by her own intentHash.
+    // The ENCLAVE did the encryption; the outer layer merely carries it.
     results.set(request.intentHash, {
       cipher: finalBinding.resultCipher,
-      // Hile uygulandıysa burada Bob'un DEĞİŞTİRDİĞİ hâli durur.
+      // When fraud was applied, what sits here is Bob's ALTERED version.
       bodyHex: finalBinding.bodyHex,
       seal: finalBinding.seal,
-      // Yetki BOB'DA durur; JobVerified çıkınca `POST /settle` ile gönderilir.
+      // The authorisation stays with BOB; once JobVerified appears it is submitted via `POST /settle`.
       payment: acceptedPayment,
       receivedAt: Date.now(),
     });
@@ -391,8 +394,8 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
         }
         if (req.method === 'POST' && path === '/task') {
           const accepted = await handleTask(await readBody(req));
-          // Yanıt yalnızca taahhüdü taşır — `match` şifreli sonucun İÇİNDE,
-          // gözlemci işin sonucunu düz metin olarak göremesin diye.
+          // The response carries only the commitment — `match` lives INSIDE the encrypted result,
+          // so an observer cannot read the outcome of the job in the clear.
           sendJson(res, 202, { accepted: true, intentHash: accepted.intentHash });
           return;
         }
@@ -403,7 +406,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
           try {
             requested = (JSON.parse(body) as { mode?: unknown }).mode;
           } catch {
-            throw new HttpError(400, 'gövde geçerli JSON değil');
+            throw new HttpError(400, 'body is not valid JSON');
           }
           if (!isFraudMode(requested)) {
             throw new HttpError(400, `bilinmeyen mod: ${String(requested)}`);
@@ -418,23 +421,23 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
           sendJson(res, 200, { mode: fraudMode });
           return;
         }
-        // Settlement'ı BOB tetikler — ekonomik teşvik onda. Kapı `assertJobVerified`:
-        // doğrulanmamış iş için para serbest bırakılmaz (payment/guard.ts).
+        // BOB triggers settlement — the economic incentive is his. The gate is `assertJobVerified`:
+        // no money is released for an unverified job (payment/guard.ts).
         if (req.method === 'POST' && path === '/settle') {
-          if (!options.payment) throw new HttpError(400, 'ödeme kapısı yapılandırılmamış');
+          if (!options.payment) throw new HttpError(400, 'the payment gate is not configured');
           const body = await readBody(req);
           let parsed: { intentHash?: string; jobVerifiedTx?: string };
           try {
             parsed = JSON.parse(body) as typeof parsed;
           } catch {
-            throw new HttpError(400, 'gövde geçerli JSON değil');
+            throw new HttpError(400, 'body is not valid JSON');
           }
           if (!parsed.intentHash || !parsed.jobVerifiedTx) {
             throw new HttpError(400, 'intentHash ve jobVerifiedTx zorunlu');
           }
           const stored = results.get(parsed.intentHash);
-          if (!stored) throw new HttpError(404, 'bu intentHash için iş yok');
-          if (!stored.payment) throw new HttpError(400, 'bu iş için saklanmış ödeme yetkisi yok');
+          if (!stored) throw new HttpError(404, 'no job for this intentHash');
+          if (!stored.payment) throw new HttpError(400, 'no stored payment authorisation for this job');
           if (stored.settled) {
             sendJson(res, 200, { alreadySettled: true, receipt: stored.settled });
             return;
@@ -445,8 +448,8 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
             log(`[bob] settle edildi: ${receipt.explorerUrl}`);
             sendJson(res, 200, { receipt });
           } catch (err) {
-            // Doğrulanmamış iş → SettlementNotAuthorizedError. Bu bir hata değil,
-            // sistemin doğru davranışı: "ödeme asla settle olmadı".
+            // An unverified job → SettlementNotAuthorizedError. This is not a failure but the
+            // system behaving correctly: "the payment never settled".
             throw new HttpError(402, err instanceof Error ? err.message : String(err));
           }
           return;
@@ -454,7 +457,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
         if (req.method === 'GET' && path.startsWith('/result/')) {
           const stored = results.get(path.slice('/result/'.length));
           if (!stored) {
-            sendJson(res, 404, { error: 'NOT_FOUND', message: 'bu intentHash için sonuç yok' });
+            sendJson(res, 404, { error: 'NOT_FOUND', message: 'no result for this intentHash' });
             return;
           }
           sendJson(res, 200, { cipher: stored.cipher, bodyHex: stored.bodyHex, seal: stored.seal });
@@ -462,7 +465,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
         }
         sendJson(res, 404, { error: 'NOT_FOUND' });
       } catch (err) {
-        // 402: gövde ödeme şartlarını taşır — istemci bunu okuyup yetkilendirir.
+        // 402: the body carries the payment requirements — the client reads them and authorises.
         if (err instanceof PaymentRequiredError) {
           sendJson(res, 402, { error: 'PAYMENT_REQUIRED', accepts: [err.requirements] });
           return;
@@ -471,7 +474,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
           sendJson(res, err.status, { error: 'BAD_REQUEST', message: err.message });
           return;
         }
-        log(`[bob] BEKLENMEYEN HATA: ${err instanceof Error ? err.stack : String(err)}`);
+        log(`[bob] UNEXPECTED ERROR: ${err instanceof Error ? err.stack : String(err)}`);
         sendJson(res, 500, { error: 'INTERNAL_ERROR' });
       }
     })();
@@ -500,26 +503,26 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
   };
 }
 
-/** Doğrudan çalıştırılırsa .env'den kurulup ayağa kalkar. */
+/** When run directly, it configures itself from .env and starts up. */
 export async function main(): Promise<void> {
   const { loadConfig, optionalEnv, requireEnv } = await import('@ca/shared');
   const cfg = loadConfig();
   const verifyingContract = optionalEnv('VERIFIER_ADDRESS') ?? PLACEHOLDER_VERIFIER;
   if (verifyingContract === PLACEHOLDER_VERIFIER) {
     console.warn(
-      `[bob] UYARI: VERIFIER_ADDRESS boş — EIP-712 domain'inde yer tutucu ${PLACEHOLDER_VERIFIER} kullanılıyor.\n` +
-        `      P3-A deploy edilince .env'e yazılmalı, yoksa imzalar kontratta doğrulanamaz.`,
+      `[bob] WARNING: VERIFIER_ADDRESS is empty — using the placeholder ${PLACEHOLDER_VERIFIER} in the EIP-712 domain.\n` +
+        `      Once P3-A is deployed it must be written to .env, otherwise signatures cannot be verified by the contract.`,
     );
   }
   const agent = createBobAgent({
-    eciesPrivateKey: requireEnv('BOB_ECIES_PRIV', 'pnpm gate:P1-B üretir'),
+    eciesPrivateKey: requireEnv('BOB_ECIES_PRIV', 'generated by pnpm gate:P1-B'),
     agentId: requireEnv('BOB_AGENT_ID', 'pnpm gate:P0-F doldurur'),
     owner: new Wallet(cfg.PRIVATE_KEY_BOB).address,
     skills: ['market-analysis'],
     price: { amount: '1000000', asset: 'USDC', decimals: 6 },
     verifyingContract,
-    // FAZ 1: binding anahtarı Bob'un cüzdanından TÜRETİLİYOR. P3-C'de bunun yerini
-    // enclave'in ürettiği seal key alacak ve `setEnclaveSigner` ile on-chain kaydedilecek.
+    // PHASE 1: the binding key is DERIVED from Bob's wallet. In P3-C it is replaced by the seal
+    // key the enclave generates, registered on chain with `setEnclaveSigner`.
     bindingKey: keccak256(toUtf8Bytes(`phase1-binding-key/${cfg.PRIVATE_KEY_BOB}`)),
     fraudMode: isFraudMode(cfg.FRAUD_MODE) ? cfg.FRAUD_MODE : 'none',
     port: Number(process.env.BOB_PORT ?? 8801),

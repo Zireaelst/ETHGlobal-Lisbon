@@ -1,16 +1,18 @@
-// compute-fixture.ts — kayıtlı 0G yanıtlarını AĞA ÇIKMADAN geri oynatan backend.
+// compute-fixture.ts — replays recorded 0G responses WITHOUT TOUCHING THE NETWORK.
 //
-// BUILD-PLAN P0-D/4: her gerçek 0G çağrısı fixture'a yazılır; `MOCK_0G=1` modunda
-// istek fixture'dan karşılanır. UI, kontrat ve subgraph işi bununla yapılır — 12.400
-// çağrılık bütçemiz var ama her `pnpm gate:*` koşusunda para yakmanın anlamı yok.
+// BUILD-PLAN P0-D/4: every real 0G call is written to a fixture; in `REPLAY_0G=1` mode the
+// request is served from that fixture. UI, contract and subgraph work is done with this —
+// we have a budget of ~12,400 calls, but there is no sense in burning money on every
+// `pnpm gate:*` run.
 //
-// DÜRÜSTLÜK: replay backend'i `provider: 'fixture-replay'` etiketi taşır ve bu etiket
-// arayüze kadar çıkar (describeCompute → "canlı çağrı değil"). Kayıtlı yanıtı canlıymış
-// gibi göstermiyoruz.
+// HONESTY: the replay backend carries the `provider: 'fixture-replay'` label and that label
+// reaches the UI (describeCompute → "not a live call"). We do not present a recorded
+// response as if it were live.
 //
-// AMA replay ETİKET DEĞİL, DOĞRULAMA yapıyor: kayıtlı imza her oynatmada yeniden
-// kurtarılıyor ve kayıtlı imzacıyla karşılaştırılıyor. Fixture kurcalanırsa
-// `ogVerified` false olur. Yani "kayıttan geliyor" demek "kontrolsüz" demek değil.
+// BUT the replay VERIFIES, it does not merely LABEL: the recorded signature is recovered
+// again on every replay and compared against the recorded signer. If the fixture is
+// tampered with, `ogVerified` becomes false. So "it comes from a recording" does not mean
+// "unchecked".
 
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -19,7 +21,7 @@ import { verifyMessage } from 'ethers';
 
 import type { ComputeBackend, ComputeRequest, ComputeResult } from './compute.js';
 
-/** Diskte duran bir 0G koşusunun şekli (scripts/og-spike.ts üretir). */
+/** The shape of a 0G run stored on disk (produced by scripts/og-spike.ts). */
 export interface RecordedRun {
   request: { endpoint: string; model: string; prompt: string };
   rawResponseText: string;
@@ -28,15 +30,15 @@ export interface RecordedRun {
   chatID: string;
   signature: { text: string; signature: string };
   verification: { expectedSigner: string; responseSha256?: string };
-  /** İsteğe bağlı: bu koşuyu üreten isteğin anahtarı. Yoksa dosya "genel" kayıttır. */
+  /** Optional: the key of the request that produced this run. Without it the file is a "generic" record. */
   requestKey?: string;
 }
 
 /**
- * Bir compute isteğinin deterministik anahtarı.
+ * The deterministic key of a compute request.
  *
- * Alan adlarını da hash'e katıyoruz ki {brief:"a",data:"b"} ile {brief:"b",data:"a"}
- * aynı anahtarı üretmesin.
+ * Field names go into the hash too, so that {brief:"a",data:"b"} and {brief:"b",data:"a"}
+ * do not produce the same key.
  */
 export function computeRequestKey(request: ComputeRequest): string {
   const canonical = JSON.stringify({
@@ -47,7 +49,7 @@ export function computeRequestKey(request: ComputeRequest): string {
   return createHash('sha256').update(canonical).digest('hex');
 }
 
-/** Gerçek bir 0G koşusunu diske yaz — sonraki replay'ler bunu kullanır. */
+/** Write a real 0G run to disk — later replays use it. */
 export function recordRun(dir: string, run: RecordedRun): string {
   mkdirSync(dir, { recursive: true });
   const name = run.requestKey ? `run-${run.requestKey.slice(0, 16)}.json` : 'run-1.json';
@@ -57,17 +59,17 @@ export function recordRun(dir: string, run: RecordedRun): string {
 }
 
 export interface FixtureBackendOptions {
-  /** fixtures/og dizini. */
+  /** The fixtures/og directory. */
   dir: string;
   /**
-   * İstek anahtarı eşleşmezse ne yapılsın?
-   *   'fallback' → eldeki herhangi bir kayıt oynatılır (geliştirme kolaylığı)
-   *   'strict'   → hata fırlatılır (kapılarda bunu kullan)
+   * What to do when the request key does not match?
+   *   'fallback' → replay any available record (convenient during development)
+   *   'strict'   → throw (use this in gates)
    */
   onMiss?: 'fallback' | 'strict';
 }
 
-/** Diskteki tüm kayıtları oku. */
+/** Read every record on disk. */
 function loadRuns(dir: string): Map<string, RecordedRun> {
   const runs = new Map<string, RecordedRun>();
   if (!existsSync(dir)) return runs;
@@ -84,7 +86,7 @@ export function createFixtureComputeBackend(options: FixtureBackendOptions): Com
   const runs = loadRuns(options.dir);
   if (runs.size === 0) {
     throw new Error(
-      `${options.dir} altında kayıtlı 0G koşusu yok — önce: npx tsx scripts/og-spike.ts`,
+      `no recorded 0G run under ${options.dir} — run this first: npx tsx scripts/og-spike.ts`,
     );
   }
 
@@ -97,13 +99,13 @@ export function createFixtureComputeBackend(options: FixtureBackendOptions): Com
       let run = runs.get(key);
       if (!run) {
         if (onMiss === 'strict') {
-          throw new Error(`fixture yok: istek anahtarı ${key.slice(0, 16)}… (strict mod)`);
+          throw new Error(`no fixture: request key ${key.slice(0, 16)}… (strict mode)`);
         }
         run = runs.values().next().value as RecordedRun;
       }
 
-      // Kayıtlı imzayı HER oynatmada yeniden doğruluyoruz — fixture kurcalanırsa
-      // ogVerified false olur. AĞA ÇIKILMIYOR: verifyMessage saf hesap.
+      // We re-verify the recorded signature on EVERY replay — if the fixture is tampered
+      // with, ogVerified becomes false. NO NETWORK ACCESS: verifyMessage is pure computation.
       let ogSigner: string | undefined;
       let ogVerified = false;
       try {
@@ -120,8 +122,8 @@ export function createFixtureComputeBackend(options: FixtureBackendOptions): Com
         ogVerified,
         provider: 'fixture-replay',
         chatId: run.chatID,
-        // Kayıttaki GERÇEK gecikmeyi taşıyoruz; replay'in kendi hızını değil.
-        // Aksi halde P0-G bütçesi olduğundan iyi görünürdü.
+        // We carry the REAL latency from the recording, not the replay's own speed.
+        // Otherwise the P0-G budget would look better than it is.
         latencyMs: run.latencyMs,
         replayedAt: Date.now() - started,
       } as ComputeResult & { replayedAt: number };

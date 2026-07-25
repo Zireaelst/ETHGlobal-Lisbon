@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "//": "demo-dApp (P5-A). Build zinciri P5'te kurulacak — şu an tsc -b kapsamı dışında.",
+  "//": "The demo dApp (P5-A). Its build chain is set up in P5 — currently outside the scope of tsc -b.",
   "scripts": {
     "build": "echo 'web: P5-A'de kurulacak' && exit 0"
   }
