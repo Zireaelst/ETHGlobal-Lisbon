@@ -1,9 +1,9 @@
 {
-  "capturedAt": "2026-07-25T06:44:45.671Z",
+  "capturedAt": "2026-07-25T07:39:37.755Z",
   "subgraphUrl": "https://api.studio.thegraph.com/query/1756943/confidential-agents/v0.0.3",
-  "indexedBlock": 44596796,
-  "chainHead": 44596799,
-  "lagBlocks": 3,
+  "indexedBlock": 44598443,
+  "chainHead": 44598445,
+  "lagBlocks": 2,
   "bobFromSubgraph": {
     "agentId": "8429",
     "owner": "0x4f5cd20a4a3fbc9957f8d2a8d27d658b51fda326",
@@ -13,8 +13,8 @@
     "endpoint": "http://127.0.0.1:8811/task",
     "eciesPubKey": "0x043c3a176cb72e342666fc607d61ac9950fbe001c07ef8201a8834f576d54047152f6dda65006cb97c236c990d23094834637b69df5744b6c02b5ed9ca5ae9f34f",
     "stealthMetaAddress": "st:base:0x02ee3df921edef538a2b434e2806d215e2767d89f7532b05c794506880c11a1440038aff33d6222cfb9d182c628f462f909fb6b8ed1ba347f1feb49e02e62593be78",
-    "verifiedDeliveries": 29,
-    "rejectedAttempts": 21,
+    "verifiedDeliveries": 49,
+    "rejectedAttempts": 38,
     "registeredBlock": "44584172"
   },
   "indexedAgentIds": [
@@ -27,8 +27,8 @@
   "agentCount": 4,
   "registryCounters": {
     "agentCount": 4,
-    "verifiedJobs": 29,
-    "rejectedJobs": 21
+    "verifiedJobs": 49,
+    "rejectedJobs": 38
   },
   "jobs": [
     {
@@ -41,10 +41,55 @@
       }
     },
     {
+      "id": "0x0794b9d041af43f4cb42e09993d8382f21a55e2fbf484f8a21a42a3f5950d5fb",
+      "status": "REJECTED",
+      "rejectionCode": "MatchFalse",
+      "price": "0",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x1205c098edb1302e66fd5b03a7156b3b48e7086249043b586538aa961258af59",
+      "status": "REJECTED",
+      "rejectionCode": "MatchFalse",
+      "price": "0",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x13ba3bfb6eee68fefb462a56cbe63d0c888299c9f0bf22e25c7092c07b55174b",
+      "status": "REJECTED",
+      "rejectionCode": "MatchFalse",
+      "price": "0",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
       "id": "0x13e27589cb3a0d88b0f1439ccb87f24a4fe6b953b41bb928070614e39c721cd8",
       "status": "VERIFIED",
       "rejectionCode": null,
       "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x161c680b97f803da5cc2c4d644c4c81bfa70f5576bdc3438cc7413ce8031528e",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x17497bedd7f39c61b6635bee9b1fed53543d9723bd7bddf28f42d8bd5a029792",
+      "status": "REJECTED",
+      "rejectionCode": "BadClientSig",
+      "price": "0",
       "agent": {
         "id": "8429"
       }
@@ -86,6 +131,15 @@
       }
     },
     {
+      "id": "0x24847de1f7e6437bd70c718fe106379e6e30d565e0028dcf262222c1ceb69448",
+      "status": "REJECTED",
+      "rejectionCode": "BadEnclaveSig",
+      "price": "0",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
       "id": "0x284aaa5d289b29a7019622e61c741f3e0c6647d73ff69405875b2d71a37f5c65",
       "status": "VERIFIED",
       "rejectionCode": null,
@@ -104,7 +158,34 @@
       }
     },
     {
+      "id": "0x397c581f5aa7843c1ba19b30ebf425cddd1fd44eb6623d4ce68eb38ae70901ec",
+      "status": "REJECTED",
+      "rejectionCode": "BadClientSig",
+      "price": "0",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x3caf660229141f104affd61cabf66438cfac48ac46d4e46d8a009135b114ea3d",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
       "id": "0x3db95fd2a10f995ec8c200514c2ba1830ae34e74efa414d821c324a9bdb7abfd",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x3e4e15fdf9e0c278d0a61d32aadc62d38c86b6bd8c205e84987e179cec1cf705",
       "status": "VERIFIED",
       "rejectionCode": null,
       "price": "1000000",
@@ -149,6 +230,15 @@
       }
     },
     {
+      "id": "0x4c5a1473a88fe159c87528be3726df1633edf68c98999a7cb71a467660e99247",
+      "status": "REJECTED",
+      "rejectionCode": "MatchFalse",
+      "price": "0",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
       "id": "0x5211296fbb04735010151ae5926fd6c79120ccfefed0bef02a03523b7711d532",
       "status": "REJECTED",
       "rejectionCode": "MatchFalse",
@@ -176,6 +266,15 @@
       }
     },
     {
+      "id": "0x5631030e2c49fa9e25d9a69d0c6e5bbbe5c556e24968d73758fe673264830d18",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
       "id": "0x57ce9fc903c9c1375d9ca257b1651f5ead2c9d452fabd4493865babde245d896",
       "status": "REJECTED",
       "rejectionCode": "MatchFalse",
@@ -194,10 +293,37 @@
       }
     },
     {
+      "id": "0x5b667a3317e0473feec7ed0b4da401fd52775049c7349f238e88dfa582dc88c3",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x5f41d79d989f7e2695d5488d8aab4e08c997f08e550f7aa38cb12fa3ad79ea66",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
       "id": "0x6190d032e43225be4dfc66a8c8195744b9a23c03a58ef46e27e4847a9ac60bd0",
       "status": "REJECTED",
       "rejectionCode": "MatchFalse",
       "price": "0",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x61e5df8df405e45bc0a60019981cc797f19552a0047486b46758f42ad27ad68b",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
       "agent": {
         "id": "8429"
       }
@@ -221,6 +347,33 @@
       }
     },
     {
+      "id": "0x6b95233301bc1df20611dee7a78b25e9366de01e081f75e20d0b077688f60d48",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x6eaa19ae4d2d0ec8214d16419dc1dfcb9496f2c9a8b43fe2faac1166c7f0aa44",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x700f1b31ac38e6d0459b2f485043c1bbc2142d370434a87457bd611ae251f2ef",
+      "status": "REJECTED",
+      "rejectionCode": "MatchFalse",
+      "price": "0",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
       "id": "0x7433dbc00cc1c3a9d03a7ffc34eb023184089738ad921fce5fc23ce38e1d1ff8",
       "status": "VERIFIED",
       "rejectionCode": null,
@@ -234,6 +387,33 @@
       "status": "VERIFIED",
       "rejectionCode": null,
       "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x78a8adddbde9dbd0441735541a1cbb03c95608fc823b21ed1194f549a2579b3a",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x79a4d327505ddbb8b53a5303ea79531599e757cf5c11c18a658e9881b5ea6cb3",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x7bfce93b0c57cd6aff795aa6d7eb7f76161e3e458191e85fc9816bb7649a03d1",
+      "status": "REJECTED",
+      "rejectionCode": "BadEnclaveSig",
+      "price": "0",
       "agent": {
         "id": "8429"
       }
@@ -266,6 +446,15 @@
       }
     },
     {
+      "id": "0x93f2918050d2c36163d62138fe291c15e203d513a78e2f05a8ce94da581da0b5",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
       "id": "0x94bb331e851599bc36610e4bdbf60e1d8f2dd43ade4c85f238d9287704f3a75a",
       "status": "VERIFIED",
       "rejectionCode": null,
@@ -284,199 +473,10 @@
       }
     },
     {
-      "id": "0x9c0fcb6e98311133e6869932c54dfea3ad49e0efc2be53a53d4bf400078ea64a",
+      "id": "0x98b3cb9b880a19758254c9136299f8dbd6e71fae246bc0010f848baadb329128",
       "status": "REJECTED",
       "rejectionCode": "MatchFalse",
       "price": "0",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0x9d10f42e4db8556a857a720c42896b4a9f322a205dd02a49bde5722a73a2f2a6",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0x9d9feb4d984fb6a48cd333fa6be0f66305de002456eca03ab4584a8623525836",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0x9ebe4d5a39fda2f6fdb8d77821ea3bbb6e17b050095c58fcdd72cd679cc2b413",
-      "status": "REJECTED",
-      "rejectionCode": "BadEnclaveSig",
-      "price": "0",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xa04cfb8980c8882b5f32f4bc44c55f650cbe55f2d1e43938ef4b681e00370355",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xa163d3283edcf6b4f263dfae6fdbbff2a8338947c034d119e83ea72b89e64287",
-      "status": "REJECTED",
-      "rejectionCode": "MatchFalse",
-      "price": "0",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xa516afdf5364a3a4e7764e0c0d21374bff7f83f6c5c9a86b8af8434776200386",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xa549ad9b86f15fd79445a3d84475312ced6cf7b299687a3bfe6876dfa6f277f9",
-      "status": "REJECTED",
-      "rejectionCode": "BadClientSig",
-      "price": "0",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xbb3d3d5004a93d3ec0235f339735b989d481496a3f5d95d8a173bbb89a97ce17",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xbb8b38993e4ed7f6c0ca1876f048d7ec1cd3b660e8ac51bd7753700663b7b49a",
-      "status": "REJECTED",
-      "rejectionCode": "BadEnclaveSig",
-      "price": "0",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xbc2a9c38aeb1ecc66262a4f1a08560c64a45bf398e9be180c234267b6f76106f",
-      "status": "REJECTED",
-      "rejectionCode": "BadEnclaveSig",
-      "price": "0",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xc17337f1fd78b4c55cf572350493cf6acea15a6a3d4c6ff855286ade196c45a0",
-      "status": "REJECTED",
-      "rejectionCode": "BadClientSig",
-      "price": "0",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xc3e9ec4ea07ab78ffc550e710e5a781281f02fe032e848d3958b6936f085033e",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xc4b9543f4db681cf837b3d09174db800ede8dd2243d8b10c70090a7a3bcc93e1",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xc4da2c65c8184f55f29cbfe2965a434e459441347f7de587619c6f3a59946479",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xc710937514195a83450c94b4f71430a2d0294f283a019cdef30e50812ea5ebb3",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xc94b6d40d2c1c35af62c8f1a227317710cdf2096f886f74e5801ab6df3a023d3",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xd31c5e2f509093277097e4cbcb0d6748ac586a574cd9cf2115938d116fa1e00f",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xdeed023d211198d25233d7df6e780cb0738bb6a6530fe9684d33a2d3093d7f80",
-      "status": "REJECTED",
-      "rejectionCode": "MatchFalse",
-      "price": "0",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xede23e3b27bf3b2d48d0eb54715afccf527bb41df70ecac8d4549661a9b7394c",
-      "status": "REJECTED",
-      "rejectionCode": "BadEnclaveSig",
-      "price": "0",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xf47ac60fbb9c587b5e6b2e9961f4a2ddc098ba630520bcefbbecb4a17d0f9cc2",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
-      "agent": {
-        "id": "8429"
-      }
-    },
-    {
-      "id": "0xf8b2d59d78f42823d19de5438f44567ea6509b17ce7363a7de7da363871963aa",
-      "status": "VERIFIED",
-      "rejectionCode": null,
-      "price": "1000000",
       "agent": {
         "id": "8429"
       }

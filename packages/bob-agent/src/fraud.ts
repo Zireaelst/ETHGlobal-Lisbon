@@ -1,20 +1,32 @@
 // fraud.ts — Bob'un ENCLAVE DIŞI hile katmanı (BUILD-PLAN P1-D).
 //
-// Buradaki kod enclave'e girmez. `@ca/bob-binding` içindeki binding her koşulda dürüst
-// çalışır; hile ancak enclave'e giden iş emrini ya da enclave'den dönen imzayı DEĞİŞTİREREK
-// yapılabilir. Demonun tek cümlelik iddiası bu ayrımdan geliyor:
+// Buradaki kod enclave'e girmez. `@ca/bob-binding` her koşulda dürüst çalışır.
+// Demonun tek cümlelik iddiası bu ayrımdan geliyor:
 // "Bob hile yapabilir ama enclave onun adına yalan söyleyemez."
 //
-// | Mod         | Bob ne yapıyor                                  | Beklenen sonuç          |
-// |-------------|--------------------------------------------------|-------------------------|
-// | none        | normal                                           | JobVerified             |
-// | substitute  | enclave'e FARKLI bir brief besler                 | match:false             |
-// | tamper      | data'nın bir byte'ını değiştirir                  | match:false             |
-// | forge       | gövdeyi enclave-DIŞI bir anahtarla imzalar        | BadEnclaveSig           |
-// | selfintent  | kendi intent'ini uydurur, Alice imzası yok        | BadClientSig            |
+// ÖNEMLİ — ECIES sınırı enclave'e taşındıktan sonra hile ŞEKLİ DEĞİŞTİ:
+// Bob artık Alice'in paketini ÇÖZEMİYOR, dolayısıyla brief'i "düzenleyemiyor".
+// Yapabildiği tek şey, enclave'in public key'ine KENDİ paketini şifreleyip
+// Alice'inkinin yerine göndermek. Bu, gerçek dünyada yapılabilecek saldırının
+// ta kendisi — üstelik Bob ne sipariş edildiğini görmediği için körlemesine
+// uyduruyor. Anlatı daha da güçlü: "ne istendiğini bilmeden yanlış işi cevaplamak".
+//
+// | Mod         | Bob ne yapıyor                                    | Beklenen sonuç |
+// |-------------|---------------------------------------------------|----------------|
+// | none        | paketi olduğu gibi iletir                          | JobVerified    |
+// | substitute  | enclave'e KENDİ uydurduğu paketi gönderir          | MatchFalse     |
+// | tamper      | aynı mekanizma, "veriyi bozdum" anlatısıyla        | MatchFalse     |
+// | forge       | gövdeyi enclave-DIŞI bir anahtarla imzalar         | BadEnclaveSig  |
+// | selfintent  | kendi intent'ini uydurur, Alice imzası yok         | BadClientSig   |
 
 import type { BindingRequest, BindingResponse } from '@ca/bob-binding';
-import { buildIntentHash, signSeal, type Constraints } from '@ca/shared';
+import {
+  buildIntentHash,
+  encryptFor,
+  signSeal,
+  type Constraints,
+  type IntentWire,
+} from '@ca/shared';
 import { Wallet, keccak256, toUtf8Bytes } from 'ethers';
 
 export const FRAUD_MODES = ['none', 'substitute', 'tamper', 'forge', 'selfintent'] as const;
@@ -24,7 +36,7 @@ export function isFraudMode(v: unknown): v is FraudMode {
   return typeof v === 'string' && (FRAUD_MODES as readonly string[]).includes(v);
 }
 
-/** Her mod için kontratın vereceği kararın FAZ 1 karşılığı — kapı bunu bekliyor. */
+/** Her mod için kontratın vereceği kararın karşılığı — kapı bunu bekliyor. */
 export const EXPECTED_OUTCOME: Record<FraudMode, string> = {
   none: 'JobVerified',
   substitute: 'MatchFalse',
@@ -33,80 +45,98 @@ export const EXPECTED_OUTCOME: Record<FraudMode, string> = {
   selfintent: 'BadClientSig',
 };
 
-export interface FraudContext {
-  /** Alice'in gerçekten imzaladığı intent bilgisi (selfintent bunu atacak). */
-  claimedIntentHash: string;
-  clientSignatureValid: boolean;
+/** Bob'un dış katmanının tel üzerinden GÖREBİLDİĞİ tek şeyler. */
+export interface WireContext {
+  /** Alice'in taahhüdü — şifre dışında geliyor (zaten zincirde açık). */
+  intentHash: string;
+  /** Alice'in ECIES pubkey'i — sonucu ona ulaştırabilmek için. */
+  replyPubKey: string;
+  /** Enclave'in pubkey'i — Bob KENDİ paketini buna şifreleyebilir. */
+  enclavePublicKey: string;
+  /** Bob'un ERC-8004 agentId'si (bytes32) — uydurma intent kurarken lazım. */
+  agentIdBytes32: string;
 }
 
+/** Bob'un uydurduğu paketin sabit içeriği — demo tekrar edilebilir olsun diye. */
+const FORGED_CONSTRAINTS: Constraints = { model: 'cheap-model', maxTokens: 128, temperature: 0 };
+const FORGED_NONCE = 424242n;
+const FORGED_PRICE = 1_000_000n;
+
 /**
- * Enclave'e GİRMEDEN ÖNCE iş emrini boz.
+ * Enclave'e GİRMEDEN ÖNCE paketi değiştir.
  *
- * `substitute` ve `tamper` burada olur; ikisi de enclave'in yeniden hesapladığı
- * taahhüdü Alice'inkinden ayırır ve `match:false` üretir.
+ * Bob Alice'in paketini çözemediği için "brief'i düzenlemek" mümkün değil;
+ * yapabildiği tek şey KENDİ paketini şifreleyip yerine koymak.
  */
-export function applyPreBindingFraud(
+export async function applyPreBindingFraud(
   mode: FraudMode,
   request: BindingRequest,
-  ctx: FraudContext,
-): { request: BindingRequest; ctx: FraudContext } {
-  switch (mode) {
-    case 'substitute':
-      // Bob sipariş edilen işi değil, BAŞKA bir işi cevaplatıyor.
-      return {
-        request: {
-          ...request,
-          brief: 'Write a short generic market summary. (Bob substituted this brief.)',
-        },
-        ctx,
-      };
+  ctx: WireContext,
+): Promise<BindingRequest> {
+  if (mode === 'none' || mode === 'forge') return request;
 
-    case 'tamper': {
-      // Girdi verisinin tek bir byte'ı değişiyor — en sinsi saldırı.
-      const data = request.data;
-      const i = Math.floor(data.length / 2);
-      const ch = data[i] === '0' ? '1' : '0';
-      return { request: { ...request, data: `${data.slice(0, i)}${ch}${data.slice(i + 1)}` }, ctx };
-    }
+  const forged = await buildForgedEnvelope(mode, ctx);
+  return { ...request, cipher: forged };
+}
 
-    case 'selfintent': {
-      // Bob kendi işini uyduruyor: içerikle TUTARLI bir intentHash üretiyor, böylece
-      // enclave match:true diyor — ama bu hash'i Alice imzalamadı. Reddi client
-      // imzası kontrolü verecek (kontratta BadClientSig).
-      const forgedBrief = 'Bob invented this job so he could claim payment for it.';
-      const forgedIntentHash = buildIntentHash({
-        brief: forgedBrief,
-        data: request.data,
-        constraints: request.constraints,
-        price: request.price,
-        nonce: request.nonce,
-      });
-      return {
-        request: { ...request, brief: forgedBrief, claimedIntentHash: forgedIntentHash },
-        ctx: { claimedIntentHash: forgedIntentHash, clientSignatureValid: false },
-      };
-    }
+async function buildForgedEnvelope(mode: FraudMode, ctx: WireContext): Promise<string> {
+  const brief =
+    mode === 'selfintent'
+      ? 'Bob invented this job so he could claim payment for it.'
+      : mode === 'tamper'
+        ? 'Bob claims to have analysed the data, with figures he made up.'
+        : 'Write a short generic market summary. (Bob substituted this brief.)';
+  const data =
+    mode === 'tamper'
+      ? 'Q3-2026 revenue 99,999,999 EUR (fabricated — Bob never saw the real data).'
+      : 'Bob has no access to the real dataset.';
 
-    case 'none':
-    case 'forge':
-      return { request, ctx };
-  }
+  // `selfintent`: Bob İÇERİKLE TUTARLI bir taahhüt uyduruyor. Böylece enclave
+  // dürüstçe match:true diyor ve reddin CLIENT İMZASINDAN gelmesi zorunlu oluyor.
+  // Tutarsız uydursaydı mod MatchFalse'a çöker, ayrı bir ret kodunu kaybederdik.
+  const intentHash =
+    mode === 'selfintent'
+      ? buildIntentHash({ brief, data, constraints: FORGED_CONSTRAINTS, price: FORGED_PRICE, nonce: FORGED_NONCE })
+      : ctx.intentHash; // substitute/tamper: Alice'in taahhüdünü taşır ama içerik başka
+
+  // Alice'in imzası yok ve Bob onu üretemez — rastgele bir cüzdanla imzalıyor.
+  // Enclave bunu `clientSigOk: false` olarak dürüstçe raporlayacak.
+  const impostor = new Wallet(keccak256(toUtf8Bytes('bob-impostor-client-key')));
+  const intent: IntentWire = {
+    intentHash,
+    client: impostor.address,
+    agentId: ctx.agentIdBytes32,
+    price: FORGED_PRICE.toString(),
+    deadline: (BigInt(Math.floor(Date.now() / 1000)) + 3600n).toString(),
+  };
+
+  return encryptFor(ctx.enclavePublicKey, {
+    v: 1,
+    intent,
+    // Geçerli biçimde ama Alice'e ait OLMAYAN bir imza.
+    aliceSig: `0x${'11'.repeat(65)}`,
+    brief,
+    data,
+    constraints: FORGED_CONSTRAINTS,
+    nonce: FORGED_NONCE.toString(),
+    // Alice'in cevabı okuyabilmesi için KENDİ pubkey'ini koruyor: Bob parasını
+    // almak istiyor, Alice'i sağır etmek değil.
+    replyPubKey: ctx.replyPubKey,
+  });
 }
 
 /**
  * Enclave'den DÖNDÜKTEN sonra sonucu boz.
  *
- * `forge`: gövde doğru ama imza enclave'in anahtarıyla değil, Bob'un kendi anahtarıyla
- * atılıyor. Kayıtlı `enclaveSignerOf[agentId]` ile uyuşmadığı için kontrat reddedecek.
+ * `forge`: gövde doğru ama imza enclave'in anahtarıyla değil, Bob'un kendi
+ * anahtarıyla atılıyor. Kayıtlı `enclaveSignerOf[agentId]` ile uyuşmadığı için
+ * kontrat reddeder.
  */
 export function applyPostBindingFraud(mode: FraudMode, response: BindingResponse): BindingResponse {
   if (mode !== 'forge') return response;
 
-  // Deterministik "sahte" anahtar — demo tekrar edilebilir olsun diye rastgele değil.
   const rogueKey = keccak256(toUtf8Bytes('bob-rogue-key/not-the-enclave'));
   const rogue = new Wallet(rogueKey);
-  // Gövde DOĞRU kalıyor; sadece imza enclave'in anahtarıyla değil Bob'unkiyle atılıyor.
-  // Kontrat `enclaveSignerOf[agentId]` ile uyuşmadığı için BadEnclaveSig verecek.
   return {
     ...response,
     seal: signSeal(

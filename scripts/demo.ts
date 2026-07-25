@@ -209,7 +209,9 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   const result: EchoResult = job.result;
   // Alice, zincire gönderilecek alanları Bob'un SÖZÜNDEN değil, enclave'in
   // İMZALADIĞI gövdeden çözer.
-  const body = decodeBody(result.bodyHex);
+  // Zincire giden, Bob'un İDDİA ETTİĞİ gövdedir — enclave'in Alice'e şifrelediği
+  // kopya değil. `forge` modunda ikisi ayrışır ve fark tam da orada görünür.
+  const body = decodeBody(job.claimedBodyHex);
 
   log(
     `[demo] enclave: match=${body.match} · ${describeCompute({ provider: result.computeProvider, ogVerified: result.ogVerified })}`,
@@ -269,11 +271,11 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     deadline: job.intent.deadline,
   };
   const seal = {
-    agentId: result.seal.agentId,
-    sealId: result.seal.sealId,
-    timestamp: result.seal.timestamp,
-    r: result.seal.r,
-    s: result.seal.s,
+    agentId: job.claimedSeal.agentId,
+    sealId: job.claimedSeal.sealId,
+    timestamp: job.claimedSeal.timestamp,
+    r: job.claimedSeal.r,
+    s: job.claimedSeal.s,
   };
   const args = [intent, job.signature, body.outputHash, body.match, body.ogSigHash, seal] as const;
 

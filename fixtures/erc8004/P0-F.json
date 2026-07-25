@@ -1,9 +1,9 @@
 {
-  "capturedAt": "2026-07-25T03:55:08.162Z",
+  "capturedAt": "2026-07-25T07:39:08.057Z",
   "chainId": "84532",
   "registry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
   "registryCodeBytes": 130,
-  "headBlock": 44591710,
+  "headBlock": 44598430,
   "agents": [
     {
       "who": "Bob",

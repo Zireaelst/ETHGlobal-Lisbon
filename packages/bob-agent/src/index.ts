@@ -1,17 +1,24 @@
 // bob-agent — Bob'un DIŞ katmanı (BUILD-PLAN §2.1).
 //
-// Bu süreç enclave DEĞİL. Enclave (`@ca/bob-binding`) `imageHash` ile ölçülüyor ve
-// minimal tutuluyor; HTTP sunucusu, ödeme, loglama ve (P1-D'de gelecek) FRAUD_MODE
-// burada, dışarıda kalır. Tezin özü bu ayrım: enclave içindeki kod hep dürüst,
-// hile yapabilen taraf bu katman.
+// Bu süreç enclave DEĞİL ve İKİ ŞEYİ birden yapamaz:
 //
-// FAZ 1 kapsamı: Bob ECHO yapıyor — paketi çözer, intentHash'i yeniden hesaplar,
-// eşleşmeyi raporlar. 0G çağrısı ve seal imzası YOK (onlar P3-B).
+//   1. YALAN SÖYLETEMEZ — dürüst recompute ve imzalama `@ca/bob-binding` içinde,
+//      FRAUD_MODE burada. Bob hile yapabilir, enclave onun adına yalan söyleyemez.
+//
+//   2. İÇERİĞİ GÖREMEZ — ECIES anahtarı da enclave'de. Bu katmanın eline yalnızca
+//      ciphertext geçer; brief, veri ve çıktı buradan geçmez (CLAUDE.md §2).
+//
+// Hile ancak şu iki yerden yapılabilir: enclave'e giden PAKETİ değiştirmek
+// (Bob kendi paketini şifreleyip yerine koyar) ya da çıkan İMZAYI değiştirmek.
 //
 // Uçlar:
 //   GET  /.well-known/agent-card.json   — keşif kartı
-//   POST /task                          — { to, cipher }
-//   GET  /result/:intentHash            — { cipher }  (Alice'in replyPubKey'ine şifreli)
+//   POST /task                          — { to, intentHash, replyPubKey, cipher }
+//   GET  /result/:intentHash            — { cipher, bodyHex, seal }
+//        cipher: enclave'in Alice'in anahtarına şifrelediği sonuç (Bob çözemez)
+//        bodyHex/seal: Bob'un zincire gönderilmesini İDDİA ETTİĞİ artefaktlar —
+//        Alice ikisini karşılaştırıp kurcalamayı görebilir
+//   POST /admin/fraud-mode              — demo fraud butonu
 //   GET  /health
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
@@ -21,20 +28,16 @@ import { Wallet, keccak256, toUtf8Bytes } from 'ethers';
 import {
   AgentCardSchema,
   PLACEHOLDER_VERIFIER,
-  TaskEnvelopeSchema,
   TaskRequestSchema,
+  agentIdToBytes32,
+  createNoComputeBackend,
+  eciesPublicKeyOf,
+  parseOrThrow,
   type AgentCard,
   type ComputeBackend,
-  type Constraints,
-  type EchoResult,
-  createNoComputeBackend,
-  decryptWith,
-  eciesPublicKeyOf,
-  encryptFor,
-  parseOrThrow,
-  recoverIntentSigner,
+  type Seal,
 } from '@ca/shared';
-import { recoverBindingSigner, runBinding } from '@ca/bob-binding';
+import { recoverBindingSigner, runBinding, type BindingRequest } from '@ca/bob-binding';
 import {
   applyPostBindingFraud,
   applyPreBindingFraud,
@@ -89,12 +92,43 @@ export interface BobAgentOptions {
    * Kapı testi "Bob düz metni doğru çözüyor mu"yu doğrudan görebilsin diye var.
    * Tel üzerine hiçbir şey eklemez; üretim yolunda kullanılmaz.
    */
-  onDecrypted?: (envelope: { brief: string; data: string; constraints: unknown; nonce: string }) => void;
+  onDecrypted?: (envelope: { brief: string; data: string; nonce: string }) => void;
+}
+
+/**
+ * Dış katmanın bir iş hakkında tutabildiği ÖZET.
+ *
+ * Bilerek dar: hepsi zincire zaten çıkacak alanlar. `brief`, `data` ve `output`
+ * BURADA YOK — onlar yalnızca enclave'in içinde ve Alice'in çözebildiği şifreli
+ * sonuçta var. Bob'un altyapısı işin içeriğini göremiyor.
+ */
+export interface BobJobSummary {
+  intentHash: string;
+  recomputedIntentHash: string;
+  match: boolean;
+  clientSigOk: boolean;
+  recoveredClient: string;
+  bodyHex: string;
+  seal: Seal;
+  bindingSigner: string;
+  expectedBindingSigner: string;
+  bindingSigOk: boolean;
+  computeProvider: string;
+  ogVerified: boolean;
 }
 
 export interface StoredResult {
-  /** Alice'in replyPubKey'ine ECIES ile şifrelenmiş EchoResult. */
+  /** Enclave'in Alice'in anahtarına şifrelediği sonuç. Bob bunu ÇÖZEMEZ. */
   cipher: string;
+  /**
+   * Bob'un zincire gönderilmesini İDDİA ETTİĞİ gövde ve seal.
+   *
+   * Enclave'in ürettiğinden FARKLI olabilir — `forge` modunda tam olarak budur.
+   * Alice bunları zincire götürür ve kendi çözdüğü sonuçtakiyle karşılaştırarak
+   * kurcalamayı görebilir.
+   */
+  bodyHex: string;
+  seal: Seal;
   receivedAt: number;
 }
 
@@ -106,7 +140,7 @@ export interface BobAgent {
   url(): string;
   card(): AgentCard;
   /** Test/demo için: işlenmiş işlerin düz metin özeti (ağa çıkmaz). */
-  readonly processed: EchoResult[];
+  readonly processed: BobJobSummary[];
   /** Hile modunu ÇALIŞIRKEN değiştir — restart YOK (BUILD-PLAN P1-D kriteri). */
   setFraudMode(mode: FraudMode): void;
   fraudMode(): FraudMode;
@@ -150,7 +184,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
   const log = options.log ?? ((line: string) => console.log(line));
   const eciesPubKey = eciesPublicKeyOf(options.eciesPrivateKey);
   const results = new Map<string, StoredResult>();
-  const processed: EchoResult[] = [];
+  const processed: BobJobSummary[] = [];
   let boundPort = options.port ?? 0;
   // Hile modu MUTABLE: demo sırasında restart, seal key'i kaybettirir (v3 §06),
   // o yüzden mod çalışırken değişebilmeli.
@@ -201,71 +235,40 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
       throw new HttpError(404, `bu agent ${options.agentId}, paket ${request.to} için gönderilmiş`);
     }
 
-    // Çözememek bir SUNUCU hatası değil — yanlış anahtarla şifrelenmiş ya da
-    // kurcalanmış bir pakettir. 400 döner, 500 ile çökmez (P1-C kapı kriteri).
-    let envelopeJson: unknown;
-    try {
-      envelopeJson = await decryptWith(options.eciesPrivateKey, request.cipher);
-    } catch (err) {
-      throw new HttpError(400, `paket çözülemedi: ${err instanceof Error ? err.message : String(err)}`);
-    }
-
-    let envelope;
-    try {
-      envelope = parseOrThrow(TaskEnvelopeSchema, envelopeJson, 'TaskEnvelope');
-    } catch (err) {
-      throw new HttpError(400, err instanceof Error ? err.message : String(err));
-    }
-
-    options.onDecrypted?.({
-      brief: envelope.brief,
-      data: envelope.data,
-      constraints: envelope.constraints,
-      nonce: envelope.nonce,
-    });
-
-    // Alice'in imzası gerçekten Alice'ten mi? Nihai kararı P3-A'da kontrat verir;
-    // burada erken uyarı olarak bakıyoruz.
-    let recoveredClient = '0x0000000000000000000000000000000000000000';
-    let clientSigValid = false;
-    try {
-      recoveredClient = recoverIntentSigner(
-        {
-          intentHash: envelope.intent.intentHash,
-          client: envelope.intent.client,
-          agentId: envelope.intent.agentId,
-          price: BigInt(envelope.intent.price),
-          deadline: BigInt(envelope.intent.deadline),
-        },
-        envelope.aliceSig,
-        options.verifyingContract,
-        options.chainId,
-      );
-      clientSigValid = recoveredClient.toLowerCase() === envelope.intent.client.toLowerCase();
-    } catch {
-      clientSigValid = false;
-    }
+    // BURADA ÇÖZME YOK. Anahtar enclave'de; dış katmanın eline yalnızca ciphertext
+    // geçiyor. "Altyapı veriyi göremez" iddiası ancak böyle doğru (CLAUDE.md §2).
+    const mode = fraudMode;
 
     // --- hile katmanı: enclave'e GİRMEDEN önce ---
-    const mode = fraudMode;
-    const pre = applyPreBindingFraud(
-      mode,
-      {
-        claimedIntentHash: envelope.intent.intentHash,
-        brief: envelope.brief,
-        data: envelope.data,
-        constraints: envelope.constraints as Constraints,
-        price: BigInt(envelope.intent.price),
-        nonce: BigInt(envelope.nonce),
-        agentId: options.sealAgentId ?? `agent-${options.agentId}`,
-        sealId,
-        timestamp: Math.floor(Date.now() / 1000).toString(),
-      },
-      { claimedIntentHash: envelope.intent.intentHash, clientSignatureValid: clientSigValid },
-    );
+    // Bob paketi çözemediği için brief'i "düzenleyemiyor"; yapabildiği tek şey
+    // enclave'in pubkey'ine KENDİ paketini şifreleyip yerine koymak.
+    let request2: BindingRequest = {
+      cipher: request.cipher,
+      agentId: options.sealAgentId ?? `agent-${options.agentId}`,
+      sealId,
+      timestamp: Math.floor(Date.now() / 1000).toString(),
+      verifyingContract: options.verifyingContract,
+      chainId: options.chainId,
+    };
+    request2 = await applyPreBindingFraud(mode, request2, {
+      intentHash: request.intentHash,
+      replyPubKey: request.replyPubKey,
+      enclavePublicKey: eciesPubKey,
+      agentIdBytes32: agentIdToBytes32(options.agentId),
+    });
 
     // --- DÜRÜST binding (enclave) — FRAUD_MODE buraya GİRMEZ ---
-    const bound = await runBinding(pre.request, options.bindingKey, computeBackend);
+    // Çözme, şema doğrulama, recompute, imza doğrulama ve sonucu şifreleme HEP burada.
+    let bound;
+    try {
+      bound = await runBinding(request2, { ecies: options.eciesPrivateKey, binding: options.bindingKey }, {
+        compute: computeBackend,
+        onDecrypted: options.onDecrypted,
+      });
+    } catch (err) {
+      // Çözülemeyen/şemadan geçmeyen paket bir SUNUCU hatası değil — 400 döner.
+      throw new HttpError(400, `paket işlenemedi: ${err instanceof Error ? err.message : String(err)}`);
+    }
 
     // --- hile katmanı: enclave'den DÖNDÜKTEN sonra ---
     const finalBinding = applyPostBindingFraud(mode, bound);
@@ -274,15 +277,14 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
     const bindingSigner = recoverBindingSigner(finalBinding.bodyHex, finalBinding.seal, expectedBindingSigner);
     const bindingSigOk = bindingSigner.toLowerCase() === expectedBindingSigner.toLowerCase();
 
-    const result: EchoResult = {
-      v: 1,
-      stage: 'echo',
-      intentHash: pre.ctx.claimedIntentHash,
+    // Dış katmanın tuttuğu özet: hepsi zaten zincire çıkacak alanlar.
+    // `output` BURADA YOK — o yalnızca Alice'in çözebildiği şifreli sonuçta.
+    processed.push({
+      intentHash: finalBinding.claimedIntentHash,
       recomputedIntentHash: finalBinding.recomputedIntentHash,
       match: finalBinding.match,
-      clientSigOk: pre.ctx.clientSignatureValid,
-      recoveredClient,
-      output: finalBinding.output,
+      clientSigOk: finalBinding.clientSigOk,
+      recoveredClient: finalBinding.recoveredClient,
       bodyHex: finalBinding.bodyHex,
       seal: finalBinding.seal,
       bindingSigner,
@@ -290,24 +292,25 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
       bindingSigOk,
       computeProvider: finalBinding.computeProvider,
       ogVerified: finalBinding.ogVerified,
-      ogSig: finalBinding.ogSig,
-      ogSigner: finalBinding.ogSigner,
-    };
+    });
 
-    processed.push(result);
-    // Sonuç, Alice'in İMZALADIĞI taahhüde göre saklanır — Bob başka bir işe cevap
-    // verse bile Alice kendi intentHash'iyle sorabilsin diye.
-    results.set(envelope.intent.intentHash, {
-      cipher: await encryptFor(envelope.replyPubKey, result),
+    // Sonuç, Alice'in tel üzerinde bildirdiği taahhüde göre saklanır — Bob başka bir
+    // işe cevap verse bile Alice kendi intentHash'iyle sorabilsin diye.
+    // Şifrelemeyi ENCLAVE yaptı; dış katman sadece taşıyor.
+    results.set(request.intentHash, {
+      cipher: finalBinding.resultCipher,
+      // Hile uygulandıysa burada Bob'un DEĞİŞTİRDİĞİ hâli durur.
+      bodyHex: finalBinding.bodyHex,
+      seal: finalBinding.seal,
       receivedAt: Date.now(),
     });
 
     log(
-      `[bob] /task intentHash=${envelope.intent.intentHash.slice(0, 12)}… mode=${mode} ` +
-        `match=${finalBinding.match} clientSig=${pre.ctx.clientSignatureValid ? 'ok' : 'HATALI'} ` +
+      `[bob] /task intentHash=${request.intentHash.slice(0, 12)}… mode=${mode} ` +
+        `match=${finalBinding.match} clientSig=${finalBinding.clientSigOk ? 'ok' : 'HATALI'} ` +
         `bindingSig=${bindingSigOk ? 'ok' : 'HATALI'}`,
     );
-    return { intentHash: envelope.intent.intentHash };
+    return { intentHash: request.intentHash };
   }
 
   const server = createServer((req, res) => {
@@ -358,7 +361,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
             sendJson(res, 404, { error: 'NOT_FOUND', message: 'bu intentHash için sonuç yok' });
             return;
           }
-          sendJson(res, 200, { cipher: stored.cipher });
+          sendJson(res, 200, { cipher: stored.cipher, bodyHex: stored.bodyHex, seal: stored.seal });
           return;
         }
         sendJson(res, 404, { error: 'NOT_FOUND' });

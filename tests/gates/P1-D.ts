@@ -46,7 +46,13 @@ const BOB_AGENT_ID = optionalEnv('BOB_AGENT_ID') ?? '8429';
 let bob: BobAgent | undefined;
 let nonce = 100n;
 
-async function runJob(): Promise<{ result: EchoResult; signedIntentHash: string }> {
+async function runJob(): Promise<{
+  result: EchoResult;
+  signedIntentHash: string;
+  claimedBodyHex: string;
+  claimedSeal: EchoResult['seal'];
+  sealTampered: boolean;
+}> {
   if (!bob) throw new Error('bob yok');
   const report = await runAliceJob({
     bobUrl: bob.url(),
@@ -59,7 +65,13 @@ async function runJob(): Promise<{ result: EchoResult; signedIntentHash: string 
     nonce: nonce++,
     log: () => {},
   });
-  return { result: report.result, signedIntentHash: report.intent.intentHash };
+  return {
+    result: report.result,
+    signedIntentHash: report.intent.intentHash,
+    claimedBodyHex: report.claimedBodyHex,
+    claimedSeal: report.claimedSeal,
+    sealTampered: report.sealTampered,
+  };
 }
 
 gate.check('Bob ayakta, binding imzalayıcısı kayıtlı', async () => {
@@ -82,28 +94,66 @@ gate.check('Bob ayakta, binding imzalayıcısı kayıtlı', async () => {
 // 1. Beş mod — her biri beklenen sonucu üretiyor
 // ---------------------------------------------------------------------------
 
-/** Kontratın vereceği kararın FAZ 1 karşılığını çıktıdan türet. */
-function outcomeOf(result: EchoResult): string {
-  if (!result.bindingSigOk) return 'BadEnclaveSig';
-  if (!result.clientSigOk) return 'BadClientSig';
+/**
+ * Kontratın vereceği kararı, Alice'in ZİNCİRE GÖTÜRECEĞİ artefaktlardan türet.
+ *
+ * ECIES sınırı enclave'e taşındıktan sonra bu model değişti ve önemli:
+ * enclave'in kendi `clientSigOk` raporu, ALDIĞI paket hakkındadır — Alice'in
+ * zincire göndereceği intent+imza hakkında değil. `substitute` modunda Bob sahte
+ * bir istemci imzası koyar, enclave bunu dürüstçe "HATALI" der, ama Alice zincire
+ * KENDİ geçerli imzasını gönderir. Dolayısıyla kontrat orada `MatchFalse` verir,
+ * `BadClientSig` değil.
+ *
+ * Kontratın gerçek sırası (Verifier._check): client imzası → enclave imzası → match.
+ */
+function outcomeOf(
+  result: EchoResult,
+  signedIntentHash: string,
+  claimedBodyIntentHash: string,
+  sealOk: boolean,
+): string {
+  // Zincire giden gövdedeki taahhüt Alice'in imzaladığından farklıysa, onun imzası
+  // o yapıyı kurtarmaz → BadClientSig. (`selfintent` böyle düşer.)
+  if (claimedBodyIntentHash.toLowerCase() !== signedIntentHash.toLowerCase()) return 'BadClientSig';
+  if (!sealOk) return 'BadEnclaveSig';
   if (!result.match) return 'MatchFalse';
   return 'JobVerified';
 }
 
-const observed = new Map<FraudMode, { outcome: string; result: EchoResult }>();
+const observed = new Map<
+  FraudMode,
+  { outcome: string; result: EchoResult; claimedBodyHex: string; sealTampered: boolean; sealOk: boolean }
+>();
 
 for (const mode of FRAUD_MODES) {
   gate.check(`FRAUD_MODE=${mode} → ${EXPECTED_OUTCOME[mode]}`, async () => {
     if (!bob) return fail('bob yok');
     bob.setFraudMode(mode);
-    const { result } = await runJob();
-    const outcome = outcomeOf(result);
-    observed.set(mode, { outcome, result });
+    const run = await runJob();
+
+    // Zincire giden artefaktlar üzerinden değerlendir — Alice'in çözdüğü kopya
+    // üzerinden değil. `forge` modunda ikisi ayrışır ve fark tam burada görünür.
+    const claimedBody = decodeBody(run.claimedBodyHex);
+    const claimedSigner = recoverBindingSigner(
+      run.claimedBodyHex,
+      run.claimedSeal,
+      run.result.expectedBindingSigner,
+    );
+    const sealOk = claimedSigner.toLowerCase() === run.result.expectedBindingSigner.toLowerCase();
+
+    const outcome = outcomeOf(run.result, run.signedIntentHash, claimedBody.intentHash, sealOk);
+    observed.set(mode, {
+      outcome,
+      result: run.result,
+      claimedBodyHex: run.claimedBodyHex,
+      sealTampered: run.sealTampered,
+      sealOk,
+    });
 
     const detail = [
-      `match=${result.match}`,
-      `clientSig=${result.clientSigOk ? 'ok' : 'HATALI'}`,
-      `bindingSig=${result.bindingSigOk ? 'ok' : 'HATALI'}`,
+      `match=${claimedBody.match}`,
+      `bodyIntentHash=${claimedBody.intentHash === run.signedIntentHash ? 'Alice\'inki' : 'FARKLI'}`,
+      `seal=${sealOk ? 'ok' : 'HATALI'}`,
       `→ ${outcome}`,
     ].join(' · ');
 
@@ -181,16 +231,23 @@ gate.check('0G bağlı değilken sistem bunu DÜRÜSTÇE raporluyor', () => {
     : fail(problems.join('\n'));
 });
 
-gate.check('forge modunda gövde DOĞRU ama imzacı yabancı', () => {
+gate.check('forge modunda gövde DOĞRU ama İDDİA EDİLEN imza yabancı', () => {
   const forge = observed.get('forge');
   if (!forge) return fail('forge koşusu yok');
   if (!forge.result.match) return fail('forge modunda match false — gövde de bozulmuş, beklenmiyor');
-  if (forge.result.bindingSigOk) return fail('yabancı anahtarla imzalandığı hâlde bindingSigOk=true');
-  if (forge.result.bindingSigner.toLowerCase() === forge.result.expectedBindingSigner.toLowerCase()) {
-    return fail('imzacı hâlâ kayıtlı anahtar');
-  }
+
+  // ENCLAVE dürüstçe imzaladı ve Alice'e şifrelediği kopyada imza GEÇERLİ.
+  // Sahtecilik, Bob'un zincire götürülmesini istediği kopyada.
+  if (!forge.result.bindingSigOk) return fail('enclave kendi imzasını bozmuş — mod izolasyonu yok');
+  if (!forge.sealTampered) return fail('iddia edilen seal enclave\'inkiyle aynı — hile uygulanmamış');
+  if (forge.sealOk) return fail('iddia edilen seal kayıtlı anahtarı veriyor — kontrat bunu kabul ederdi');
+
   return pass(
-    `kayıtlı ${forge.result.expectedBindingSigner}\nimzalayan ${forge.result.bindingSigner} — kontrat BadEnclaveSig verir`,
+    [
+      'enclave kopyası: imza geçerli (Alice bunu çözüyor)',
+      'Bob\'un ilettiği kopya: imza YABANCI → kontrat BadEnclaveSig verir',
+      'Alice iki kopyayı karşılaştırıp kurcalamayı görebiliyor (sealTampered=true)',
+    ].join('\n'),
   );
 });
 

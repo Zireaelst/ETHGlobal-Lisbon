@@ -19,6 +19,11 @@ export const SignatureSchema = z.string().regex(/^0x[0-9a-fA-F]{130}$/, '65-byte
 /** Negatif olmayan tamsayı, decimal string. */
 export const UintStringSchema = z.string().regex(/^\d+$/, 'decimal string olmalı (JSON bigint taşımaz)');
 
+/** Kanonik ECIES public key: 0x04 + 128 hex (bkz. ecies.ts). */
+export const EciesPubKeySchema = z
+  .string()
+  .regex(/^0x04[0-9a-fA-F]{128}$/, 'kanonik ECIES public key olmalı (0x04 + 128 hex)');
+
 export const ConstraintsSchema = z
   .object({
     model: z.string().min(1),
@@ -46,14 +51,25 @@ export const TaskEnvelopeSchema = z.object({
   data: z.string(),
   constraints: ConstraintsSchema,
   nonce: UintStringSchema,
-  /** Alice'in ECIES pubkey'i — sonuç buna şifrelenir. */
-  replyPubKey: z.string().min(1),
+  /** Alice'in ECIES pubkey'i — sonuç buna şifrelenir (kanonik biçim). */
+  replyPubKey: EciesPubKeySchema,
 });
 export type TaskEnvelope = z.infer<typeof TaskEnvelopeSchema>;
 
-/** Tel üzerindeki dış gövde: POST /task */
+/**
+ * Tel üzerindeki dış gövde: POST /task
+ *
+ * `intentHash` ve `replyPubKey` ŞİFRE DIŞINDA taşınıyor çünkü Bob'un dış katmanı
+ * paketi ÇÖZEMİYOR (anahtar enclave'de) ama işi yönlendirmek ve sonucu teslim etmek
+ * için bu ikisine ihtiyacı var. Sızıntı yok: `intentHash` zaten `JobVerified` ile
+ * zincirde herkese açık, `replyPubKey` de Alice'in ERC-8004 kaydında duruyor.
+ *
+ * Enclave bunlara GÜVENMEZ — kendi kararlarını paketin İÇİNDEKİ alanlardan verir.
+ */
 export const TaskRequestSchema = z.object({
   to: z.string().min(1),
+  intentHash: Bytes32Schema,
+  replyPubKey: EciesPubKeySchema,
   cipher: z.string().min(1),
 });
 export type TaskRequest = z.infer<typeof TaskRequestSchema>;
@@ -99,11 +115,6 @@ export const ResultEnvelopeSchema = z.object({
   ogVerified: z.boolean(),
 });
 export type ResultEnvelope = z.infer<typeof ResultEnvelopeSchema>;
-
-/** Kanonik ECIES public key: 0x04 + 128 hex (bkz. ecies.ts). */
-export const EciesPubKeySchema = z
-  .string()
-  .regex(/^0x04[0-9a-fA-F]{128}$/, 'kanonik ECIES public key olmalı (0x04 + 128 hex)');
 
 /** Bob'un `GET /.well-known/agent-card.json` yanıtı. */
 export const AgentCardSchema = z.object({

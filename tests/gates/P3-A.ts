@@ -24,6 +24,9 @@ import { runBinding, type BindingRequest } from '../../packages/bob-binding/src/
 import {
   BASE_SEPOLIA_CHAIN_ID,
   buildIntentHash,
+  eciesPublicKeyOf,
+  encryptFor,
+  signIntent,
   recoverSealCandidates,
   sealDigest,
   signSeal,
@@ -39,6 +42,18 @@ const fixtureDir = resolve(root, 'contracts/test/fixtures');
 // Deterministik test kimlikleri — .env'deki gerçek anahtarlara dokunmuyoruz.
 const ALICE_PK = keccak256(toUtf8Bytes('confidential-agents/P3-A/alice'));
 const BINDING_PK = keccak256(toUtf8Bytes('confidential-agents/P3-A/binding'));
+/** Enclave'in ECIES anahtarı — paketi ÇÖZEN. Artık dış katmanda değil. */
+const ENCLAVE_ECIES_PK = keccak256(toUtf8Bytes('confidential-agents/P3-A/enclave-ecies'));
+const ALICE_ECIES_PK = keccak256(toUtf8Bytes('confidential-agents/P3-A/alice-ecies'));
+/**
+ * Fixture üretilirken kullanılan EIP-712 domain adresi.
+ *
+ * Enclave paketi çözerken Alice'in imzasını da doğruluyor, o yüzden bir adres
+ * gerekiyor. Foundry testi Alice'in imzasını ZATEN kendi içinde, gerçek kontrat
+ * adresine karşı yeniden atıyor — buradaki değer yalnızca enclave'in
+ * `clientSigOk` raporunu tutarlı kılmak için.
+ */
+const VERIFYING_CONTRACT = '0x00000000000000000000000000000000DeaDBeef';
 const alice = new Wallet(ALICE_PK);
 const bindingWallet = new Wallet(BINDING_PK);
 
@@ -60,6 +75,38 @@ let substituted: Awaited<ReturnType<typeof runBinding>> | undefined;
 // ---------------------------------------------------------------------------
 // 1. Fixture üretimi — GERÇEK binding çıktısı
 // ---------------------------------------------------------------------------
+/** Enclave'e girecek şifreli paketi kur — artık düz metin değil, ciphertext. */
+async function sealedEnvelope(brief: string, data: string, claimedIntentHash: string): Promise<string> {
+  const intent = {
+    intentHash: claimedIntentHash,
+    client: alice.address,
+    agentId: agentIdBytes32(AGENT_ID),
+    price: PRICE.toString(),
+    deadline: '1900000000',
+  };
+  const aliceSig = await signIntent(
+    {
+      intentHash: claimedIntentHash,
+      client: alice.address,
+      agentId: agentIdBytes32(AGENT_ID),
+      price: PRICE,
+      deadline: 1900000000n,
+    },
+    alice,
+    VERIFYING_CONTRACT,
+  );
+  return encryptFor(eciesPublicKeyOf(ENCLAVE_ECIES_PK), {
+    v: 1,
+    intent,
+    aliceSig,
+    brief,
+    data,
+    constraints: CONSTRAINTS,
+    nonce: NONCE.toString(),
+    replyPubKey: eciesPublicKeyOf(ALICE_ECIES_PK),
+  });
+}
+
 gate.check('Dürüst iş için canlı binding imzası üretildi', async () => {
   const intentHash = buildIntentHash({
     brief: BRIEF,
@@ -69,15 +116,11 @@ gate.check('Dürüst iş için canlı binding imzası üretildi', async () => {
     nonce: NONCE,
   });
   const request: BindingRequest = {
-    claimedIntentHash: intentHash,
-    brief: BRIEF,
-    data: DATA,
-    constraints: CONSTRAINTS,
-    price: PRICE,
-    nonce: NONCE,
+    cipher: await sealedEnvelope(BRIEF, DATA, intentHash),
     ...SEAL_FIELDS,
+    verifyingContract: VERIFYING_CONTRACT,
   };
-  honest = await runBinding(request, BINDING_PK);
+  honest = await runBinding(request, { ecies: ENCLAVE_ECIES_PK, binding: BINDING_PK });
 
   if (!honest.match) return fail('dürüst iş match=false verdi');
   const candidates = recoverSealCandidates(honest.seal, honest.bodyHex, honest.seal.r, honest.seal.s);
@@ -95,19 +138,19 @@ gate.check('Dürüst iş için canlı binding imzası üretildi', async () => {
 
 gate.check('match=false işi için canlı imza üretildi (fraud yolu)', async () => {
   if (!honest) return fail('dürüst iş yok');
-  // Bob enclave'e BAŞKA bir brief besliyor; iddia edilen hash Alice'inki kalıyor.
+  // Bob enclave'e KENDİ paketini gönderiyor: Alice'in taahhüdünü taşıyor ama içerik başka.
   substituted = await runBinding(
     {
-      claimedIntentHash: honest.claimedIntentHash,
-      brief: 'Write a short generic market summary. (Bob substituted this brief.)',
-      data: DATA,
-      constraints: CONSTRAINTS,
-      price: PRICE,
-      nonce: NONCE,
+      cipher: await sealedEnvelope(
+        'Write a short generic market summary. (Bob substituted this brief.)',
+        DATA,
+        honest.claimedIntentHash,
+      ),
       ...SEAL_FIELDS,
       sealId: '0xseal02',
+      verifyingContract: VERIFYING_CONTRACT,
     },
-    BINDING_PK,
+    { ecies: ENCLAVE_ECIES_PK, binding: BINDING_PK },
   );
   if (substituted.match) return fail('substitute senaryosunda match=true çıktı');
   return pass(`match=false, gövde yine imzalandı (enclave dürüstlüğü) · outputHash ${substituted.outputHash.slice(0, 18)}…`);

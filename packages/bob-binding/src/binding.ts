@@ -1,76 +1,102 @@
 // binding.ts — DÜRÜST binding mantığı. Bu dosya enclave'in içinde çalışacak kod.
 //
-// BUILD-PLAN P1-D'nin can alıcı kuralı: "Enclave'de FRAUD_MODE YOK. Fraud dış katmanda."
-// Bu yüzden burada hile anahtarı, ortam değişkeni okuması ya da koşullu davranış YOK.
-// Fonksiyon ne aldıysa onu yeniden hesaplar ve sonucu dürüstçe raporlar.
+// İKİ SINIR birden burada:
 //
-// P3-B kuralı burada da geçerli ve kasıtlı: `match === false` olsa bile akış DEVAM EDER
-// ve gövde İMZALANIR. Enclave yalan söylemez, sadece raporlar; reddi kontrat verir.
-// Fraud demosu tam olarak bu davranışa dayanıyor.
+// 1. BÜTÜNLÜK (P1-D): "Enclave'de FRAUD_MODE YOK. Fraud dış katmanda." Burada hile
+//    anahtarı, ortam değişkeni okuması ya da koşullu davranış yok. Ne aldıysa onu
+//    yeniden hesaplar ve dürüstçe raporlar.
+//
+// 2. GİZLİLİK (CLAUDE.md §2): ECIES çözümü BURADA. Dış katman (bob-agent) paketi
+//    ÇÖZEMEZ — anahtarı yok, eline yalnızca ciphertext geçer. "Altyapı veriyi
+//    göremez" iddiası ancak böyle doğru olur.
+//
+//    Dış katmana geri dönen şey de bilerek dar: gövde, seal, ve zincire zaten
+//    çıkacak alanlar. `brief`, `data` ve `output` DIŞARI ÇIKMAZ — sonuç doğrudan
+//    Alice'in anahtarına şifrelenip öyle teslim edilir.
+//
+// P3-B kuralı geçerli ve kasıtlı: `match === false` olsa bile akış DEVAM EDER ve
+// gövde İMZALANIR. Enclave yalan söylemez, sadece raporlar; reddi kontrat verir.
 //
 // FAZ 1 SINIRI — dürüstlük notu:
-//   - Burada 0G Sealed Inference çağrısı YOK; `output` yer tutucu bir metin,
-//     `ogSigHash` sıfır. P3-B gerçek çağrıyı ve 0G imza doğrulamasını ekleyecek.
-//   - İmza, doğrulanmış Tapp seal formatı DEĞİL: keccak256(body) üzerine düz secp256k1.
-//     Gerçek seal preimage'ı P0-C'de kanıtlanacak; kanıtlanmadan o formatı taklit etmek
-//     sahip olmadığımız bir güvenceyi varmış gibi gösterirdi.
-//   - Bu yüzden imzalayan anahtar "binding key" diye geçiyor, "seal key" değil.
+//   - Burada 0G Sealed Inference çağrısı YOK; çıktı `compute.ts` sınırından gelir ve
+//     0G bağlı değilken yer tutucudur, `ogSigHash` sıfır kalır.
+//   - İmza formatı CLAUDE.md §3.1(B) seal formatı ama imzalayan anahtar attested
+//     enclave seal key'i DEĞİL, yerel bir binding anahtarı (P3-C değiştirecek).
 
-import { AbiCoder, Wallet, keccak256, toUtf8Bytes } from 'ethers';
+import { AbiCoder, Wallet, keccak256, recoverAddress, toUtf8Bytes } from 'ethers';
 import {
+  TaskEnvelopeSchema,
   buildIntentHash,
   createNoComputeBackend,
+  decryptWith,
+  eciesPublicKeyOf,
+  encryptFor,
+  parseOrThrow,
+  recoverIntentSigner,
   recoverSealCandidates,
   signSeal,
   verifySeal,
   type ComputeBackend,
   type ComputeProvider,
   type Constraints,
+  type EchoResult,
   type SealFields,
   type SealSignature,
 } from '@ca/shared';
 
-/** Enclave'e giren iş emri. */
+/** Enclave'e giren iş emri — İÇERİK DEĞİL, ŞİFRELİ PAKET. */
 export interface BindingRequest {
-  /** İstemcinin taahhüt ettiğini İDDİA ettiği hash — doğrulanacak olan bu. */
-  claimedIntentHash: string;
-  brief: string;
-  data: string;
-  constraints: Constraints;
-  price: bigint;
-  nonce: bigint;
+  /** Alice'in ECIES ile şifrelediği paket. Enclave dışında çözülmez. */
+  cipher: string;
   /** Seal preimage'ının ilk alanı — wrapper'ın agent kimliği (ERC-8004 agentId'si DEĞİL). */
   agentId: string;
   /** Konteyner ömrü başına bir kez üretilen seal kimliği. */
   sealId: string;
   /** Ondalık saniye. */
   timestamp: string;
+  /** EIP-712 domain — Alice'in imzasını enclave İÇİNDE doğrulamak için. */
+  verifyingContract: string;
+  chainId?: number;
 }
 
-/** Enclave'in imzalayıp döndürdüğü sonuç. */
+/** Enclave'in sahip olduğu anahtarlar. İkisi de dış katmana verilmez. */
+export interface EnclaveKeys {
+  /** Paketi ÇÖZEN anahtar. Kart'ta duyurulan pubkey bunun eşi. */
+  ecies: string;
+  /** Gövdeyi imzalayan binding/seal anahtarı. */
+  binding: string;
+}
+
+/**
+ * Enclave'in dış katmana döndürdüğü şey.
+ *
+ * BİLEREK DAR: hepsi ya zincire çıkacak ya da gizli olmayan alanlar. `brief`,
+ * `data`, `output` burada YOK — onlar `resultCipher` içinde, Alice'in anahtarıyla.
+ */
 export interface BindingResponse {
+  /** İstemcinin paket içinde taahhüt ettiği hash. */
   claimedIntentHash: string;
   /** İçerikten YENİDEN hesaplanan taahhüt. */
   recomputedIntentHash: string;
   match: boolean;
-  output: string;
   outputHash: string;
-  /** keccak256(ogSig) — 0G imzası yoksa sıfır (uydurulmuş bir taahhüt yazılmaz). */
+  /** keccak256(ogSig) — 0G imzası yoksa sıfır (uydurulmuş taahhüt yazılmaz). */
   ogSigHash: string;
-  /** 0G TEE'nin çıktı imzası — yoksa undefined. */
   ogSig?: string;
   ogSigner?: string;
-  /** İmza enclave İÇİNDE doğrulandı mı. Doğrulanamadıysa false. */
   ogVerified: boolean;
-  /** Çıktıyı kim üretti — dürüstlük etiketi, arayüze kadar taşınır. */
   computeProvider: ComputeProvider;
-  /** Sadece compute çağrısının süresi (P0-G bütçe dağılımı için). */
   computeLatencyMs: number;
   /** İmzalanan ham gövde: abi.encode(bytes32,bytes32,bool,bytes32). */
   bodyHex: string;
-  /** Seal imzası — `v` wrapper gibi atılmış, sadece r‖s taşınıyor (CLAUDE.md §3.1B). */
+  /** Seal imzası — `v` wrapper gibi atılmış (CLAUDE.md §3.1B). */
   seal: SealSignature;
   signer: string;
+  /** Alice'in EIP-712 imzasından kurtarılan adres (enclave İÇİNDE doğrulandı). */
+  recoveredClient: string;
+  clientSigOk: boolean;
+  /** Alice'in `replyPubKey`'ine şifrelenmiş sonuç. Dış katman bunu çözemez. */
+  resultCipher: string;
 }
 
 const ZERO32 = `0x${'00'.repeat(32)}`;
@@ -102,8 +128,7 @@ export function decodeBody(bodyHex: string): {
  * Gövdeyi imzalayan adresi kurtar (`v` brute-force).
  *
  * Beklenen adres verilirse ona eşleşen adayı döndürür; verilmezse ilk adayı.
- * Wrapper `v`'yi attığı için tek bir "doğru" cevap yoktur — çağıranın kime
- * baktığını bilmesi gerekir.
+ * Wrapper `v`'yi attığı için tek bir "doğru" cevap yoktur.
  */
 export function recoverBindingSigner(bodyHex: string, seal: SealSignature, expectedSigner?: string): string {
   const candidates = recoverSealCandidates(seal, bodyHex, seal.r, seal.s);
@@ -115,35 +140,83 @@ export function recoverBindingSigner(bodyHex: string, seal: SealSignature, expec
   return candidates[0]?.address ?? '0x0000000000000000000000000000000000000000';
 }
 
+/** Enclave'in duyurduğu ECIES public key — Alice bununla şifreler. */
+export function enclavePublicKey(keys: Pick<EnclaveKeys, 'ecies'>): string {
+  return eciesPublicKeyOf(keys.ecies);
+}
+
+export interface RunBindingOptions {
+  compute?: ComputeBackend;
+  /**
+   * Test kancası: enclave'in ÇÖZDÜĞÜ düz metin.
+   *
+   * Enclave İÇİNDE çalışır; dış katmana hiçbir şey sızdırmaz. Kapı testleri
+   * "paket doğru çözüldü mü"yu görebilsin diye var.
+   */
+  onDecrypted?: (envelope: { brief: string; data: string; nonce: string }) => void;
+}
+
 /**
- * Dürüst binding akışı.
+ * Dürüst binding akışı — ARTIK ÇÖZME DE BURADA.
  *
- * 1. İçerikten intentHash'i YENİDEN hesapla (iddiaya güvenme)
- * 2. match = (yeniden hesaplanan === iddia edilen)
- * 3. çıktıyı üret (FAZ 1: yer tutucu; P3-B: 0G Sealed Inference)
- * 4. gövdeyi kur ve İMZALA — match false olsa bile
+ * 1. Paketi ÇÖZ (dış katman bunu yapamaz)
+ * 2. Şemadan geçir
+ * 3. İçerikten intentHash'i YENİDEN hesapla → match
+ * 4. Alice'in EIP-712 imzasını doğrula (bilgilendirme; asıl karar kontratta)
+ * 5. Modeli çağır (compute sınırı)
+ * 6. Gövdeyi kur ve İMZALA — match false olsa bile
+ * 7. Sonucu ALICE'İN anahtarına şifrele
  */
 export async function runBinding(
   request: BindingRequest,
-  bindingKey: string,
-  compute: ComputeBackend = createNoComputeBackend(),
+  keys: EnclaveKeys,
+  options: RunBindingOptions = {},
 ): Promise<BindingResponse> {
-  const recomputedIntentHash = buildIntentHash({
-    brief: request.brief,
-    data: request.data,
-    constraints: request.constraints,
-    price: request.price,
-    nonce: request.nonce,
-  });
-  const match = recomputedIntentHash === request.claimedIntentHash;
+  const compute = options.compute ?? createNoComputeBackend();
 
-  // Modeli çağır. NEREDE koştuğu buranın işi değil — sınır compute.ts'te.
-  // `match === false` olsa bile çağrı yapılır ve sonuç imzalanır: enclave yalan
-  // söylemez, sadece raporlar. Reddi kontrat verir.
+  // 1-2. ÇÖZ ve doğrula. Bozuk paket burada patlar; dış katman içeriği hiç görmez.
+  const decrypted = await decryptWith(keys.ecies, request.cipher);
+  const envelope = parseOrThrow(TaskEnvelopeSchema, decrypted, 'TaskEnvelope');
+  options.onDecrypted?.({ brief: envelope.brief, data: envelope.data, nonce: envelope.nonce });
+
+  // 3. Taahhüdü İDDİADAN değil, GELEN İÇERİKTEN yeniden hesapla.
+  const claimedIntentHash = envelope.intent.intentHash;
+  const recomputedIntentHash = buildIntentHash({
+    brief: envelope.brief,
+    data: envelope.data,
+    constraints: envelope.constraints as Constraints,
+    price: BigInt(envelope.intent.price),
+    nonce: BigInt(envelope.nonce),
+  });
+  const match = recomputedIntentHash === claimedIntentHash;
+
+  // 4. Alice gerçekten bunu mu imzaladı? Nihai kararı kontrat verir.
+  let recoveredClient = '0x0000000000000000000000000000000000000000';
+  let clientSigOk = false;
+  try {
+    recoveredClient = recoverIntentSigner(
+      {
+        intentHash: claimedIntentHash,
+        client: envelope.intent.client,
+        agentId: envelope.intent.agentId,
+        price: BigInt(envelope.intent.price),
+        deadline: BigInt(envelope.intent.deadline),
+      },
+      envelope.aliceSig,
+      request.verifyingContract,
+      request.chainId,
+    );
+    clientSigOk = recoveredClient.toLowerCase() === envelope.intent.client.toLowerCase();
+  } catch {
+    clientSigOk = false;
+  }
+
+  // 5. Modeli çağır. `match === false` olsa BİLE çağrılır ve sonuç imzalanır —
+  //    enclave yalan söylemez, sadece raporlar.
   const computed = await compute.run({
-    brief: request.brief,
-    data: request.data,
-    constraints: request.constraints,
+    brief: envelope.brief,
+    data: envelope.data,
+    constraints: envelope.constraints as Constraints,
   });
 
   const output = match
@@ -152,26 +225,47 @@ export async function runBinding(
       `iş sipariş edilen iş değil. (compute: ${computed.provider})`;
 
   const outputHash = keccak256(toUtf8Bytes(output));
-  // 0G imzası yoksa taahhüt SIFIR kalır; uydurma bir hash yazmıyoruz.
   const ogSigHash = computed.ogSig ? keccak256(computed.ogSig) : ZERO32;
-  const bodyHex = encodeBody(request.claimedIntentHash, outputHash, match, ogSigHash);
+  const bodyHex = encodeBody(claimedIntentHash, outputHash, match, ogSigHash);
 
-  // Seal formatında imzala (CLAUDE.md §3.1B). `v` bilerek atılıyor — canlı wrapper
-  // da atıyor; kontrat 27/28'i kendisi deniyor. Format aynı kaldığı için gerçek
-  // Tapp geldiğinde DEĞİŞEN TEK ŞEY anahtar olacak.
-  const wallet = new Wallet(bindingKey);
+  // 6. Seal formatında imzala. `v` bilerek atılıyor; kontrat 27/28'i kendisi dener.
+  const wallet = new Wallet(keys.binding);
   const fields: SealFields = {
     agentId: request.agentId,
     sealId: request.sealId,
     timestamp: request.timestamp,
   };
-  const seal = signSeal(fields, bodyHex, bindingKey);
+  const seal = signSeal(fields, bodyHex, keys.binding);
 
-  return {
-    claimedIntentHash: request.claimedIntentHash,
+  const bindingSigner = recoverBindingSigner(bodyHex, seal, wallet.address);
+  const result: EchoResult = {
+    v: 1,
+    stage: 'echo',
+    intentHash: claimedIntentHash,
     recomputedIntentHash,
     match,
+    clientSigOk,
+    recoveredClient,
     output,
+    bodyHex,
+    seal,
+    bindingSigner,
+    expectedBindingSigner: wallet.address,
+    bindingSigOk: bindingSigner.toLowerCase() === wallet.address.toLowerCase(),
+    computeProvider: computed.provider,
+    ogVerified: computed.ogVerified,
+    ogSig: computed.ogSig,
+    ogSigner: computed.ogSigner,
+  };
+
+  // 7. Sonucu ALICE'İN anahtarına şifrele. Paketin İÇİNDEKİ replyPubKey kullanılır —
+  //    dış katmanın tel üzerinde ilettiği kopya değil (o kurcalanabilir).
+  const resultCipher = await encryptFor(envelope.replyPubKey, result);
+
+  return {
+    claimedIntentHash,
+    recomputedIntentHash,
+    match,
     outputHash,
     ogSigHash,
     ogSig: computed.ogSig,
@@ -182,6 +276,9 @@ export async function runBinding(
     bodyHex,
     seal,
     signer: wallet.address,
+    recoveredClient,
+    clientSigOk,
+    resultCipher,
   };
 }
 
@@ -189,3 +286,5 @@ export async function runBinding(
 export function selfCheckSeal(response: BindingResponse): boolean {
   return verifySeal(response.seal, response.bodyHex, response.signer);
 }
+
+export { recoverAddress };

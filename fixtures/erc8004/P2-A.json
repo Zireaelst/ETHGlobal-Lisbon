@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-07-25T04:58:42.474Z",
+  "capturedAt": "2026-07-25T07:39:31.157Z",
   "bobMetadata": {
     "skill": "market-analysis",
     "endpoint": "http://127.0.0.1:8811/task",
@@ -24,7 +24,8 @@
       "asset": "USDC",
       "decimals": 6
     },
-    "stealthMetaAddress": null
+    "stealthMetaAddress": null,
+    "hederaAccount": null
   },
   "onChain": {
     "skill": "market-analysis",

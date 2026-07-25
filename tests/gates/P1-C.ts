@@ -47,6 +47,8 @@ const aliceWallet = Wallet.createRandom();
 const bobWallet = Wallet.createRandom();
 /** FAZ 1 binding anahtarı — enclave seal key DEĞİL (P3-C değiştirecek). */
 const BINDING_KEY = keccak256(toUtf8Bytes('confidential-agents/P1-C/binding'));
+/** Şema doğrulaması için geçerli biçimli, anlamsız bir taahhüt. */
+const ZERO_HASH = '0x' + '00'.repeat(32);
 
 let bob: BobAgent | undefined;
 let proxy: RecordingProxy | undefined;
@@ -242,7 +244,9 @@ gate.check('Gözlemci /task gövdesinde SADECE taahhüt ve şifreli blob görüy
   if (!task) return fail('/task isteği yakalanmadı');
   const body = JSON.parse(task.requestBody.toString('utf8')) as Record<string, unknown>;
   const keys = Object.keys(body).sort();
-  if (keys.join(',') !== 'cipher,to') return fail(`/task gövdesinde beklenmeyen alanlar: ${keys.join(',')}`);
+  if (keys.join(',') !== 'cipher,intentHash,replyPubKey,to') {
+    return fail(`/task gövdesinde beklenmeyen alanlar: ${keys.join(',')}`);
+  }
 
   // Yanıt da `match` sızdırmamalı — sonuç şifrelenmiş pakette.
   const response = JSON.parse(task.responseBody.toString('utf8')) as Record<string, unknown>;
@@ -265,11 +269,19 @@ gate.check('Bozuk istekler 400/404 ile reddediliyor, 500 ile çökmüyor', async
   const cases: Array<[string, () => Promise<Response>, number[]]> = [
     ['JSON değil', () => post('bu json değil'), [400]],
     ['alanları eksik gövde', () => post(JSON.stringify({ hello: 'world' })), [400]],
-    ['boş cipher', () => post(JSON.stringify({ to: BOB_AGENT_ID, cipher: '' })), [400]],
-    ['bozuk cipher', () => post(JSON.stringify({ to: BOB_AGENT_ID, cipher: 'deadbeef' })), [400]],
+    ['boş cipher', () => post(JSON.stringify({ to: BOB_AGENT_ID, intentHash: ZERO_HASH, replyPubKey: eciesPublicKeyOf(aliceEcies), cipher: '' })), [400]],
+    ['bozuk cipher', () => post(JSON.stringify({ to: BOB_AGENT_ID, intentHash: ZERO_HASH, replyPubKey: eciesPublicKeyOf(aliceEcies), cipher: 'deadbeef' })), [400]],
     [
       'başka agent\'a gönderilmiş',
-      () => post(JSON.stringify({ to: '999999', cipher: 'deadbeef' })),
+      () =>
+        post(
+          JSON.stringify({
+            to: '999999',
+            intentHash: ZERO_HASH,
+            replyPubKey: eciesPublicKeyOf(aliceEcies),
+            cipher: 'deadbeef',
+          }),
+        ),
       [404],
     ],
     [
@@ -278,6 +290,8 @@ gate.check('Bozuk istekler 400/404 ile reddediliyor, 500 ile çökmüyor', async
         post(
           JSON.stringify({
             to: BOB_AGENT_ID,
+            intentHash: ZERO_HASH,
+            replyPubKey: eciesPublicKeyOf(aliceEcies),
             cipher: await encryptFor(foreignKey.publicKey, { v: 1 }),
           }),
         ),
@@ -289,6 +303,8 @@ gate.check('Bozuk istekler 400/404 ile reddediliyor, 500 ile çökmüyor', async
         post(
           JSON.stringify({
             to: BOB_AGENT_ID,
+            intentHash: ZERO_HASH,
+            replyPubKey: eciesPublicKeyOf(aliceEcies),
             cipher: await encryptFor(bobPub, { v: 1, brief: 42, nonce: 'abc' }),
           }),
         ),

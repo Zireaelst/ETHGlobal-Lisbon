@@ -14,6 +14,7 @@ import {
   type Constraints,
   type EchoResult,
   type Intent,
+  type Seal,
   agentIdToBytes32,
   buildIntentHash,
   decryptWith,
@@ -68,6 +69,16 @@ export interface AliceJobReport {
   result: EchoResult;
   /** Alice'in imzaladığı taahhüt ile Bob'un yeniden hesapladığı aynı mı? */
   matched: boolean;
+  /**
+   * Bob'un zincire götürülmesini İDDİA ETTİĞİ gövde ve seal.
+   *
+   * Zincire giden bunlardır — enclave'in Alice'e şifrelediği kopya değil.
+   * `forge` modunda ikisi ayrışır ve `sealTampered` true olur.
+   */
+  claimedBodyHex: string;
+  claimedSeal: Seal;
+  /** Bob çıkan imzayı/gövdeyi değiştirdi mi? */
+  sealTampered: boolean;
 }
 
 /** Bob'un keşif kartını çek ve doğrula. */
@@ -156,10 +167,18 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
   const encryptTo = discovered?.eciesPubKey ?? card.eciesPubKey;
   const sentCipher = await encryptFor(encryptTo, envelope);
 
+  // `intentHash` ve `replyPubKey` şifre DIŞINDA gidiyor: Bob'un dış katmanı paketi
+  // çözemiyor (anahtar enclave'de) ama işi yönlendirip sonucu teslim edebilmeli.
+  // Sızıntı yok — ikisi de zaten herkese açık (zincirde ve Alice'in 8004 kaydında).
   const postRes = await fetchImpl(`${base}/task`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to: card.agentId, cipher: sentCipher }),
+    body: JSON.stringify({
+      to: card.agentId,
+      intentHash,
+      replyPubKey: eciesPublicKeyOf(options.eciesPrivateKey),
+      cipher: sentCipher,
+    }),
   });
   if (postRes.status !== 202) {
     const body = await postRes.text().catch(() => '');
@@ -169,18 +188,41 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
 
   const resultRes = await fetchImpl(`${base}/result/${intentHash}`);
   if (!resultRes.ok) throw new Error(`/result alınamadı: HTTP ${resultRes.status}`);
-  const { cipher } = (await resultRes.json()) as { cipher: string };
+  const claimed = (await resultRes.json()) as { cipher: string; bodyHex: string; seal: Seal };
 
+  // Enclave'in Alice'e ŞİFRELEDİĞİ sonuç — Bob buna dokunamaz.
   const result = parseOrThrow(
     EchoResultSchema,
-    await decryptWith(options.eciesPrivateKey, cipher),
+    await decryptWith(options.eciesPrivateKey, claimed.cipher),
     'EchoResult',
   );
 
-  const matched = result.match && result.recomputedIntentHash === intentHash;
+  // Bob'un zincire götürülmesini istediği artefaktlar enclave'inkiyle aynı mı?
+  // Farklıysa Bob çıkan imzayı/gövdeyi değiştirmiş demektir (`forge` modu).
+  const sealTampered =
+    claimed.bodyHex !== result.bodyHex ||
+    claimed.seal.r !== result.seal.r ||
+    claimed.seal.s !== result.seal.s;
+  if (sealTampered) {
+    log('[alice] UYARI: Bob\'un ilettiği gövde/seal enclave\'in imzaladığından FARKLI');
+  }
+
+  const matched = result.match && result.recomputedIntentHash === intentHash && !sealTampered;
   log(`[alice] sonuç çözüldü: match=${result.match} clientSig=${result.clientSigOk ? 'ok' : 'HATALI'}`);
 
-  return { discovered, card, intent, signature, sentCipher, postStatus: postRes.status, result, matched };
+  return {
+    discovered,
+    card,
+    intent,
+    signature,
+    sentCipher,
+    postStatus: postRes.status,
+    result,
+    matched,
+    claimedBodyHex: claimed.bodyHex,
+    claimedSeal: claimed.seal,
+    sealTampered,
+  };
 }
 
 /** Doğrudan çalıştırılırsa .env'den kurulup tek iş koşar. */
