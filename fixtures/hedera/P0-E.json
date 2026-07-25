@@ -1,18 +1,18 @@
 {
-  "capturedAt": "2026-07-25T02:24:07.831Z",
+  "capturedAt": "2026-07-25T06:13:19.951Z",
   "network": "hedera:testnet",
   "facilitatorUrl": "https://api.testnet.blocky402.com",
   "payer": "0.0.9695366",
   "payTo": "0.0.9738447",
   "priceTinybars": "1000000",
-  "settledTxId": "0.0.7162784@1784946242.225003046",
-  "roundTripMs": 3623,
-  "hashscanTransfer": "https://hashscan.io/testnet/transaction/0.0.7162784-1784946242-225003046",
+  "settledTxId": "0.0.7162784@1784959994.168799531",
+  "roundTripMs": 2394,
+  "hashscanTransfer": "https://hashscan.io/testnet/transaction/0.0.7162784-1784959994-168799531",
   "mirrorTransaction": {
     "batch_key": null,
     "bytes": null,
-    "charged_tx_fee": 285068,
-    "consensus_timestamp": "1784946249.727824104",
+    "charged_tx_fee": 284124,
+    "consensus_timestamp": "1784960001.697125104",
     "entity_id": null,
     "high_volume": false,
     "high_volume_pricing_multiplier": 0,
@@ -21,24 +21,24 @@
     "memo_base64": "",
     "name": "CRYPTOTRANSFER",
     "nft_transfers": [],
-    "node": "0.0.7",
+    "node": "0.0.8",
     "nonce": 0,
     "parent_consensus_timestamp": null,
     "result": "SUCCESS",
     "scheduled": false,
     "staking_reward_transfers": [],
     "token_transfers": [],
-    "transaction_hash": "Vz6YuH128wqMgUyr+rl2zPnS4nEQtm9QIFh+HNCDH6UQkAm4NKuBPZfZu8LIqwJJ",
-    "transaction_id": "0.0.7162784-1784946242-225003046",
+    "transaction_hash": "YffvFe7+qq9vgDU7jUCKnH/0EWz0RaAvt+q+Klna/KNs97MB2NyXlZvNtmudBnwJ",
+    "transaction_id": "0.0.7162784-1784959994-168799531",
     "transfers": [
       {
         "account": "0.0.802",
-        "amount": 285068,
+        "amount": 284124,
         "is_approval": false
       },
       {
         "account": "0.0.7162784",
-        "amount": -285068,
+        "amount": -284124,
         "is_approval": false
       },
       {
@@ -53,12 +53,12 @@
       }
     ],
     "valid_duration_seconds": "120",
-    "valid_start_timestamp": "1784946242.225003046"
+    "valid_start_timestamp": "1784959994.168799531"
   },
   "feePayer": "0.0.7162784",
-  "chargedTxFeeTinybars": 285068,
+  "chargedTxFeeTinybars": 284124,
   "topicId": "0.0.9738448",
-  "topicSequenceNumber": "2",
+  "topicSequenceNumber": "3",
   "hashscanTopic": "https://hashscan.io/testnet/topic/0.0.9738448",
-  "topicConsensusTimestamp": "1784946254.512212840"
+  "topicConsensusTimestamp": "1784960005.477138104"
 }

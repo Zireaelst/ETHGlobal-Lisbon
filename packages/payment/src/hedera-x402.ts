@@ -19,9 +19,9 @@ import { HTTPFacilitatorClient } from '@x402/core/http';
 // Import PrivateKey from @x402/hedera (not @hiero-ledger/sdk directly): @x402/hedera
 // pins its own @hiero-ledger/sdk version and re-exports the SDK primitives so callers
 // always resolve a single SDK instance (see node_modules/@x402/hedera/README.md).
-import { createClientHederaSigner, PrivateKey } from '@x402/hedera';
 import { ExactHederaScheme as ExactHederaClientScheme } from '@x402/hedera/exact/client';
 import { ExactHederaScheme as ExactHederaServerScheme } from '@x402/hedera/exact/server';
+import type { HederaSignerHandle } from './signer/hedera-signer.js';
 
 import type { JsonRpcProvider } from 'ethers';
 import {
@@ -39,10 +39,12 @@ const MIRROR_NODE_URL = 'https://testnet.mirrornode.hedera.com';
 const HASHSCAN = 'https://hashscan.io/testnet';
 
 export interface HederaX402Config {
-  /** Payer's Hedera account id, e.g. "0.0.9695366". */
-  accountId: string;
-  /** Payer's Hedera ECDSA private key (0x-prefixed hex or DER), from HEDERA_OPERATOR_KEY. */
-  privateKey: string;
+  /**
+   * DELEGATED imzalayıcı. Private key BU MODÜLE GİRMİYOR — signer/hedera-signer.ts
+   * onu env'den kendisi okuyup kapanışta tutuyor (BUILD-PLAN P4-C).
+   * Buraya ham anahtar geçirmenin bir yolu bilerek yok.
+   */
+  signer: HederaSignerHandle;
   /** blocky402 (or compatible) facilitator base URL, from BLOCKY402_URL. */
   facilitatorUrl: string;
   /**
@@ -67,11 +69,8 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
   const resourceServer = new x402ResourceServer(facilitatorClient);
   resourceServer.register(HEDERA_NETWORK, new ExactHederaServerScheme());
 
-  // "Client" side: signs the actual Hedera transfer transaction with the payer's key.
-  const signer = createClientHederaSigner(config.accountId, PrivateKey.fromStringECDSA(config.privateKey), {
-    network: HEDERA_NETWORK,
-  });
-  const clientScheme = new ExactHederaClientScheme(signer);
+  // "Client" tarafı: transferi imzalar — ama anahtarı GÖRMEZ, delegated signer'ı kullanır.
+  const clientScheme = new ExactHederaClientScheme(config.signer.signer);
 
   let initialized: Promise<void> | null = null;
   const ensureInitialized = () => {

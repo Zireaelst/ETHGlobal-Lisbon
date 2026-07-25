@@ -54,6 +54,9 @@ const evmAddress = z
   .string()
   .regex(/^0x[0-9a-fA-F]{40}$/, '0x + 40 hex hane olmalı (EVM adresi)');
 
+/** `loadConfig()` bazı sırları doğrular ama DEĞERİNİ vermez; yerine bu döner. */
+export const REDACTED_SECRET = '[REDACTED — packages/payment/src/signer üzerinden erişilir]';
+
 /** Zorunlu (P0-A'da dolu olmalı) env şeması. */
 const coreSchema = z.object({
   // --- Base Sepolia ---
@@ -70,7 +73,14 @@ const coreSchema = z.object({
 
   // --- Hedera ---
   HEDERA_OPERATOR_ID: hederaAccountId,
-  HEDERA_OPERATOR_KEY: z.string().min(1, 'boş olamaz (DER veya hex private key)'),
+  // DİKKAT: doğrulanır ama DEĞERİ DÖNDÜRÜLMEZ. Hedera imza anahtarı yalnızca
+  // packages/payment/src/signer/ içinden okunur (BUILD-PLAN P4-C delegated signing).
+  // `loadConfig()` onu döndürseydi her agent'ın bağlamına girmiş olurdu — kapı
+  // gate:P4-C bunu çalışma anında test ediyor.
+  HEDERA_OPERATOR_KEY: z
+    .string()
+    .min(1, 'boş olamaz (DER veya hex private key)')
+    .transform(() => REDACTED_SECRET),
   HEDERA_NETWORK: z.enum(['testnet', 'previewnet', 'mainnet']),
   BLOCKY402_URL: httpUrl,
   BLOCKY402_FEE_PAYER: hederaAccountId,
@@ -94,6 +104,7 @@ const LATER_KEYS = [
   'OG_TAPP_ENDPOINT',
   'OG_AGENT_ID',
   'HEDERA_TOPIC_ID',
+  'BOB_HEDERA_ACCOUNT',
   'GRAPH_DEPLOY_KEY',
   'SUBGRAPH_SLUG',
   'SUBGRAPH_QUERY_URL',

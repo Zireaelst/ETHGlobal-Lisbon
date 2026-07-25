@@ -1,0 +1,103 @@
+{
+  "capturedAt": "2026-07-25T06:12:42.908Z",
+  "honest": {
+    "fraudMode": "none",
+    "signedIntentHash": "0x5aeb75ba750507a807f15391765229af8da199151ce19249c20db7cb1b0bf574",
+    "bodyIntentHash": "0x5aeb75ba750507a807f15391765229af8da199151ce19249c20db7cb1b0bf574",
+    "match": true,
+    "clientSigOk": true,
+    "bindingSigOk": true,
+    "computeProvider": "none",
+    "ogVerified": false,
+    "output": "[compute: none] Brief 66 karakter, veri 69 karakter alındı; model \"qwen2.5-omni-7b\" ile gerçek çıkarım YAPILMADI. 0G Sealed Inference bağlanınca bu metnin yerini gerçek analiz ve TEE imzası alacak.",
+    "code": 0,
+    "codeName": "OK",
+    "verified": true,
+    "totalMs": 5968,
+    "discoveredAgentId": "8429",
+    "txHash": "0x4fe9019bca2c4f44695fe78d3c128bf0541b49538c21dc8b4db6c4237cebf481",
+    "blockNumber": 44595839,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x4fe9019bca2c4f44695fe78d3c128bf0541b49538c21dc8b4db6c4237cebf481",
+    "payment": {
+      "rail": "hedera-x402",
+      "quoted": true,
+      "authorized": true,
+      "settled": true,
+      "txRef": "0.0.7162784@1784959965.542488864",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7162784-1784959965-542488864"
+    }
+  },
+  "mirrorTransaction": {
+    "batch_key": null,
+    "bytes": null,
+    "charged_tx_fee": 284124,
+    "consensus_timestamp": "1784959971.173169491",
+    "entity_id": null,
+    "high_volume": false,
+    "high_volume_pricing_multiplier": 0,
+    "max_fee": "100000000",
+    "max_custom_fees": [],
+    "memo_base64": "",
+    "name": "CRYPTOTRANSFER",
+    "nft_transfers": [],
+    "node": "0.0.4",
+    "nonce": 0,
+    "parent_consensus_timestamp": null,
+    "result": "SUCCESS",
+    "scheduled": false,
+    "staking_reward_transfers": [],
+    "token_transfers": [],
+    "transaction_hash": "65SS1FI+yKU12V9UZr3fLEjowAc11Um9qAqYfxOXpSBSdgG8RoolEnsvMw6GMgtq",
+    "transaction_id": "0.0.7162784-1784959965-542488864",
+    "transfers": [
+      {
+        "account": "0.0.802",
+        "amount": 284124,
+        "is_approval": false
+      },
+      {
+        "account": "0.0.7162784",
+        "amount": -284124,
+        "is_approval": false
+      },
+      {
+        "account": "0.0.9695366",
+        "amount": -1000000,
+        "is_approval": false
+      },
+      {
+        "account": "0.0.9738447",
+        "amount": 1000000,
+        "is_approval": false
+      }
+    ],
+    "valid_duration_seconds": "120",
+    "valid_start_timestamp": "1784959965.542488864"
+  },
+  "fraud": {
+    "fraudMode": "substitute",
+    "signedIntentHash": "0xdeed023d211198d25233d7df6e780cb0738bb6a6530fe9684d33a2d3093d7f80",
+    "bodyIntentHash": "0xdeed023d211198d25233d7df6e780cb0738bb6a6530fe9684d33a2d3093d7f80",
+    "match": false,
+    "clientSigOk": true,
+    "bindingSigOk": true,
+    "computeProvider": "none",
+    "ogVerified": false,
+    "output": "[binding] Yeniden hesaplanan taahhüt istemcinin imzaladığıyla uyuşmuyor — iş sipariş edilen iş değil. (compute: none)",
+    "code": 5,
+    "codeName": "MatchFalse",
+    "verified": false,
+    "totalMs": 5911,
+    "discoveredAgentId": "8429",
+    "txHash": "0x72ab259cec0fed0c8c324cd3c204038e4d3062af5525f317cf1c946aac53c45f",
+    "blockNumber": 44595846,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x72ab259cec0fed0c8c324cd3c204038e4d3062af5525f317cf1c946aac53c45f",
+    "payment": {
+      "rail": "hedera-x402",
+      "quoted": true,
+      "authorized": true,
+      "settled": false,
+      "skippedReason": "JobVerified yok (MatchFalse)"
+    }
+  }
+}

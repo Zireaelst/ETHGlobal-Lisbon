@@ -20,6 +20,7 @@ import {
   type PaymentBackend,
 } from '../../packages/payment/src/index.js';
 import { createHederaX402Backend } from '../../packages/payment/src/hedera-x402.js';
+import { createHederaSigner } from '../../packages/payment/src/signer/hedera-signer.js';
 import { createBaseStealthBackend } from '../../packages/payment/src/base-stealth.js';
 import { loadConfig, loadDotenv, repoRoot, requireEnv } from '../../packages/shared/src/config.js';
 import { Gate, fail, pass } from './_harness.js';
@@ -51,8 +52,8 @@ let backends: PaymentBackend[] = [];
 // ---------------------------------------------------------------------------
 gate.check('İki backend de PaymentBackend arayüzünü karşılıyor', () => {
   const hedera = createHederaX402Backend({
-    accountId: cfg.HEDERA_OPERATOR_ID,
-    privateKey: cfg.HEDERA_OPERATOR_KEY,
+    // Anahtar buraya GEÇMİYOR — delegated signer onu env'den kendisi okuyor.
+    signer: createHederaSigner({ accountId: cfg.HEDERA_OPERATOR_ID }),
     facilitatorUrl: cfg.BLOCKY402_URL,
     verifierProvider: provider,
     verifierAddress,

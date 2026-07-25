@@ -51,6 +51,8 @@ export interface BobAgentOptions {
   owner: string;
   skills: string[];
   price: { amount: string; asset: string; decimals: number };
+  /** Bob'un Hedera ödeme hesabı — kartta duyurulur, ödeme rayı bunu kullanır. */
+  hederaAccount?: string;
   /** EIP-712 domain'inin verifyingContract'ı — Alice'in imzasını doğrulamak için. */
   verifyingContract: string;
   /**
@@ -172,6 +174,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
         eciesPubKey,
         price: options.price,
         stealthMetaAddress: null, // P4-B dolduracak
+        hederaAccount: options.hederaAccount ?? null,
       },
       'AgentCard',
     );

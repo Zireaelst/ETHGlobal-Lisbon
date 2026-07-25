@@ -53,13 +53,25 @@ const LATENCY_BUDGET_MS = 10_000;
 
 const gate = new Gate('P0-E', 'Hedera x402 uçtan uca + HCS timeline');
 
+/**
+ * Hedera imza anahtarı `loadConfig()`'ten DÖNMÜYOR — delegated signing (P4-C):
+ * anahtar yalnızca packages/payment/src/signer/ içinden okunur ki agent bağlamına
+ * girmesin. Bu KAPI ham anahtara ihtiyaç duyuyor (hesap açmak, topic yazmak), o
+ * yüzden env'den doğrudan okuyor. Kapılar agent değildir.
+ */
+function requireHederaKey(): string {
+  const k = process.env.HEDERA_OPERATOR_KEY;
+  if (!k || !k.trim()) throw new Error('HEDERA_OPERATOR_KEY boş');
+  return k.trim();
+}
+
 /** Kanıt dosyası — HashScan linkleri submission'a girecek. */
 const evidence: Record<string, unknown> = { capturedAt: new Date().toISOString(), network: NETWORK };
 
 function hederaClient(): Client {
   return Client.forTestnet().setOperator(
     cfg.HEDERA_OPERATOR_ID,
-    PrivateKey.fromStringECDSA(cfg.HEDERA_OPERATOR_KEY),
+    PrivateKey.fromStringECDSA(requireHederaKey()),
   );
 }
 
@@ -195,7 +207,7 @@ gate.check('402 → pay → 200 round trip başarılı', async () => {
 
   const signer = createClientHederaSigner(
     cfg.HEDERA_OPERATOR_ID,
-    PrivateKey.fromStringECDSA(cfg.HEDERA_OPERATOR_KEY),
+    PrivateKey.fromStringECDSA(requireHederaKey()),
     { network: NETWORK },
   );
   const client = new x402Client().register('hedera:*', new ExactHederaClientScheme(signer));

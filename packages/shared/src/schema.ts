@@ -122,6 +122,18 @@ export const AgentCardSchema = z.object({
   }),
   /** ERC-5564 stealth meta-address (P4-B). Henüz yoksa null. */
   stealthMetaAddress: z.string().nullable(),
+  /**
+   * Hedera ödeme hesabı (P4-C). Alıcı gizliliği YOK — roadmap v3 §07 bilinçli kararı.
+   *
+   * `.default()` KULLANMIYORUZ: default'lu bir alan zod'un girdi ve çıktı tiplerini
+   * ayırıyor, `parseOrThrow`'un jeneriği de girdiye bağlanıp alanı opsiyonel sanıyor.
+   * Alanı zorunlu-nullable bırakmak hem tipleri hizalıyor hem de eksik alanı sessizce
+   * doldurmak yerine reddediyor.
+   */
+  hederaAccount: z
+    .string()
+    .regex(/^\d+\.\d+\.\d+$/, 'Hedera hesap kimliği olmalı')
+    .nullable(),
 });
 export type AgentCard = z.infer<typeof AgentCardSchema>;
 

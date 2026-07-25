@@ -48,6 +48,8 @@ export const METADATA_KEYS = {
   eciesPubKey: 'eciesPubKey',
   /** ERC-5564 stealth meta-address (Base gizlilik koşusu, P4-B). */
   stealthMetaAddress: 'stealthMetaAddress',
+  /** Hedera ödeme hesabı (agentic koşu, P4-C). Alıcı gizliliği YOK — bilinçli. */
+  hederaAccount: 'hederaAccount',
   /** Registry'nin kayıt sırasında kendi eklediği alan — biz yazmıyoruz. */
   agentWallet: 'agentWallet',
 } as const;

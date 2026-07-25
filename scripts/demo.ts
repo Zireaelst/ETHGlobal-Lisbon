@@ -44,6 +44,11 @@ export interface DemoOptions {
   data?: string;
   /** Zincire yazmadan sadece akışı koştur (previewJob ile kodu okur). */
   dryRun?: boolean;
+  /**
+   * Ödeme rayı. Verilmezse PAYMENT_BACKEND env'i, o da yoksa ödeme adımı atlanır.
+   * Kural: settlement YALNIZCA JobVerified'tan sonra — fraud koşusunda hiç çağrılmaz.
+   */
+  paymentRail?: 'hedera' | 'base' | 'none';
   log?: (line: string) => void;
 }
 
@@ -70,6 +75,17 @@ export interface DemoReport {
   /** Alice'in ilk isteğinden zincirdeki karara kadar geçen süre. */
   totalMs: number;
   discoveredAgentId?: string;
+  /** Ödeme sonucu. Fraud koşusunda `settled: false` ve `receipt` YOK. */
+  payment?: {
+    rail: string;
+    quoted: boolean;
+    authorized: boolean;
+    settled: boolean;
+    /** Neden settle edilmedi — fraud koşusunda burası dolu olur. */
+    skippedReason?: string;
+    txRef?: string;
+    explorerUrl?: string;
+  };
 }
 
 let cachedBob: BobAgent | undefined;
@@ -100,6 +116,7 @@ export async function ensureBob(log: (l: string) => void): Promise<BobAgent> {
     port: Number(url.port || 80),
     publicUrl: `${url.protocol}//${url.host}`,
     fraudMode: 'none',
+    hederaAccount: process.env.BOB_HEDERA_ACCOUNT,
     log: () => {},
   });
   await cachedBob.listen();
@@ -218,7 +235,86 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     `[demo] zincir: ${code === 0 ? 'JobVerified' : `JobRejected(${codeName})`} · blok ${receipt?.blockNumber} · ${report.totalMs} ms`,
   );
   log(`[demo] ${report.basescanUrl}`);
+
+  // --- 7. ÖDEME — yalnızca JobVerified'tan SONRA ---
+  const rail = options.paymentRail ?? (process.env.PAYMENT_BACKEND as DemoOptions['paymentRail']) ?? 'none';
+  if (rail !== 'none') {
+    report.payment = await runPayment(rail, job, report, log);
+  }
+
   return report;
+}
+
+/**
+ * Ödeme akışı: quote → authorize (para HAREKET ETMEZ) → settle (JobVerified'tan SONRA).
+ *
+ * Fraud koşusunda `JobVerified` hiç oluşmadığı için `settle()` HİÇ ÇAĞRILMIYOR.
+ * Demonun en güçlü cümlesi bu: "ödeme asla settle olmadı."
+ */
+async function runPayment(
+  rail: 'hedera' | 'base',
+  job: Awaited<ReturnType<typeof runAliceJob>>,
+  report: DemoReport,
+  log: (l: string) => void,
+): Promise<DemoReport['payment']> {
+  const cfg = loadConfig();
+  const { createHederaX402Backend } = await import('../packages/payment/src/hedera-x402.js');
+  const { createBaseStealthBackend } = await import('../packages/payment/src/base-stealth.js');
+  const { createHederaSigner } = await import('../packages/payment/src/signer/hedera-signer.js');
+  const provider = new ethers.JsonRpcProvider(cfg.BASE_RPC_URL);
+  const verifierAddress = requireEnv('VERIFIER_ADDRESS');
+
+  const backend =
+    rail === 'hedera'
+      ? createHederaX402Backend({
+          // Anahtar BURAYA GİRMİYOR — delegated signer env'den kendisi okuyor.
+          signer: createHederaSigner({ accountId: cfg.HEDERA_OPERATOR_ID }),
+          facilitatorUrl: cfg.BLOCKY402_URL,
+          verifierProvider: provider,
+          verifierAddress,
+        })
+      : createBaseStealthBackend({
+          provider,
+          payerPrivateKey: cfg.PRIVATE_KEY_ALICE,
+          usdcAddress: cfg.USDC_BASE_SEPOLIA,
+          verifierAddress,
+        });
+
+  const recipient =
+    rail === 'hedera'
+      ? (job.card.hederaAccount ?? requireEnv('HEDERA_OPERATOR_ID'))
+      : (job.card.stealthMetaAddress ?? '');
+
+  const quote = await backend.quote({
+    intentHash: job.intent.intentHash,
+    amount: job.card.price.amount,
+    recipient,
+  });
+  const proof = await backend.authorize(quote);
+  log(`[demo] ödeme yetkilendirildi (${backend.rail}) — para HENÜZ hareket etmedi`);
+
+  // KURAL: doğrulanmamış iş için settle YOK.
+  if (!report.verified || !report.txHash) {
+    log(`[demo] ÖDEME SETTLE EDİLMEDİ — iş doğrulanmadı (${report.codeName})`);
+    return {
+      rail: backend.rail,
+      quoted: true,
+      authorized: true,
+      settled: false,
+      skippedReason: `JobVerified yok (${report.codeName})`,
+    };
+  }
+
+  const receipt = await backend.settle(proof, report.txHash);
+  log(`[demo] ödeme settle oldu: ${receipt.explorerUrl}`);
+  return {
+    rail: backend.rail,
+    quoted: true,
+    authorized: true,
+    settled: true,
+    txRef: receipt.txRef,
+    explorerUrl: receipt.explorerUrl,
+  };
 }
 
 /** `pnpm demo:base` girişi. */
