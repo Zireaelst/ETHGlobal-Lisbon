@@ -1,9 +1,9 @@
 {
-  "capturedAt": "2026-07-25T06:28:10.014Z",
+  "capturedAt": "2026-07-25T06:45:41.457Z",
   "honest": {
     "fraudMode": "none",
-    "signedIntentHash": "0xc4da2c65c8184f55f29cbfe2965a434e459441347f7de587619c6f3a59946479",
-    "bodyIntentHash": "0xc4da2c65c8184f55f29cbfe2965a434e459441347f7de587619c6f3a59946479",
+    "signedIntentHash": "0x3caf660229141f104affd61cabf66438cfac48ac46d4e46d8a009135b114ea3d",
+    "bodyIntentHash": "0x3caf660229141f104affd61cabf66438cfac48ac46d4e46d8a009135b114ea3d",
     "match": true,
     "clientSigOk": true,
     "bindingSigOk": true,
@@ -13,18 +13,18 @@
     "code": 0,
     "codeName": "OK",
     "verified": true,
-    "totalMs": 6170,
+    "totalMs": 1597,
     "discoveredAgentId": "8429",
-    "txHash": "0x28830b608be68edf454b969a63ddea300ab443da4045ef6509da31be5f4b3854",
-    "blockNumber": 44596303,
-    "basescanUrl": "https://sepolia.basescan.org/tx/0x28830b608be68edf454b969a63ddea300ab443da4045ef6509da31be5f4b3854",
+    "txHash": "0x4d49a104f5ac020ae75f006ca74d5b588b8cb92d6837f6a044ac2e6f6a51d322",
+    "blockNumber": 44596828,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x4d49a104f5ac020ae75f006ca74d5b588b8cb92d6837f6a044ac2e6f6a51d322",
     "payment": {
       "rail": "hedera-x402",
       "quoted": true,
       "authorized": true,
       "settled": true,
-      "txRef": "0.0.7162784@1784960893.729256782",
-      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7162784-1784960893-729256782"
+      "txRef": "0.0.7162784@1784961940.184978386",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7162784-1784961940-184978386"
     },
     "timeline": {
       "topicId": "0.0.9738448",
@@ -42,7 +42,7 @@
     "batch_key": null,
     "bytes": null,
     "charged_tx_fee": 284124,
-    "consensus_timestamp": "1784960898.874168900",
+    "consensus_timestamp": "1784961944.899603714",
     "entity_id": null,
     "high_volume": false,
     "high_volume_pricing_multiplier": 0,
@@ -58,8 +58,8 @@
     "scheduled": false,
     "staking_reward_transfers": [],
     "token_transfers": [],
-    "transaction_hash": "Ih7H7FZao2TjX6x+TOg9pBDtA0VZoH5eNfviRK2sz2I1b7p8J7QFnaJVmWpg+oqz",
-    "transaction_id": "0.0.7162784-1784960893-729256782",
+    "transaction_hash": "AJpF1682W4DFuFRYqUhl2EzIoxMKSYWKQAGXz2EaBqIu3H8iLVmBJUATBOVeGev1",
+    "transaction_id": "0.0.7162784-1784961940-184978386",
     "transfers": [
       {
         "account": "0.0.802",
@@ -83,12 +83,12 @@
       }
     ],
     "valid_duration_seconds": "120",
-    "valid_start_timestamp": "1784960893.729256782"
+    "valid_start_timestamp": "1784961940.184978386"
   },
   "fraud": {
     "fraudMode": "substitute",
-    "signedIntentHash": "0x6190d032e43225be4dfc66a8c8195744b9a23c03a58ef46e27e4847a9ac60bd0",
-    "bodyIntentHash": "0x6190d032e43225be4dfc66a8c8195744b9a23c03a58ef46e27e4847a9ac60bd0",
+    "signedIntentHash": "0xf3378d808781f5f4638ad8c67ea07439723c9f541b71c60e24705341ce39a3a0",
+    "bodyIntentHash": "0xf3378d808781f5f4638ad8c67ea07439723c9f541b71c60e24705341ce39a3a0",
     "match": false,
     "clientSigOk": true,
     "bindingSigOk": true,
@@ -98,11 +98,11 @@
     "code": 5,
     "codeName": "MatchFalse",
     "verified": false,
-    "totalMs": 1605,
+    "totalMs": 6108,
     "discoveredAgentId": "8429",
-    "txHash": "0x181237cc7be6eabe68fefa9db48b0658081be1ff5d86015d219c393f0e1517e1",
-    "blockNumber": 44596309,
-    "basescanUrl": "https://sepolia.basescan.org/tx/0x181237cc7be6eabe68fefa9db48b0658081be1ff5d86015d219c393f0e1517e1",
+    "txHash": "0x167e82af3aa995124b42516b0fb0fd02058b960c6fb10f5cb3bf8627db9485f2",
+    "blockNumber": 44596832,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x167e82af3aa995124b42516b0fb0fd02058b960c6fb10f5cb3bf8627db9485f2",
     "payment": {
       "rail": "hedera-x402",
       "quoted": true,

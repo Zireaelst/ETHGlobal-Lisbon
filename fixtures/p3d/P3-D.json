@@ -1,10 +1,10 @@
 {
-  "capturedAt": "2026-07-25T06:27:10.680Z",
+  "capturedAt": "2026-07-25T06:44:50.524Z",
   "honestRuns": [
     {
       "fraudMode": "none",
-      "signedIntentHash": "0x3f4ee162aae761048d7802674b916485a31179301a6f6f046885932b43182014",
-      "bodyIntentHash": "0x3f4ee162aae761048d7802674b916485a31179301a6f6f046885932b43182014",
+      "signedIntentHash": "0x93f2918050d2c36163d62138fe291c15e203d513a78e2f05a8ce94da581da0b5",
+      "bodyIntentHash": "0x93f2918050d2c36163d62138fe291c15e203d513a78e2f05a8ce94da581da0b5",
       "match": true,
       "clientSigOk": true,
       "bindingSigOk": true,
@@ -14,11 +14,11 @@
       "code": 0,
       "codeName": "OK",
       "verified": true,
-      "totalMs": 7821,
+      "totalMs": 2707,
       "discoveredAgentId": "8429",
-      "txHash": "0xea0ea4c802b44e579417f0711e7e4d9d7f7f41bd336f1c724f830beb97798431",
-      "blockNumber": 44596274,
-      "basescanUrl": "https://sepolia.basescan.org/tx/0xea0ea4c802b44e579417f0711e7e4d9d7f7f41bd336f1c724f830beb97798431",
+      "txHash": "0xaa1f59f9aeab674d2ddafd56d170293b7123b37a9422f24458da4f3b363acae7",
+      "blockNumber": 44596803,
+      "basescanUrl": "https://sepolia.basescan.org/tx/0xaa1f59f9aeab674d2ddafd56d170293b7123b37a9422f24458da4f3b363acae7",
       "timeline": {
         "topicId": "0.0.9738448",
         "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
@@ -32,8 +32,8 @@
     },
     {
       "fraudMode": "none",
-      "signedIntentHash": "0x1f7de1a303c4ffb4ccf5f6b305c63568fb7d8a1197eb304b4c7470ecdd45087f",
-      "bodyIntentHash": "0x1f7de1a303c4ffb4ccf5f6b305c63568fb7d8a1197eb304b4c7470ecdd45087f",
+      "signedIntentHash": "0xb010182792d1afce3ad08c8c780b6c9706a1480e0b1f234503ca7eb1c4fe3f52",
+      "bodyIntentHash": "0xb010182792d1afce3ad08c8c780b6c9706a1480e0b1f234503ca7eb1c4fe3f52",
       "match": true,
       "clientSigOk": true,
       "bindingSigOk": true,
@@ -43,11 +43,11 @@
       "code": 0,
       "codeName": "OK",
       "verified": true,
-      "totalMs": 1660,
+      "totalMs": 1556,
       "discoveredAgentId": "8429",
-      "txHash": "0x1388f577fb736285d3d8014867bd4b7c7465bc95b9c52b4c2647b0f928cf9c22",
-      "blockNumber": 44596278,
-      "basescanUrl": "https://sepolia.basescan.org/tx/0x1388f577fb736285d3d8014867bd4b7c7465bc95b9c52b4c2647b0f928cf9c22",
+      "txHash": "0x7cda4166b3b4e4478496ad85cf3e2a4a71df76ac6d3f6b585b82f9332261c6ce",
+      "blockNumber": 44596806,
+      "basescanUrl": "https://sepolia.basescan.org/tx/0x7cda4166b3b4e4478496ad85cf3e2a4a71df76ac6d3f6b585b82f9332261c6ce",
       "timeline": {
         "topicId": "0.0.9738448",
         "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
@@ -61,8 +61,8 @@
     },
     {
       "fraudMode": "none",
-      "signedIntentHash": "0x66ff661c717c38e11540b1dab1593cf6166eb77c78db8fad54f0f511275a9572",
-      "bodyIntentHash": "0x66ff661c717c38e11540b1dab1593cf6166eb77c78db8fad54f0f511275a9572",
+      "signedIntentHash": "0xaa7654df0e6f124c14b4aba5879dcb8b22c0391ff2599b8abea3a59c56c9e70e",
+      "bodyIntentHash": "0xaa7654df0e6f124c14b4aba5879dcb8b22c0391ff2599b8abea3a59c56c9e70e",
       "match": true,
       "clientSigOk": true,
       "bindingSigOk": true,
@@ -72,11 +72,11 @@
       "code": 0,
       "codeName": "OK",
       "verified": true,
-      "totalMs": 1471,
+      "totalMs": 1542,
       "discoveredAgentId": "8429",
-      "txHash": "0x0f31685882bfcda44dadb40a1eff4f3f743b7cb03ad075a769efdda8cb4adecd",
-      "blockNumber": 44596281,
-      "basescanUrl": "https://sepolia.basescan.org/tx/0x0f31685882bfcda44dadb40a1eff4f3f743b7cb03ad075a769efdda8cb4adecd",
+      "txHash": "0x7c6044608d9014088fccc4375276aa38c99619cb07ead7b477c3045a89922f18",
+      "blockNumber": 44596809,
+      "basescanUrl": "https://sepolia.basescan.org/tx/0x7c6044608d9014088fccc4375276aa38c99619cb07ead7b477c3045a89922f18",
       "timeline": {
         "topicId": "0.0.9738448",
         "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
@@ -90,26 +90,26 @@
     }
   ],
   "jobVerifiedEvent": {
-    "intentHash": "0x3f4ee162aae761048d7802674b916485a31179301a6f6f046885932b43182014",
+    "intentHash": "0x93f2918050d2c36163d62138fe291c15e203d513a78e2f05a8ce94da581da0b5",
     "agentId": "8429",
     "price": "1000000",
-    "tx": "0xea0ea4c802b44e579417f0711e7e4d9d7f7f41bd336f1c724f830beb97798431"
+    "tx": "0xaa1f59f9aeab674d2ddafd56d170293b7123b37a9422f24458da4f3b363acae7"
   },
   "fraudRuns": {
     "substitute": {
       "code": 5,
       "name": "MatchFalse",
-      "tx": "0x95fecd57f853568fc6678872cc2bb7ce01b1ab7da7d117dc2f382517814b73ae"
+      "tx": "0x8a6e4db847d81352e96d6f803fdd0df1563ea5932fb613aa801503008a9a6297"
     },
     "forge": {
       "code": 4,
       "name": "BadEnclaveSig",
-      "tx": "0xb184a0f69fa63de5c55f3b7570e48ef15880d39a42e30919e90e4ddcb6c11051"
+      "tx": "0xa0e21cb924c76a2fe223631daf6877853e968702e91b6dd7cda6ca0096ecdadb"
     },
     "selfintent": {
       "code": 3,
       "name": "BadClientSig",
-      "tx": "0xd720112babcabe3ef7b422eff2af8d095ca3da81996a5f31238784a0a0ab6f0c"
+      "tx": "0x8fc6fea97a6d35283b14afccdab8e53b41ce3b8d8e0d38380bf4e58b06296bea"
     }
   },
   "verifier": "0x3B116D648B710f551e37223c4c4d39879AFEEb96"

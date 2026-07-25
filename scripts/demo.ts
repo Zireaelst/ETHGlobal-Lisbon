@@ -22,6 +22,7 @@ import type { FraudMode } from '../packages/bob-agent/src/fraud.js';
 import { runAliceJob } from '../packages/alice-agent/src/index.js';
 import { decodeBody } from '../packages/bob-binding/src/binding.js';
 import { describeCompute, type Constraints, type EchoResult } from '../packages/shared/src/index.js';
+import { deriveAgentStealthKeys } from '../packages/payment/src/stealth.js';
 import { loadConfig, loadDotenv, repoRoot, requireEnv } from '../packages/shared/src/config.js';
 
 const BASESCAN = 'https://sepolia.basescan.org';
@@ -144,6 +145,9 @@ export async function ensureBob(log: (l: string) => void): Promise<BobAgent> {
     publicUrl: `${url.protocol}//${url.host}`,
     fraudMode: 'none',
     hederaAccount: process.env.BOB_HEDERA_ACCOUNT,
+    // Bob'un ERC-5564 meta-adresi kök cüzdanından DETERMİNİSTİK türetiliyor —
+    // ayrı sır saklamak gerekmiyor, meta-adres her koşuda aynı.
+    stealthMetaAddress: deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob').metaAddress,
     log: () => {},
   });
   await cachedBob.listen();
@@ -378,8 +382,12 @@ async function runPayment(
       : createBaseStealthBackend({
           provider,
           payerPrivateKey: cfg.PRIVATE_KEY_ALICE,
+          // Gas'ı relayer öder — Alice değil. Hedera'da bu rolü blocky402 oynuyor.
+          relayerPrivateKey: cfg.PRIVATE_KEY_DEPLOYER,
           usdcAddress: cfg.USDC_BASE_SEPOLIA,
           verifierAddress,
+          recipientMetaAddress: job.card.stealthMetaAddress ?? undefined,
+          log,
         });
 
   const recipient =

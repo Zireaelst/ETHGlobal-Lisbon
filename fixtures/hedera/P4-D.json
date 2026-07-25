@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-07-25T06:26:34.637Z",
+  "capturedAt": "2026-07-25T06:45:58.470Z",
   "honestStages": [
     "402_ISSUED",
     "INTENT_COMMIT",
@@ -9,51 +9,51 @@
   ],
   "honestTimeline": [
     {
-      "seq": 23,
+      "seq": 129,
       "stage": "402_ISSUED",
-      "consensusTimestamp": "1784960796.314645104"
+      "consensusTimestamp": "1784961960.413146398"
     },
     {
-      "seq": 24,
+      "seq": 130,
       "stage": "INTENT_COMMIT",
-      "consensusTimestamp": "1784960797.692675104"
+      "consensusTimestamp": "1784961961.699444117"
     },
     {
-      "seq": 25,
+      "seq": 131,
       "stage": "ENCLAVE_INVOKED",
-      "consensusTimestamp": "1784960799.094233104"
+      "consensusTimestamp": "1784961963.067750121"
     },
     {
-      "seq": 26,
+      "seq": 132,
       "stage": "OUTPUT_COMMIT",
-      "consensusTimestamp": "1784960800.033547104"
+      "consensusTimestamp": "1784961964.259100104"
     },
     {
-      "seq": 27,
+      "seq": 133,
       "stage": "SETTLED",
-      "consensusTimestamp": "1784960804.316840909"
+      "consensusTimestamp": "1784961966.106763104"
     }
   ],
   "fraudTimeline": [
     {
-      "seq": 28,
+      "seq": 134,
       "stage": "402_ISSUED",
-      "consensusTimestamp": "1784960808.635251937"
+      "consensusTimestamp": "1784961970.193057644"
     },
     {
-      "seq": 29,
+      "seq": 135,
       "stage": "INTENT_COMMIT",
-      "consensusTimestamp": "1784960810.157543238"
+      "consensusTimestamp": "1784961971.719457615"
     },
     {
-      "seq": 30,
+      "seq": 136,
       "stage": "ENCLAVE_INVOKED",
-      "consensusTimestamp": "1784960811.494721721"
+      "consensusTimestamp": "1784961972.945798539"
     },
     {
-      "seq": 31,
+      "seq": 137,
       "stage": "OUTPUT_COMMIT",
-      "consensusTimestamp": "1784960812.752535104"
+      "consensusTimestamp": "1784961974.333056623"
     }
   ],
   "topicId": "0.0.9738448",

@@ -53,6 +53,8 @@ export interface BobAgentOptions {
   price: { amount: string; asset: string; decimals: number };
   /** Bob'un Hedera ödeme hesabı — kartta duyurulur, ödeme rayı bunu kullanır. */
   hederaAccount?: string;
+  /** ERC-5564 stealth meta-adresi — Base gizlilik koşusu bunu kullanır. */
+  stealthMetaAddress?: string;
   /** EIP-712 domain'inin verifyingContract'ı — Alice'in imzasını doğrulamak için. */
   verifyingContract: string;
   /**
@@ -173,7 +175,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
         endpoint: `${url()}/task`,
         eciesPubKey,
         price: options.price,
-        stealthMetaAddress: null, // P4-B dolduracak
+        stealthMetaAddress: options.stealthMetaAddress ?? null,
         hederaAccount: options.hederaAccount ?? null,
       },
       'AgentCard',

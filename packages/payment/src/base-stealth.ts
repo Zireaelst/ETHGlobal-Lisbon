@@ -1,19 +1,21 @@
 // base-stealth.ts — x402 + ERC-5564 stealth on Base Sepolia (GİZLİLİK koşusu).
 //
-// Bu ray, alıcının kimliğini gizleyen olan. Bob bir "meta-adres" yayınlar; Alice her
-// iş için ondan TAZE bir stealth adres türetir ve oraya öder. Zincirde "bir adres
-// USDC aldı" görünür, ama o adresin Bob'un ERC-8004 kimliğiyle bağı YOKTUR.
+// Bu ray alıcının kimliğini gizleyen olan. Bob bir meta-adres yayınlar; Alice her iş
+// için TAZE bir stealth adres türetip oraya öder. Zincirde "bir adres USDC aldı"
+// görünür, o adresin Bob'un ERC-8004 kimliğiyle bağı GÖRÜNMEZ.
 //
 // Hedera rayıyla farkı bilinçli (roadmap v3 §07): stealth alıcı-gizliliği bir EVM
-// konstrüksiyonu, Hedera'nın hesap modeline oturmuyor. İki ayrı kanıt sunuyoruz,
-// taviz verilmiş tek bir kanıt değil.
+// konstrüksiyonu, Hedera'nın hesap modeline oturmuyor. İki ayrı kanıt sunuyoruz.
 //
-// ⚠️ DURUM: P4-B'de tamamlanacak. Arayüz sözleşmesi burada TAM; eksik olan ERC-5564
-// türetmesi ve USDC transferi. Kritik kapı kriteri şu ve bilerek zor:
-// "Bob stealth adresten parayı HARCAYABİLİYOR" — fonu çekip başka adrese göndererek
-// kanıtlanacak. Sadece "adres ürettik" demek hiçbir şey kanıtlamaz.
+// GAZ: Alice gas ÖDEMEZ. EIP-3009 `transferWithAuthorization` ile yetkiyi imzalar,
+// işlemi bir relayer gönderir. Hedera'da bu rolü gerçek blocky402 facilitator'ı
+// oynuyor; Base'de kendi relayer cüzdanımız oynuyor — README'de böyle yazılacak.
+//
+// STEALTH ADRESİN ETH'İ YOK ve OLMAMALI: adrese ETH göndermek onu gönderene
+// bağlar ve gizliliği bozar. Bob da parayı EIP-3009 ile çıkarıyor — stealth anahtar
+// yetkiyi imzalıyor, gas'ı yine relayer ödüyor. Böylece adres hiç ETH görmüyor.
 
-import type { JsonRpcProvider } from 'ethers';
+import { Contract, Wallet, hexlify, randomBytes, type JsonRpcProvider } from 'ethers';
 import {
   assertJobVerified,
   type AuthProof,
@@ -22,57 +24,249 @@ import {
   type QuoteRequest,
   type Receipt,
 } from './index.js';
+import { SCHEME_ID, deriveStealthPayment, type StealthPayment } from './stealth.js';
 
 const BASESCAN = 'https://sepolia.basescan.org';
 
+/** ERC-5564 kanonik singleton'ları — ikisi de Base Sepolia'da canlı. */
+export const ERC5564_ANNOUNCER = '0x55649E01B5Df198D18D95b5cc5051630cfD45564';
+export const ERC6538_REGISTRY = '0x6538E6bf4B0eBd30A8Ea093027Ac2422ce5d6538';
+
+export const ANNOUNCER_ABI = [
+  'function announce(uint256 schemeId, address stealthAddress, bytes ephemeralPubKey, bytes metadata)',
+  'event Announcement(uint256 indexed schemeId, address indexed stealthAddress, address indexed caller, bytes ephemeralPubKey, bytes metadata)',
+];
+
+export const REGISTRY_ABI = [
+  'function registerKeys(uint256 schemeId, bytes stealthMetaAddress)',
+  'function stealthMetaAddressOf(address registrant, uint256 schemeId) view returns (bytes)',
+];
+
+export const USDC_ABI = [
+  'function name() view returns (string)',
+  'function version() view returns (string)',
+  'function decimals() view returns (uint8)',
+  'function balanceOf(address) view returns (uint256)',
+  'function transferWithAuthorization(address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce, uint8 v, bytes32 r, bytes32 s)',
+  'function authorizationState(address authorizer, bytes32 nonce) view returns (bool)',
+];
+
+const TRANSFER_WITH_AUTHORIZATION_TYPES = {
+  TransferWithAuthorization: [
+    { name: 'from', type: 'address' },
+    { name: 'to', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'validAfter', type: 'uint256' },
+    { name: 'validBefore', type: 'uint256' },
+    { name: 'nonce', type: 'bytes32' },
+  ],
+};
+
 export interface BaseStealthConfig {
   provider: JsonRpcProvider;
-  /** Alice'in ödeme yapan cüzdanının private key'i. */
+  /** Alice — yetkiyi İMZALAR, gas ödemez. */
   payerPrivateKey: string;
-  /** Base Sepolia USDC. */
+  /**
+   * İşlemi gönderen ve gas'ı ödeyen. Hedera'da bu rolü blocky402 oynuyor;
+   * Base'de kendi cüzdanımız — dürüstçe "relayer" diye adlandırıldı.
+   */
+  relayerPrivateKey: string;
   usdcAddress: string;
   verifierAddress: string;
-  /** Bob'un ERC-5564 stealth meta-adresi (agent card / registry'den). */
+  /** Bob'un ERC-5564 meta-adresi (agent card / registry'den). */
   recipientMetaAddress?: string;
+  announcerAddress?: string;
+  log?: (line: string) => void;
 }
 
-/** P4-B tamamlanana kadar atılan hata — sessizce yanlış davranmaktansa açıkça durur. */
-export class StealthNotImplementedError extends Error {
-  constructor(what: string) {
-    super(
-      `base-stealth: ${what} henüz uygulanmadı (BUILD-PLAN P4-B). ` +
-        `USDC fonlaması ve ERC-5564 türetmesi o adımda geliyor.`,
-    );
-    this.name = 'StealthNotImplementedError';
-  }
+/** quote → authorize arasında taşınan, henüz GÖNDERİLMEMİŞ yetki. */
+interface StealthAuthPayload {
+  from: string;
+  to: string;
+  value: string;
+  validAfter: string;
+  validBefore: string;
+  nonce: string;
+  signature: string;
+  ephemeralPublicKey: string;
+  viewTag: number;
+  metadata: string;
+}
+
+/** EIP-3009 yetkisi imzala — para HAREKET ETMEZ, sadece izin üretilir. */
+export async function signTransferAuthorization(params: {
+  provider: JsonRpcProvider;
+  usdcAddress: string;
+  signerPrivateKey: string;
+  to: string;
+  value: bigint;
+  validSeconds?: number;
+}): Promise<StealthAuthPayload> {
+  const usdc = new Contract(params.usdcAddress, USDC_ABI, params.provider);
+  const [name, version, network] = await Promise.all([
+    usdc.getFunction('name')() as Promise<string>,
+    usdc.getFunction('version')() as Promise<string>,
+    params.provider.getNetwork(),
+  ]);
+
+  const wallet = new Wallet(params.signerPrivateKey);
+  const now = Math.floor(Date.now() / 1000);
+  const message = {
+    from: wallet.address,
+    to: params.to,
+    value: params.value,
+    validAfter: 0n,
+    validBefore: BigInt(now + (params.validSeconds ?? 3600)),
+    nonce: hexlify(randomBytes(32)),
+  };
+
+  const signature = await wallet.signTypedData(
+    { name, version, chainId: network.chainId, verifyingContract: params.usdcAddress },
+    TRANSFER_WITH_AUTHORIZATION_TYPES,
+    message,
+  );
+
+  return {
+    from: message.from,
+    to: message.to,
+    value: message.value.toString(),
+    validAfter: message.validAfter.toString(),
+    validBefore: message.validBefore.toString(),
+    nonce: message.nonce,
+    signature,
+    ephemeralPublicKey: '',
+    viewTag: 0,
+    metadata: '0x',
+  };
+}
+
+/** Yetkiyi zincire gönder — gas'ı GÖNDEREN öder, imzalayan değil. */
+export async function submitTransferAuthorization(
+  relayer: Wallet,
+  usdcAddress: string,
+  auth: Pick<StealthAuthPayload, 'from' | 'to' | 'value' | 'validAfter' | 'validBefore' | 'nonce' | 'signature'>,
+): Promise<{ txHash: string; blockNumber: number }> {
+  const usdc = new Contract(usdcAddress, USDC_ABI, relayer);
+  const sig = auth.signature.startsWith('0x') ? auth.signature.slice(2) : auth.signature;
+  const r = `0x${sig.slice(0, 64)}`;
+  const s = `0x${sig.slice(64, 128)}`;
+  const v = Number.parseInt(sig.slice(128, 130), 16);
+
+  const tx = await usdc.getFunction('transferWithAuthorization')(
+    auth.from,
+    auth.to,
+    BigInt(auth.value),
+    BigInt(auth.validAfter),
+    BigInt(auth.validBefore),
+    auth.nonce,
+    v,
+    r,
+    s,
+  );
+  const receipt = await tx.wait();
+  if (!receipt || receipt.status !== 1) throw new Error(`transferWithAuthorization başarısız: ${tx.hash}`);
+  return { txHash: tx.hash, blockNumber: receipt.blockNumber };
 }
 
 export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBackend {
+  const log = config.log ?? (() => {});
+  const announcerAddress = config.announcerAddress ?? ERC5564_ANNOUNCER;
+  /** quote() ile authorize() arasında taşınan tek seferlik türetme. */
+  let pending: StealthPayment | undefined;
+
   return {
     rail: 'base-stealth',
 
     async quote(request: QuoteRequest): Promise<PaymentQuote> {
-      // P4-B: recipientMetaAddress'ten ERC-5564 ile TAZE stealth adres türet.
-      if (!config.recipientMetaAddress) {
-        throw new StealthNotImplementedError('stealth meta-adres türetmesi');
+      const metaAddress = config.recipientMetaAddress ?? request.recipient;
+      if (!metaAddress.startsWith('st:')) {
+        throw new Error(
+          `base-stealth: alıcı bir ERC-5564 meta-adresi olmalı ("st:base:0x…"), gelen: ${metaAddress.slice(0, 24)}…`,
+        );
       }
-      throw new StealthNotImplementedError('stealth adres türetmesi');
-      // Dönecek olan:
-      // return { rail: 'base-stealth', intentHash: request.intentHash, amount: request.amount,
-      //          asset: 'USDC', decimals: 6, payTo: <taze stealth adres>, http402, expiresAt };
+      // HER İŞ İÇİN TAZE ephemeral anahtar — tekrar kullanmak iki ödemeyi bağlar.
+      pending = deriveStealthPayment(metaAddress, hexlify(randomBytes(32)));
+      log(`[base-stealth] taze stealth adres türetildi: ${pending.stealthAddress}`);
+
+      return {
+        rail: 'base-stealth',
+        intentHash: request.intentHash,
+        amount: request.amount,
+        asset: 'USDC',
+        decimals: 6,
+        payTo: pending.stealthAddress,
+        http402: {
+          scheme: 'exact',
+          network: 'base-sepolia',
+          asset: config.usdcAddress,
+          amount: request.amount,
+          payTo: pending.stealthAddress,
+        },
+        expiresAt: Date.now() + 3_600_000,
+      };
     },
 
-    async authorize(_quote: PaymentQuote): Promise<AuthProof> {
-      // P4-B: EIP-3009 transferWithAuthorization imzası — Alice gas ÖDEMEZ,
-      // para bu noktada HAREKET ETMEZ.
-      throw new StealthNotImplementedError('EIP-3009 yetkilendirmesi');
+    async authorize(quote: PaymentQuote): Promise<AuthProof> {
+      if (!pending) throw new Error('base-stealth: authorize() quote() olmadan çağrıldı');
+      const auth = await signTransferAuthorization({
+        provider: config.provider,
+        usdcAddress: config.usdcAddress,
+        signerPrivateKey: config.payerPrivateKey,
+        to: quote.payTo,
+        value: BigInt(quote.amount),
+      });
+      log('[base-stealth] EIP-3009 yetkisi imzalandı — para HENÜZ hareket etmedi');
+
+      return {
+        rail: 'base-stealth',
+        intentHash: quote.intentHash,
+        payTo: quote.payTo,
+        amount: quote.amount,
+        payload: {
+          ...auth,
+          ephemeralPublicKey: pending.ephemeralPublicKey,
+          viewTag: pending.viewTag,
+          metadata: pending.metadata,
+        } satisfies StealthAuthPayload,
+      };
     },
 
     async settle(proof: AuthProof, jobVerifiedTx: string): Promise<Receipt> {
-      // KAPI önce çalışır: doğrulanmamış iş için settle YOK. Bu kısım P4-B'den
-      // bağımsız olarak şimdiden geçerli ve kapı tarafından test ediliyor.
-      await assertJobVerified(config.provider, config.verifierAddress, jobVerifiedTx, proof.intentHash);
-      throw new StealthNotImplementedError('USDC settlement');
+      // KAPI: doğrulanmamış iş için para serbest bırakılmaz.
+      const verified = await assertJobVerified(
+        config.provider,
+        config.verifierAddress,
+        jobVerifiedTx,
+        proof.intentHash,
+      );
+
+      const auth = proof.payload as StealthAuthPayload;
+      const relayer = new Wallet(config.relayerPrivateKey, config.provider);
+
+      const { txHash, blockNumber } = await submitTransferAuthorization(relayer, config.usdcAddress, auth);
+      log(`[base-stealth] USDC stealth adrese ulaştı: ${txHash}`);
+
+      // ERC-5564 duyurusu: Bob taramayla parasını bulabilsin diye. Announcer
+      // Base Sepolia'da CANLI, bant dışı fallback'e gerek yok.
+      const announcer = new Contract(announcerAddress, ANNOUNCER_ABI, relayer);
+      const announceTx = await announcer.getFunction('announce')(
+        SCHEME_ID,
+        auth.to,
+        auth.ephemeralPublicKey,
+        auth.metadata,
+      );
+      await announceTx.wait();
+      log(`[base-stealth] ERC-5564 duyurusu: ${announceTx.hash}`);
+
+      return {
+        rail: 'base-stealth',
+        intentHash: proof.intentHash,
+        txRef: txHash,
+        explorerUrl: `${BASESCAN}/tx/${txHash}`,
+        settledAt: Date.now(),
+        jobVerifiedTx,
+        jobVerifiedBlock: verified.blockNumber,
+      };
     },
 
     async verify(receipt: Receipt): Promise<boolean> {
@@ -82,4 +276,4 @@ export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBack
   };
 }
 
-export { BASESCAN };
+export { BASESCAN, TRANSFER_WITH_AUTHORIZATION_TYPES };

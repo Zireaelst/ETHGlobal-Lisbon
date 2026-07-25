@@ -1,0 +1,32 @@
+{
+  "capturedAt": "2026-07-25T06:44:01.156Z",
+  "stealthAddress": "0xda85EF832e576a7BAAc1c17612308D770f9A5921",
+  "settleTx": "0x9e78099ac7c838b4959b4f8479fefff02d63f14e0d159eae296f46b20a057598",
+  "amount": "1000000",
+  "announcement": {
+    "stealthAddress": "0xda85EF832e576a7BAAc1c17612308D770f9A5921",
+    "ephemeralPublicKey": "0x0264a8b5751d7abf984c9cad2d862af252cc0643e64d519b919e53f4d593e27a93",
+    "viewTag": 76
+  },
+  "sweep": {
+    "txHash": "0x24ecb74444ad0c112c300531ecb4b9c03163373fd2a32d95412c412fde4a40c4",
+    "sink": "0x4Dc7Ccc0f2E161e35d604265DF66ECBf20405f2B",
+    "amount": "1000000"
+  },
+  "unlinkability": {
+    "nonce": 0,
+    "ethBalance": "0",
+    "bobAddress": "0x4F5Cd20a4a3fBc9957f8D2A8D27D658B51Fda326"
+  },
+  "ordering": {
+    "jobVerifiedBlock": 44596778,
+    "settleBlock": 44596779
+  },
+  "fraud": {
+    "code": "MatchFalse",
+    "skipped": "JobVerified yok (MatchFalse)"
+  },
+  "announcerAddress": "0x55649E01B5Df198D18D95b5cc5051630cfD45564",
+  "registryAddress": "0x6538E6bf4B0eBd30A8Ea093027Ac2422ce5d6538",
+  "metaAddress": "st:base:0x02ee3df921edef538a2b434e2806d215e2767d89f7532b05c794506880c11a1440038aff33d6222cfb9d182c628f462f909fb6b8ed1ba347f1feb49e02e62593be78"
+}
