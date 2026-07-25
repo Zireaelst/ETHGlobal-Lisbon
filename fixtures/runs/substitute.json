@@ -1,0 +1,64 @@
+{
+  "report": {
+    "fraudMode": "substitute",
+    "signedIntentHash": "0xf844d9b0e69f817c29d3ac7bd4ab570cbbaaa228843ce909aff57983eef84f8c",
+    "bodyIntentHash": "0xf844d9b0e69f817c29d3ac7bd4ab570cbbaaa228843ce909aff57983eef84f8c",
+    "match": false,
+    "clientSigOk": false,
+    "bindingSigOk": true,
+    "computeProvider": "0g-sealed-inference",
+    "ogVerified": true,
+    "reasoningProvider": "claude-local",
+    "decisions": {
+      "hire": {
+        "provider": "claude-local",
+        "agentId": "8429",
+        "rationale": "Agent 8429 has a solid track record of verified work, while 8432 has zero history to judge.",
+        "latencyMs": 7142
+      },
+      "result": {
+        "provider": "claude-local",
+        "accept": false,
+        "rationale": "The delivery failed an integrity check confirming it doesn't match the requested analysis, so it can't be trusted or used.",
+        "latencyMs": 6884
+      }
+    },
+    "output": "[binding] The recomputed commitment does not match what the client signed — this is not the job that was ordered. (compute: 0g-sealed-inference)",
+    "code": 5,
+    "codeName": "MatchFalse",
+    "verified": false,
+    "totalMs": 22572,
+    "stageMs": {
+      "discovery": 7358,
+      "agent_card": 14,
+      "intent_sign": 8,
+      "ecies_encrypt": 39,
+      "http_task_send1": 6996,
+      "http_result": 2,
+      "ecies_decrypt_result": 6,
+      "enclave_ecies_decrypt": 7,
+      "enclave_recompute": 0,
+      "enclave_client_sig_verify": 1,
+      "enclave_compute_0g": 6941,
+      "enclave_seal_sign": 5,
+      "hcs_open_topic": 30,
+      "alice_job_total": 21310,
+      "chain_verify_tx": 1232
+    },
+    "discoveredAgentId": "8429",
+    "txHash": "0xff0b956a395ed3cb5a550c4cc5f934ac5ec75cd2bd72ab7bb924275337272309",
+    "blockNumber": 44617207,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0xff0b956a395ed3cb5a550c4cc5f934ac5ec75cd2bd72ab7bb924275337272309",
+    "timeline": {
+      "topicId": "0.0.9738448",
+      "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
+      "stages": [
+        "402_ISSUED",
+        "INTENT_COMMIT",
+        "ENCLAVE_INVOKED",
+        "OUTPUT_COMMIT"
+      ]
+    }
+  },
+  "recordedAt": "2026-07-25T18:05:05.351Z"
+}
