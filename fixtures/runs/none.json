@@ -1,0 +1,64 @@
+{
+  "report": {
+    "fraudMode": "none",
+    "signedIntentHash": "0x51bc6a3794ee9ee47752c76b37a8a6d90830260983c19146fed018967a0027ba",
+    "bodyIntentHash": "0x51bc6a3794ee9ee47752c76b37a8a6d90830260983c19146fed018967a0027ba",
+    "match": true,
+    "clientSigOk": true,
+    "bindingSigOk": true,
+    "computeProvider": "0g-sealed-inference",
+    "ogVerified": true,
+    "reasoningProvider": "claude-local",
+    "decisions": {
+      "hire": {
+        "provider": "claude-local",
+        "agentId": "8429",
+        "rationale": "The other agent has zero track record, while this one has completed many verified jobs despite some failures.",
+        "latencyMs": 7945
+      },
+      "result": {
+        "provider": "claude-local",
+        "accept": false,
+        "rationale": "The report just restates generic textbook definitions of revenue recognition instead of actually analyzing the specific figures for real risk signals, so it isn't useful.",
+        "latencyMs": 8346
+      }
+    },
+    "output": "ORDER-ID: 0x51bc6a3794ee9ee47752c76b37a8a6d90830260983c19146fed018967a0027ba\n\nRevenue recognition is a critical aspect of financial reporting that involves determining when and how much revenue should be recognized based on specific criteria outlined by accounting standards such as IFRS or US GAAP. In assessing revenue-recognition risk for Q3-2026, we need to consider several factors:\n\n### Revenue Recognition Criteria\n1. **Performance Obligation**: Revenue must be recognized only after the company has satisfied its performance obligations under the contract.\n2. **Transfer of Control**: Revenue can only be recognized once control over the goods or services has been transferred to the customer.\n3. **Variable Considerations**: If there are variable considerations (e.g., discounts, rebates), these must be estimated reliably before recognizing revenue.\n4. **Costs Reimbursable**: Any costs reimbursable by customers should not be included in revenue until they are recoverable.\n\n### Analysis Based on Provided Data\n- **Total Revenue**: €12,400,000 EUR\n- **Deferred Revenue**: €3,100,000 EUR\n- **Number of Contracts**: 41\n\n#### Deferred Revenue\nThe presence of deferred revenue indicates that some portion of the revenue will be recognized in future periods rather than immediately. This could suggest potential risks if:\n- The timing of revenue recognition does not align with the actual cash flows generated from those contracts.\n- There is uncertainty regarding whether all deferred revenue will ultimately be realized due to changes in customer behavior or other factors affecting contract performance.\n\n#### Variable Considerations\nIf there are any variable considerations within the contracts (e.g., discounts, rebates), it's crucial to ensure reliable estimation methods are used. Misestimating these variables could lead to either premature recognition of revenue or understatement of expenses, both of which would impact reported earnings.\n\n#### Contractual Terms\nGiven the number of contracts (41), it’s important to review each contract individually to understand their terms fully. Differences in contract types, payment schedules, and performance obligations across contracts might introduce variability in revenue recognition practices.\n\n### Recommendations\n1. **Review Contract Terms**: Ensure that all contracts are reviewed thoroughly to confirm compliance with revenue recognition principles.\n2. **Estimate Variable Considerations Reliably**: Use robust methodologies to estimate variable considerations accurately.\n3. **Monitor Deferred Revenue**: Regularly assess the likelihood of deferred revenue being realized and adjust estimates accordingly.\n4. **Internal Controls**: Strengthen internal controls related to revenue recognition processes to mitigate risks associated with misstatements.\n\nBy addressing these areas, management can better manage revenue recognition risks and maintain the integrity of financial statements.",
+    "code": 0,
+    "codeName": "OK",
+    "verified": true,
+    "totalMs": 31372,
+    "stageMs": {
+      "discovery": 8236,
+      "agent_card": 7,
+      "intent_sign": 10,
+      "ecies_encrypt": 41,
+      "http_task_send1": 12971,
+      "http_result": 2,
+      "ecies_decrypt_result": 6,
+      "enclave_ecies_decrypt": 6,
+      "enclave_recompute": 1,
+      "enclave_client_sig_verify": 3,
+      "enclave_compute_0g": 12924,
+      "enclave_seal_sign": 6,
+      "hcs_open_topic": 22,
+      "alice_job_total": 29623,
+      "chain_verify_tx": 1727
+    },
+    "discoveredAgentId": "8429",
+    "txHash": "0x8aa2e6ce2a964150a015ad2260a51a6c348796aaa1c5be5030a45fb718b258c9",
+    "blockNumber": 44618153,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x8aa2e6ce2a964150a015ad2260a51a6c348796aaa1c5be5030a45fb718b258c9",
+    "timeline": {
+      "topicId": "0.0.9738448",
+      "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
+      "stages": [
+        "402_ISSUED",
+        "INTENT_COMMIT",
+        "ENCLAVE_INVOKED",
+        "OUTPUT_COMMIT"
+      ]
+    }
+  },
+  "recordedAt": "2026-07-25T18:36:38.831Z"
+}

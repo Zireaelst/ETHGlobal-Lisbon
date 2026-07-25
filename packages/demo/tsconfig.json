@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../shared" },
+    { "path": "../payment" },
+    { "path": "../bob-binding" },
+    { "path": "../bob-agent" },
+    { "path": "../alice-agent" }
+  ]
+}

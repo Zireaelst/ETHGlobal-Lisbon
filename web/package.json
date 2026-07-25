@@ -11,6 +11,8 @@
     "test": "node --import tsx --test src/lib/*.test.ts"
   },
   "dependencies": {
+    "@ca/demo": "workspace:*",
+    "@ca/shared": "workspace:*",
     "@tailwindcss/postcss": "^4.3.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

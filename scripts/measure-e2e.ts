@@ -12,7 +12,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { closeBob, runDemo } from './demo.js';
+import { closeBob, runDemo } from '../packages/demo/src/index.js';
 import { dominantStage, percentile } from '../packages/shared/src/timing.js';
 import { loadDotenv, repoRoot } from '../packages/shared/src/config.js';
 

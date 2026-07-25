@@ -17,20 +17,26 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ethers } from 'ethers';
 
-import { createBobAgent, type BobAgent } from '../packages/bob-agent/src/index.js';
-import type { FraudMode } from '../packages/bob-agent/src/fraud.js';
-import { runAliceJob } from '../packages/alice-agent/src/index.js';
-import { decodeBody } from '../packages/bob-binding/src/binding.js';
+import { createBobAgent, type BobAgent } from '@ca/bob-agent';
+import type { FraudMode } from '@ca/bob-agent/dist/fraud.js';
+import { runAliceJob } from '@ca/alice-agent';
+import { decodeBody } from '@ca/bob-binding';
 import {
   describeCompute,
+  describeReasoning,
   selectComputeBackend,
+  selectReasoningBackend,
   createStopwatch,
   type StageMs,
   type Constraints,
   type EchoResult,
-} from '../packages/shared/src/index.js';
-import { deriveAgentStealthKeys } from '../packages/payment/src/stealth.js';
-import { loadConfig, loadDotenv, repoRoot, requireEnv } from '../packages/shared/src/config.js';
+  type HireDecision,
+  type PriceDecision,
+  type ReasoningProvider,
+  type ResultDecision,
+} from '@ca/shared';
+import { deriveAgentStealthKeys } from '@ca/payment';
+import { loadConfig, loadDotenv, repoRoot, requireEnv } from '@ca/shared';
 
 const BASESCAN = 'https://sepolia.basescan.org';
 const CHAIN_ID = 84532;
@@ -73,6 +79,17 @@ export interface DemoReport {
   bindingSigOk: boolean;
   computeProvider: string;
   ogVerified: boolean;
+  /**
+   * WHO DECIDED — the counterpart to `computeProvider`, which says who COMPUTED.
+   * Two independent questions, two independent labels; the dashboard shows both.
+   */
+  reasoningProvider: ReasoningProvider;
+  /** The agents' own words at each decision point. Empty when they ran on the policy brain. */
+  decisions?: {
+    hire?: HireDecision;
+    price?: PriceDecision;
+    result?: ResultDecision;
+  };
   /** The output Alice decrypted and read. */
   output: string;
   /** The verdict code the contract returned. */
@@ -123,8 +140,8 @@ async function openTimeline(brief: string, data: string, log: (l: string) => voi
     log('[hcs] HEDERA_TOPIC_ID is empty — timeline skipped');
     return undefined;
   }
-  const { createHcsTimeline } = await import('../packages/payment/src/hcs-timeline.js');
-  const { createHederaOperatorClient } = await import('../packages/payment/src/signer/hedera-signer.js');
+  const { createHcsTimeline } = await import('@ca/payment');
+  const { createHederaOperatorClient } = await import('@ca/payment');
   return createHcsTimeline({
     client: createHederaOperatorClient({ accountId: cfg.HEDERA_OPERATOR_ID }),
     topicId,
@@ -142,8 +159,8 @@ export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolea
   const provider = new ethers.JsonRpcProvider(cfg.BASE_RPC_URL);
   const verifierAddress = requireEnv('VERIFIER_ADDRESS');
   if (rail === 'hedera') {
-    const { createHederaX402Backend } = await import('../packages/payment/src/hedera-x402.js');
-    const { createHederaSigner } = await import('../packages/payment/src/signer/hedera-signer.js');
+    const { createHederaX402Backend } = await import('@ca/payment/dist/hedera-x402.js');
+    const { createHederaSigner } = await import('@ca/payment');
     return createHederaX402Backend({
       signer: createHederaSigner({ accountId: cfg.HEDERA_OPERATOR_ID }),
       facilitatorUrl: cfg.BLOCKY402_URL,
@@ -152,8 +169,8 @@ export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolea
       payoutAccountId: forBob ? process.env.BOB_HEDERA_ACCOUNT : undefined,
     });
   }
-  const { createBaseStealthBackend } = await import('../packages/payment/src/base-stealth.js');
-  const { deriveAgentStealthKeys } = await import('../packages/payment/src/stealth.js');
+  const { createBaseStealthBackend } = await import('@ca/payment/dist/base-stealth.js');
+  const { deriveAgentStealthKeys } = await import('@ca/payment');
   const bobKeys = deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob');
   return createBaseStealthBackend({
     provider,
@@ -174,7 +191,7 @@ export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base
   loadDotenv();
   const cfg = loadConfig();
 
-  const { identityRegistry, readUtf8Metadata, METADATA_KEYS } = await import('../packages/shared/src/index.js');
+  const { identityRegistry, readUtf8Metadata, METADATA_KEYS } = await import('@ca/shared');
   const provider = new ethers.JsonRpcProvider(cfg.BASE_RPC_URL);
   const registry = identityRegistry(cfg.ERC8004_IDENTITY, provider);
   const agentId = requireEnv('BOB_AGENT_ID');
@@ -267,8 +284,21 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   const timeline = options.timeline === false ? undefined : await openTimeline(brief, data, log);
   sw.mark('hcs_open_topic');
 
+  // Alice's brain. Chosen from the environment and labelled honestly, exactly like compute:
+  // `policy` by default so the gates stay deterministic, `claude` for the live demo.
+  // The 0G backend shares the compute boundary, hence the same `bob` selection is reused.
+  const { backend: reasoning, reason: reasoningReason } = await selectReasoningBackend(process.env, {
+    compute: (await selectComputeBackend(process.env, { fixtureDir: resolve(root, 'fixtures/og') })).backend,
+    log,
+  });
+  log(`[demo] reasoning: ${reasoningReason}`);
+
   // --- 1-5. Discovery → intent → ECIES → Bob → enclave → Alice decrypts ---
   const job = await runAliceJob({
+    reasoning,
+    // Alice's ceiling: Bob quotes 1 USDC, she is authorised up to 5. The gap is what makes
+    // the approval a real decision rather than a rubber stamp.
+    maxPrice: 5_000_000n,
     discover: { subgraphUrl: requireEnv('SUBGRAPH_QUERY_URL'), skill: SKILL },
     brief,
     data,
@@ -357,7 +387,10 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   };
   const args = [intent, job.signature, body.outputHash, body.match, body.ogSigHash, seal] as const;
 
-  const code = Number((await verifier.previewJob(...args)) as bigint);
+  // `getFunction` rather than `verifier.previewJob(...)`: ethers types dynamic contract members
+  // as possibly-undefined, and this file is type-checked now that it is a package rather than a
+  // loose script. Same call, minus a cast that would hide a genuine typo in the method name.
+  const code = Number((await verifier.getFunction('previewJob')(...args)) as bigint);
   const codeName = REJECTION_NAMES[code] ?? `Unknown(${code})`;
 
   const report: DemoReport = {
@@ -369,6 +402,8 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     bindingSigOk: result.bindingSigOk,
     computeProvider: result.computeProvider,
     ogVerified: result.ogVerified,
+    reasoningProvider: reasoning.provider,
+    decisions: job.decisions,
     output: result.output,
     code,
     codeName,
@@ -396,7 +431,8 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   // An honest job uses the STRICT path (settlement will read it).
   // Fraud uses the LENIENT path: it does not revert, it emits JobRejected, the subgraph indexes
   // it and it appears successful on Basescan (the BUILD-PLAN P3-A rationale).
-  const tx = code === 0 ? await verifier.verifyJob(...args) : await verifier.verifyJobLenient(...args);
+  const method = code === 0 ? 'verifyJob' : 'verifyJobLenient';
+  const tx = (await verifier.getFunction(method)(...args)) as ethers.ContractTransactionResponse;
   const receipt = await tx.wait();
   sw.mark('chain_verify_tx');
   report.totalMs = Date.now() - started;
@@ -509,6 +545,18 @@ export async function main(): Promise<void> {
   console.log(`enclave body : ${report.bodyIntentHash}`);
   console.log(`match        : ${report.match}`);
   console.log(`compute      : ${report.computeProvider} · ogVerified=${report.ogVerified}`);
+  console.log(`brain        : ${describeReasoning(report.reasoningProvider)}`);
+  if (report.decisions?.hire) console.log(`  hire       : ${report.decisions.hire.rationale}`);
+  if (report.decisions?.price) {
+    console.log(
+      `  price      : ${report.decisions.price.approve ? 'authorised' : 'DECLINED'} — ${report.decisions.price.rationale}`,
+    );
+  }
+  if (report.decisions?.result) {
+    console.log(
+      `  review     : ${report.decisions.result.accept ? 'accepted' : 'rejected'} — ${report.decisions.result.rationale}`,
+    );
+  }
   console.log(`output       : ${report.output.slice(0, 120)}${report.output.length > 120 ? '…' : ''}`);
   console.log('\n--- Zincir ne dedi ---');
   console.log(`verdict      : ${report.codeName}${report.verified ? '' : '  (REJECTED)'}`);

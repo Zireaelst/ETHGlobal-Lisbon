@@ -19,7 +19,7 @@ import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { ethers } from 'ethers';
 
-import { closeBob, runDemo, type DemoReport } from '../../scripts/demo.js';
+import { closeBob, runDemo, type DemoReport } from '../../packages/demo/src/index.js';
 import { loadConfig, loadDotenv, repoRoot, requireEnv } from '../../packages/shared/src/config.js';
 import { Gate, fail, pass } from './_harness.js';
 

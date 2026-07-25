@@ -28,8 +28,14 @@ import {
   pickBestAgent,
   signIntent,
   createStopwatch,
+  discoverBySkill,
   type StageMs,
   type DiscoveredAgent,
+  type AgentCandidate,
+  type HireDecision,
+  type PriceDecision,
+  type ReasoningBackend,
+  type ResultDecision,
 } from '@ca/shared';
 import type { PaymentBackend } from '@ca/payment';
 import { Wallet } from 'ethers';
@@ -62,6 +68,19 @@ export interface AliceJobOptions {
    * When absent and Bob asks for payment, the job stops with an ERROR — it does not silently continue.
    */
   payment?: { backend: PaymentBackend };
+  /**
+   * Alice's brain. When absent she behaves exactly as before — the deterministic ranking picks
+   * the counterparty and any quoted price is accepted.
+   *
+   * When present, SHE decides three things and two of them are binding: who to hire, and
+   * whether the quote is worth authorising (a decline stops the job and no money moves). The
+   * third — whether the delivered work was any good — is her recorded judgement; it is shown in
+   * the dashboard and never touches the contract's verdict. See `reasoning.ts` on why the
+   * brain can only ever narrow a guarantee.
+   */
+  reasoning?: ReasoningBackend;
+  /** The ceiling Alice will not cross, in the asset's smallest unit. Enforced in code. */
+  maxPrice?: bigint;
   /** A hook letting tests corrupt the sent payload (fraud/mutation scenarios). */
   tamper?: (envelope: Record<string, unknown>) => Record<string, unknown>;
   fetchImpl?: typeof fetch;
@@ -94,6 +113,26 @@ export interface AliceJobReport {
   stageMs: StageMs;
   /** Did Bob return 402 — i.e. did the payment gate actually engage? */
   paymentRequired: boolean;
+  /**
+   * What Alice decided, and who decided it. Undefined when she ran without a brain.
+   * The dashboard reads these to show the agent's own words next to each step.
+   */
+  decisions?: {
+    hire?: HireDecision;
+    price?: PriceDecision;
+    result?: ResultDecision;
+  };
+}
+
+/** The subgraph's record, flattened to what a decision actually needs. */
+function toCandidate(agent: DiscoveredAgent): AgentCandidate {
+  return {
+    agentId: agent.agentId,
+    skills: agent.skills,
+    verifiedDeliveries: agent.verifiedDeliveries,
+    rejectedAttempts: agent.rejectedAttempts,
+    endpoint: agent.endpoint,
+  };
 }
 
 /** Fetch and validate Bob's discovery card. */
@@ -113,10 +152,31 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
   // --- discovery: if we do not know the address, find it via The Graph ---
   let discovered: DiscoveredAgent | undefined;
   let base: string;
+  const decisions: NonNullable<AliceJobReport['decisions']> = {};
   if (options.bobUrl) {
     base = options.bobUrl.replace(/\/$/, '');
   } else if (options.discover) {
-    discovered = await pickBestAgent(options.discover.subgraphUrl, options.discover.skill);
+    if (options.reasoning) {
+      // Alice reads the whole shortlist and chooses. The subgraph supplies candidates; it does
+      // not supply the answer. `chooseAgent` is contractually unable to name anyone who was not
+      // on this list, so autonomy here cannot become "encrypt the brief to a stranger".
+      const candidates = await discoverBySkill(options.discover.subgraphUrl, options.discover.skill, {
+        requireUsable: true,
+      });
+      if (candidates.length === 0) {
+        throw new Error(`no usable agent with the "${options.discover.skill}" skill was found`);
+      }
+      const hire = await options.reasoning.chooseAgent({
+        need: options.discover.skill,
+        candidates: candidates.map(toCandidate),
+      });
+      decisions.hire = hire;
+      discovered = candidates.find((c) => c.agentId === hire.agentId);
+      if (!discovered) throw new Error(`chooseAgent returned an unknown agentId ${hire.agentId}`);
+      log(`[alice] hired agent ${hire.agentId} (${hire.provider}): ${hire.rationale}`);
+    } else {
+      discovered = await pickBestAgent(options.discover.subgraphUrl, options.discover.skill);
+    }
     if (!discovered.endpoint) throw new Error(`discovered agent ${discovered.agentId} carries no endpoint`);
     // The registered endpoint is the work endpoint (`.../task`); the base URL is one level up.
     base = discovered.endpoint.replace(/\/task\/?$/, '').replace(/\/$/, '');
@@ -223,6 +283,27 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
     if (!requirements) throw new Error('the 402 response carries no payment requirements');
     log(`[alice] received 402: ${requirements.amount} ${requirements.asset} (${requirements.rail})`);
 
+    // THE BINDING DECISION. Alice weighs the quote against the counterparty's record and her
+    // own ceiling. A refusal ends the job here: nothing is authorised, nothing is signed, and
+    // no money is ever at risk. This is the whole of "agentic payments" in one branch — the
+    // agent, not a human, chose to spend.
+    if (options.reasoning) {
+      const maxPrice = options.maxPrice ?? BigInt(requirements.amount);
+      const decision = await options.reasoning.approvePrice({
+        need: options.discover?.skill ?? 'the commissioned analysis',
+        amount: requirements.amount,
+        asset: requirements.asset,
+        maxAmount: maxPrice.toString(),
+        agentId: card.agentId,
+        verifiedDeliveries: discovered?.verifiedDeliveries ?? 0,
+      });
+      decisions.price = decision;
+      log(`[alice] price ${decision.approve ? 'approved' : 'DECLINED'} (${decision.provider}): ${decision.rationale}`);
+      if (!decision.approve) {
+        throw new Error(`Alice declined the price ${requirements.amount} ${requirements.asset}: ${decision.rationale}`);
+      }
+    }
+
     // Authorisation — NO MONEY MOVES. Bob holds it and submits it after JobVerified.
     const quote = await options.payment.backend.quote({
       intentHash: requirements.intentHash,
@@ -273,7 +354,28 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
   const matched = result.match && result.recomputedIntentHash === intentHash && !sealTampered;
   log(`[alice] result decrypted: match=${result.match} clientSig=${result.clientSigOk ? 'ok' : 'INVALID'}`);
 
+  // Alice's own read of the work. ADVISORY BY CONSTRUCTION: `matched` above is already decided
+  // and is what goes on chain. She may judge accepted work useless; she cannot judge unmatched
+  // work acceptable (enforced in `reasoning-llm.ts`, not here). Her sentence is for the
+  // dashboard — the contract never asks her opinion.
+  if (options.reasoning) {
+    decisions.result = await options.reasoning.reviewResult({
+      brief: options.brief,
+      output: result.output,
+      verification: {
+        match: matched,
+        ogVerified: result.ogVerified ?? false,
+        provider: result.computeProvider,
+      },
+    });
+    log(
+      `[alice] verdict on the work (${decisions.result.provider}): ` +
+        `${decisions.result.accept ? 'accepted' : 'rejected'} — ${decisions.result.rationale}`,
+    );
+  }
+
   return {
+    decisions: options.reasoning ? decisions : undefined,
     discovered,
     card,
     intent,

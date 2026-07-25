@@ -14,7 +14,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ethers } from 'ethers';
 
-import { closeBob, runDemo, type DemoReport } from '../../scripts/demo.js';
+import { closeBob, runDemo, type DemoReport } from '../../packages/demo/src/index.js';
 import {
   ANNOUNCER_ABI,
   ERC5564_ANNOUNCER,
@@ -359,7 +359,7 @@ gate.check('FRAUD koşusunda settle HİÇ çağrılmadı (ödeme asla settle olm
 // RED tarafını sadece burası gösteriyor.
 // ---------------------------------------------------------------------------
 gate.check('Yabancının meta-adresine yapılmış ödeme reddediliyor', async () => {
-  const { makePaymentBackend } = await import('../../scripts/demo.js');
+  const { makePaymentBackend } = await import('../../packages/demo/src/index.js');
   const { createBaseStealthBackend } = await import('../../packages/payment/src/base-stealth.js');
 
   const intentHash = `0x${'55'.repeat(32)}`;

@@ -7,6 +7,7 @@
     { "path": "./packages/payment" },
     { "path": "./packages/bob-binding" },
     { "path": "./packages/bob-agent" },
-    { "path": "./packages/alice-agent" }
+    { "path": "./packages/alice-agent" },
+    { "path": "./packages/demo" }
   ]
 }

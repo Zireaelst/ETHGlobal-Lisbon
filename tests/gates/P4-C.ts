@@ -16,7 +16,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ethers } from 'ethers';
 
-import { closeBob, runDemo, type DemoReport } from '../../scripts/demo.js';
+import { closeBob, runDemo, type DemoReport } from '../../packages/demo/src/index.js';
 import { createHederaSigner, containsSecret } from '../../packages/payment/src/signer/hedera-signer.js';
 import { createHederaX402Backend } from '../../packages/payment/src/hedera-x402.js';
 import { loadConfig, loadDotenv, repoRoot, requireEnv } from '../../packages/shared/src/config.js';
@@ -153,7 +153,7 @@ gate.check('Signer handle serileştirildiğinde anahtar SIZDIRMIYOR', () => {
 // 2b. 402 KAPISI — ödeme yetkisi olmadan iş YOK (CLAUDE.md §7)
 // ---------------------------------------------------------------------------
 gate.check('Ödemesiz /task 402 dönüyor ve Bob İŞ YAPMIYOR', async () => {
-  const { ensureBob } = await import('../../scripts/demo.js');
+  const { ensureBob } = await import('../../packages/demo/src/index.js');
   const { eciesPublicKeyOf, encryptFor } = await import('../../packages/shared/src/index.js');
   const bob = await ensureBob(() => {}, 'hedera');
   const before = bob.processed.length;
@@ -187,7 +187,7 @@ gate.check('Ödemesiz /task 402 dönüyor ve Bob İŞ YAPMIYOR', async () => {
 });
 
 gate.check('Yanlış tutarlı ödeme yetkisi reddediliyor', async () => {
-  const { makePaymentBackend } = await import('../../scripts/demo.js');
+  const { makePaymentBackend } = await import('../../packages/demo/src/index.js');
   const bobSide = await makePaymentBackend('hedera', true);
   const quote = await bobSide.quote({
     intentHash: `0x${'22'.repeat(32)}`,
@@ -207,7 +207,7 @@ gate.check('Yanlış tutarlı ödeme yetkisi reddediliyor', async () => {
 });
 
 gate.check('Başka bir işe ait yetki reddediliyor', async () => {
-  const { makePaymentBackend } = await import('../../scripts/demo.js');
+  const { makePaymentBackend } = await import('../../packages/demo/src/index.js');
   const bobSide = await makePaymentBackend('hedera', true);
   const quote = await bobSide.quote({
     intentHash: `0x${'33'.repeat(32)}`,

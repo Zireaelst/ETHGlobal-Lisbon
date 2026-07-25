@@ -257,11 +257,18 @@ SUBGRAPH_STUDIO_DEPLOY_KEY=
 
 ## 7. Repo structure
 
-**pnpm workspace monorepo.** `pnpm-workspace.yaml` declares `packages/*` and `subgraph`, so
-**anything that needs its own package.json and dependency graph lives under `packages/`** — that is
-the only reason `web` is there rather than at the root. `scripts/` and `tests/` carry a package.json
-too, but purely as an `"type": "module"` marker (the root stays CJS so `scripts/recover.js` keeps
-working); they are deliberately NOT workspace members.
+**pnpm workspace monorepo.** `pnpm-workspace.yaml` declares `packages/*`, `subgraph` and `web`.
+
+`packages/` holds the **libraries and agents** — the things that import each other and build as one
+`tsc -b` graph. The two deliverables that are nobody's dependency sit at the root next to
+`contracts/`: `subgraph/` and `web/`. Membership of the workspace is declared per entry, so being a
+package has never required living under `packages/` — `subgraph/` was at the root from the start,
+and `web/` now matches it. A monorepo's top level should read as a list of what the project *is*,
+and "the demo dApp" belongs on that list.
+
+`scripts/` and `tests/` carry a package.json too, but purely as a `"type": "module"` marker (the
+root stays CJS so `scripts/recover.js` keeps working); they are deliberately NOT workspace members,
+which is why everything under them imports by relative path rather than by package name.
 
 ```
 packages/
@@ -289,10 +296,12 @@ packages/
   bob-agent/        # @ca/bob-agent — public HTTP server: 402, forwards work to the binding
     src/fraud.ts        # the flag that makes Bob answer a different job (§8 P3)
   alice-agent/      # @ca/alice-agent — discovers, signs intent, encrypts, pays, verifies
-  web/              # @ca/web — the demo dApp (Next.js, sources under src/)
-    src/app/            # App Router: landing page + /dashboard
-    src/components/     # hero, architecture, verification, fraud path, tracks
-    public/hero/        # hero stills — at the package root, NOT src/, or Next won't serve them
+  demo/             # @ca/demo — runDemo(): the end-to-end flow as a library (CLI + dashboard share it)
+web/                # @ca/web — the demo dApp (Next.js, sources under src/)
+  src/app/            # App Router: landing page + /dashboard + /api route handlers
+  src/components/dashboard/  # the five panels (§8 P5-A)
+  src/lib/server/     # subgraph, mirror node, the live runner — server-only
+  public/hero/        # hero stills — at the package root, NOT src/, or Next won't serve them
 contracts/          # Foundry — Verifier.sol + IntentLib.sol (§3.5), and their tests
 subgraph/           # @ca/subgraph — ERC-8004 index + JobVerified → verified-delivery count
 scripts/            # deploy + probes + measurement (recover.js, og-probe-echo.ts, measure-e2e.ts)
@@ -301,7 +310,7 @@ fixtures/           # recorded responses, so gates run without burning faucet fu
 ```
 
 **Build.** The root `tsc -b` solution build covers the Node packages only — a Next.js project does not
-belong in a `tsc -b` graph, so `packages/web` is not among the root `tsconfig.json` references and
+belong in a `tsc -b` graph, so `web` is not among the root `tsconfig.json` references and
 `pnpm build` does not touch it. Use **`pnpm build:all`** to build everything, or
 `pnpm --filter @ca/web <script>` to work on the web app alone.
 
@@ -381,6 +390,14 @@ one README per sponsor naming exact SDKs, endpoints, contract addresses.
   `ProviderType: centralized`, `ProviderIdentity: aliyun`. The TEE seal is real (dstack/Intel TDX); the
   operator is a single cloud. If asked, say so plainly.
 - We verify signatures **on-chain** and the attestation **off-chain at setup** (not a raw on-chain TDX quote). Say so.
+- **Not** "the AI decided, therefore it is trustworthy." The agents' brain (§13) picks the counterparty and
+  approves the price; it is **unverified, unattested, and outside every guarantee we make**. Nothing it
+  says is signed by anything. It can only ever *narrow* an outcome — refuse to trade, or reject work the
+  cryptography accepted. It cannot make an invalid job verify. If the brain and the contract disagree,
+  the contract is the one that decided.
+- **Not** "Claude runs the analysis." Claude decides; **0G Sealed Inference produces the deliverable.**
+  The TEE signature and the `intentHash` echo come from 0G hardware and from nowhere else. Swapping the
+  brain cannot change one byte of what the enclave signed.
 
 ---
 
@@ -391,3 +408,48 @@ one README per sponsor naming exact SDKs, endpoints, contract addresses.
 - Seal key rotates mid-demo → re-run capture + `setEnclaveSigner` (setter kept live).
 - Stealth scanning messy → plain x402 on the Base run.
 - Hedera facilitator down → the Base backend carries the whole demo.
+- Brain unavailable mid-demo (rate limit, expired login, no network) → `withPolicyFallback` answers
+  deterministically and the dashboard shows `fellBackFrom`. The run never dies for want of an opinion.
+
+---
+
+## 13. The agents' brain — who DECIDES (vs. who COMPUTES)
+
+Alice and Bob are agents in the ERC-8004/x402 sense — own identity, own wallet, own decisions — and
+since P5 those decisions are made by a model rather than by a sort order. **This is a separate axis
+from compute and is labelled separately:** `computeProvider` says who produced the deliverable,
+`reasoningProvider` says who chose. The dashboard shows both, because they are different questions.
+
+```
+packages/shared/src/
+  reasoning.ts          # the interface, the policy brain, withPolicyFallback, the three WALLS
+  reasoning-prompts.ts  # the prompts + the tiny JSON output contract (shared by both LLM brains)
+  reasoning-llm.ts      # the decision logic + guards, ONCE, transport-independent
+  reasoning-claude.ts   # transport: `claude -p --output-format json` (subscription auth)
+  reasoning-0g.ts       # transport: the ordinary ComputeBackend (spends the faucet)
+  reasoning-select.ts   # REASONING_BACKEND=claude | 0g | policy   (default: policy)
+```
+
+**Three decisions.** Alice picks who to hire from the subgraph's shortlist (binding), approves or
+refuses the quoted price (binding — a refusal ends the job and no money moves), and judges whether the
+delivered work was any good (advisory, shown in the UI).
+
+**Three walls — the reason autonomy does not cost us the thesis.** Each is enforced in code, in
+`reasoning-llm.ts`, never in a prompt:
+1. **The model being sold is not this model.** The deliverable runs in 0G Sealed Inference. Reasoning
+   never produces output that anything signs.
+2. **The brain never sees a private key.** Decisions return as small structured verdicts; signing,
+   paying and settling stay in deterministic code. The spawned CLI's environment is scrubbed of every
+   secret (`scrubbedEnv`) — "it was never given it" beats "it could not have used it".
+3. **The brain can only narrow a guarantee, never widen one.** `chooseAgent` must name a candidate
+   that was actually offered. `approvePrice` is ANDed with a hard ceiling the prompt cannot move.
+   `reviewResult` may reject work the cryptography accepted, and can never accept work whose
+   commitment failed. A confused — or prompt-injected — brain can refuse to trade. It cannot overpay,
+   invent a counterparty, or make an invalid job verify.
+
+**Default is `policy`, on purpose:** a gate whose outcome depends on a model's mood, a network round
+trip and a rate limit is not a gate. The gates run deterministic; the demo opts in via `.env`.
+
+**Latency cost, measured:** ~8.5s for the hire decision, ~7.1s for the review, on `sonnet`. That lands
+on the P0-G <60s end-to-end budget, so if the budget gets tight the lever is `CLAUDE_AGENT_MODEL=haiku`
+before anything else is cut.
