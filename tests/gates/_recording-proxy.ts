@@ -1,9 +1,10 @@
-// tests/gates/_recording-proxy.ts — Alice ile Bob arasına giren, HAM BYTE kaydeden proxy.
+// tests/gates/_recording-proxy.ts — a proxy that sits between Alice and Bob and records RAW BYTES.
 //
-// BUILD-PLAN P1-C kriteri: "ağ dinlemesi kanıtı — tcpdump/proxy loglarında brief metni
-// geçmiyor". tcpdump Windows'ta taşınabilir değil ve TLS'siz düz HTTP'de zaten aynı şeyi
-// görürüz; bu proxy tam olarak bir ağ gözlemcisinin göreceği byte'ları biriktirir.
-// Yakalanan döküm demo videosunda "gözlemcinin gördüğü" paneline doğrudan girebilir.
+// The BUILD-PLAN P1-C criterion: "network-capture proof — the brief text does not appear in the
+// tcpdump/proxy logs". tcpdump is not portable on Windows, and over plain HTTP without TLS we
+// would see exactly the same thing anyway; this proxy accumulates precisely the bytes a network
+// observer would see. The captured dump can go straight into the demo video's "what the observer
+// sees" panel.
 
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -20,7 +21,7 @@ export interface RecordingProxy {
   url(): string;
   close(): Promise<void>;
   readonly exchanges: CapturedExchange[];
-  /** Gözlemcinin gördüğü her şey: istek + yanıt gövdeleri tek tampon hâlinde. */
+  /** Everything the observer sees: request + response bodies in a single buffer. */
   captured(): Buffer;
 }
 

@@ -1,12 +1,12 @@
-// tests/gates/_env-write.ts — kapı script'lerinin ürettiği değerleri (.env'deki topic id,
-// deploy edilen kontrat adresi vb.) yerinde güncellemek için küçük yardımcı.
-// Yorumları ve sırayı korur; değerleri LOGLAMAZ.
+// tests/gates/_env-write.ts — a small helper for updating, in place, the values the gate scripts
+// produce (the topic id in .env, a deployed contract address, and so on).
+// It preserves comments and ordering, and it NEVER LOGS the values.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { repoRoot } from '../../packages/shared/src/config.js';
 
-/** .env'de bir alanı ayarla. Alan yoksa dosyanın sonuna ekler. */
+/** Set a field in .env. Appends to the end of the file when the field is absent. */
 export function setEnvValue(key: string, value: string): void {
   const path = resolve(repoRoot(), '.env');
   const text = readFileSync(path, 'utf8');

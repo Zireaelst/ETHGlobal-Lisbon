@@ -1,7 +1,8 @@
-// tests/gates/_harness.ts — kapı testleri için minimal koşucu.
+// tests/gates/_harness.ts — a minimal runner for the gate tests.
 //
-// BUILD-PLAN §0 disiplin kuralı 2: "Bende çalıştı" kapı geçmez; `pnpm gate:P0-A` yeşil olacak.
-// Bu yüzden her kapı ikili (geçti/geçmedi) kriterlerden oluşur ve exit code ile konuşur.
+// BUILD-PLAN §0 discipline rule 2: "it worked on my machine" does not pass a gate; `pnpm
+// gate:P0-A` has to be green. So every gate consists of binary (pass/fail) criteria and speaks
+// through its exit code.
 
 export type CheckResult = { ok: boolean; detail: string };
 
@@ -21,7 +22,7 @@ export class Gate {
     private readonly title: string,
   ) {}
 
-  /** Kapı kriteri ekle. `run` true dönerse kriter geçer. */
+  /** Add a gate criterion. The criterion passes when `run` returns true. */
   check(name: string, run: Check['run']): this {
     this.checks.push({ name, run });
     return this;
@@ -49,12 +50,12 @@ export class Gate {
     const total = this.checks.length;
     console.log('');
     if (failed === 0) {
-      console.log(`${GREEN}${BOLD}KAPI GEÇTİ${RESET} — ${this.id}: ${total}/${total} kriter yeşil.`);
-      console.log(`${DIM}Sonraki adım: git tag gate/${this.id}${RESET}\n`);
+      console.log(`${GREEN}${BOLD}GATE PASSED${RESET} — ${this.id}: ${total}/${total} criteria green.`);
+      console.log(`${DIM}Next step: git tag gate/${this.id}${RESET}\n`);
       process.exit(0);
     }
-    console.log(`${RED}${BOLD}KAPI GEÇMEDİ${RESET} — ${this.id}: ${failed}/${total} kriter kırmızı.`);
-    console.log(`${DIM}BUILD-PLAN §0 kural 1: kırmızı kapının üstüne inşa etme.${RESET}\n`);
+    console.log(`${RED}${BOLD}GATE FAILED${RESET} — ${this.id}: ${failed}/${total} criteria red.`);
+    console.log(`${DIM}BUILD-PLAN §0 rule 1: do not build on top of a red gate.${RESET}\n`);
     process.exit(1);
   }
 }
