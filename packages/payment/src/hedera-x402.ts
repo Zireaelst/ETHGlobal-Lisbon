@@ -194,6 +194,11 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
         settledAt: Date.now(),
         jobVerifiedTx,
         jobVerifiedBlock: verified.blockNumber,
+        // On this rail the two are the SAME account, deliberately. Bob publishes it in his agent
+        // card and is paid on it every time. Reporting both — rather than omitting them because
+        // there is nothing to hide — is what lets the two rails be compared honestly.
+        paidTo: proof.payTo,
+        agentIdentity: proof.payTo,
       };
     },
 

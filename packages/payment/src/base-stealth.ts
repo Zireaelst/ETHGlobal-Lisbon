@@ -77,6 +77,14 @@ export interface BaseStealthConfig {
   verifierAddress: string;
   /** Bob'un ERC-5564 meta-adresi (agent card / registry'den). */
   recipientMetaAddress?: string;
+  /**
+   * The agent's PUBLIC identity on this rail — his registered ERC-8004 owner address.
+   *
+   * Carried purely so the receipt can put it beside the address that was actually paid. Nothing
+   * in settlement uses it; it exists so the reader can compare the two and see for themselves
+   * that the payout does not name Bob.
+   */
+  agentIdentity?: string;
   announcerAddress?: string;
   /**
    * The BOB side: used to verify that an incoming payment is really his.
@@ -355,6 +363,10 @@ export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBack
         settledAt: Date.now(),
         jobVerifiedTx,
         jobVerifiedBlock: verified.blockNumber,
+        // The address the USDC actually landed on — freshly derived for this job — next to the
+        // one the world knows Bob by. They differ, and that difference IS the privacy claim.
+        paidTo: auth.to,
+        agentIdentity: config.agentIdentity,
       };
     },
 

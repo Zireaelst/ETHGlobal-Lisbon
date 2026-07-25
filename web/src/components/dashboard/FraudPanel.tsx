@@ -354,6 +354,43 @@ export function FraudPanel({
                 </p>
               ) : null}
 
+              {/* WHO GOT PAID — the only place the privacy difference between the two rails is
+                  visible. Both addresses are shown and the comparison is left explicit, because
+                  "these two differ" is something the reader can check and "private: true" is
+                  something they would have to take our word for. */}
+              {report.payment?.settled && report.payment.paidTo ? (
+                <div className="mt-4 rounded-md border border-border/60 p-3">
+                  <Field label="Paid to">
+                    <Hash value={report.payment.paidTo} why="The address the money actually reached." />
+                  </Field>
+                  <div className="mt-2">
+                    <Field label="The agent is registered as">
+                      <Hash
+                        value={report.payment.agentIdentity ?? "—"}
+                        why="Bob's public payout identity — what anyone watching already knows him by."
+                      />
+                    </Field>
+                  </div>
+                  <p className="mt-2.5 font-body text-xs font-light leading-relaxed">
+                    {report.payment.paidTo.toLowerCase() === report.payment.agentIdentity?.toLowerCase() ? (
+                      <span className="text-muted-foreground">
+                        Same account, and it is the one published in Bob&apos;s agent card. This rail buys
+                        autonomy and a timestamped trail — <span className="text-foreground">not privacy</span>.
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        Different — the payout does not name Bob. A fresh ERC-5564 address is derived per
+                        job, so run it twice and this line changes while his registered address does not.{" "}
+                        <span className="text-foreground">
+                          On this testnet one client and one agent still make timing correlation possible;
+                          what is hidden is the payment record, not the whole system.
+                        </span>
+                      </span>
+                    )}
+                  </p>
+                </div>
+              ) : null}
+
               {/* The settlement, or the stated reason there isn't one. A fraud run's most
                   load-bearing evidence is the payment that never happened, so it is named
                   rather than left as an absence the reader has to notice. */}

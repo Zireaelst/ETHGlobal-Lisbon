@@ -73,6 +73,9 @@ export interface RunReport {
     skippedReason?: string;
     txRef?: string;
     explorerUrl?: string;
+    /** Who the money actually reached, and who the agent is publicly registered as. */
+    paidTo?: string;
+    agentIdentity?: string;
   };
   timeline?: {
     topicId: string;

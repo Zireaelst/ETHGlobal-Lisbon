@@ -66,6 +66,20 @@ export interface Receipt {
   jobVerifiedTx: string;
   /** JobVerified's block; settlement must come AFTER it. */
   jobVerifiedBlock?: number;
+  /**
+   * WHO WAS ACTUALLY PAID, and who the agent is publicly known as. The pair is the only way to
+   * SEE the difference between the two rails rather than be told about it:
+   *
+   *   base-stealth  `paidTo` is a fresh ERC-5564 address, different every job, and it does not
+   *                 equal `agentIdentity` — the payment record does not name Bob.
+   *   hedera-x402   the two are the SAME account, the one published in Bob's agent card.
+   *
+   * Reported rather than asserted: a `private: true` flag would be a claim, whereas two addresses
+   * a reader can compare is evidence.
+   */
+  paidTo?: string;
+  /** The agent's publicly registered payout identity on this rail. */
+  agentIdentity?: string;
 }
 
 /** Bob's decision on whether to accept the authorisation. */

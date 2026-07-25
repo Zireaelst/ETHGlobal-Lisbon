@@ -130,6 +130,13 @@ export interface DemoReport {
     skippedReason?: string;
     txRef?: string;
     explorerUrl?: string;
+    /**
+     * Who was actually paid, and who the agent is publicly known as. On the Base rail these
+     * differ (a fresh stealth address per job); on Hedera they are the same published account.
+     * Two values a reader can compare — not a `private: true` we would be asking them to believe.
+     */
+    paidTo?: string;
+    agentIdentity?: string;
   };
   /** The HCS timeline outcome. */
   timeline?: {
@@ -189,6 +196,8 @@ export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolea
     usdcAddress: cfg.USDC_BASE_SEPOLIA,
     verifierAddress,
     recipientMetaAddress: bobKeys.metaAddress,
+    // Bob's public identity, for the receipt to sit beside the address actually paid.
+    agentIdentity: new ethers.Wallet(cfg.PRIVATE_KEY_BOB).address,
     // The Bob side: for verifying that an incoming payment is HIS.
     viewingPrivateKey: forBob ? bobKeys.viewingPrivateKey : undefined,
     spendingPublicKey: forBob ? bobKeys.spendingPublicKey : undefined,
@@ -540,8 +549,18 @@ async function settleViaBob(
     log(`[demo] settle reddedildi (HTTP ${res.status}): ${body.slice(0, 120)}`);
     return { rail, quoted: true, authorized: true, settled: false, skippedReason: `HTTP ${res.status}` };
   }
-  const { receipt } = (await res.json()) as { receipt: { rail: string; txRef: string; explorerUrl: string } };
+  const { receipt } = (await res.json()) as {
+    receipt: { rail: string; txRef: string; explorerUrl: string; paidTo?: string; agentIdentity?: string };
+  };
   log(`[demo] payment settled: ${receipt.explorerUrl}`);
+  if (receipt.paidTo) {
+    const named = receipt.paidTo.toLowerCase() === receipt.agentIdentity?.toLowerCase();
+    log(
+      `[demo] paid to ${receipt.paidTo} — ${
+        named ? 'the agent\'s own published account' : `NOT the agent's registered ${receipt.agentIdentity}`
+      }`,
+    );
+  }
   return {
     rail: receipt.rail,
     quoted: true,
@@ -549,6 +568,8 @@ async function settleViaBob(
     settled: true,
     txRef: receipt.txRef,
     explorerUrl: receipt.explorerUrl,
+    paidTo: receipt.paidTo,
+    agentIdentity: receipt.agentIdentity,
   };
 }
 
