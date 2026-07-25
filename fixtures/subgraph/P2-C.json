@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-07-25T04:27:40.221Z",
+  "capturedAt": "2026-07-25T05:14:34.302Z",
   "discoveredAgent": {
     "agentId": "8429",
     "owner": "0x4f5cd20a4a3fbc9957f8d2a8d27d658b51fda326",
@@ -9,8 +9,8 @@
     "endpoint": "http://127.0.0.1:8811/task",
     "eciesPubKey": "0x043c3a176cb72e342666fc607d61ac9950fbe001c07ef8201a8834f576d54047152f6dda65006cb97c236c990d23094834637b69df5744b6c02b5ed9ca5ae9f34f",
     "stealthMetaAddress": null,
-    "verifiedDeliveries": 0,
-    "rejectedAttempts": 0,
+    "verifiedDeliveries": 1,
+    "rejectedAttempts": 1,
     "registeredBlock": "44584172"
   },
   "rankedIds": [

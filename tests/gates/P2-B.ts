@@ -139,6 +139,86 @@ gate.check('Bizim dışımızdaki kayıtlar da indeksleniyor (gerçek registry)'
 });
 
 // ---------------------------------------------------------------------------
+// 2b. Verifier data source — itibarın kaynağı
+// ---------------------------------------------------------------------------
+type JobsResponse = {
+  registry?: { agentCount: number; verifiedJobs: number; rejectedJobs: number };
+  jobs?: Array<{ id: string; status: string; rejectionCode: string | null; price: string; agent: { id: string } }>;
+};
+
+let jobsData: JobsResponse | undefined;
+
+gate.check('Verifier data source indeksliyor (JobVerified / JobRejected)', async () => {
+  const res = await fetch(SUBGRAPH_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query:
+        '{ registry(id:"global"){agentCount verifiedJobs rejectedJobs} ' +
+        'jobs(first:50){id status rejectionCode price agent{id}} }',
+    }),
+  });
+  const body = (await res.json()) as { data?: JobsResponse };
+  jobsData = body.data;
+  const registry = jobsData?.registry;
+  const jobs = jobsData?.jobs ?? [];
+
+  if (!registry) return fail('registry entity yok');
+  if (registry.verifiedJobs < 1) {
+    return fail(
+      `verifiedJobs=${registry.verifiedJobs} — hiç JobVerified indekslenmemiş.\n` +
+        '→ zincirde event var mı? npx tsx scripts/emit-test-jobs.ts',
+    );
+  }
+  if (registry.rejectedJobs < 1) return fail(`rejectedJobs=${registry.rejectedJobs} — fraud yolu indekslenmemiş`);
+
+  evidence.registryCounters = registry;
+  evidence.jobs = jobs;
+  return pass(
+    [
+      `verifiedJobs=${registry.verifiedJobs} · rejectedJobs=${registry.rejectedJobs}`,
+      ...jobs.map((j) => `  ${j.status.padEnd(8)} ${j.rejectionCode ?? '-'} · agent ${j.agent.id} · ${j.id.slice(0, 18)}…`),
+    ].join('\n'),
+  );
+});
+
+gate.check('Job → Agent bağlantısı tutuyor (uint256 agentId kararının kanıtı)', () => {
+  const jobs = jobsData?.jobs ?? [];
+  if (!jobs.length) return fail('hiç Job yok');
+  const orphan = jobs.filter((j) => !j.agent || !j.agent.id);
+  if (orphan.length) {
+    return fail(
+      `${orphan.length} Job hiçbir Agent'a bağlı değil — bytes32/uint256 dönüşümü bozuk demektir`,
+    );
+  }
+  const mine = jobs.filter((j) => j.agent.id === BOB_AGENT_ID);
+  return mine.length > 0
+    ? pass(`${jobs.length} Job'ın hepsi bir Agent'a bağlı; ${mine.length} tanesi Bob (${BOB_AGENT_ID})`)
+    : fail(`hiçbir Job Bob'a (${BOB_AGENT_ID}) bağlı değil`);
+});
+
+gate.check('Ret kodu okunabilir ve doğru (MatchFalse)', () => {
+  const rejected = (jobsData?.jobs ?? []).filter((j) => j.status === 'REJECTED');
+  if (!rejected.length) return fail('hiç REJECTED job yok');
+  const known = ['Expired', 'AlreadyVerified', 'BadClientSig', 'BadEnclaveSig', 'MatchFalse'];
+  const bad = rejected.filter((j) => !j.rejectionCode || !known.includes(j.rejectionCode));
+  return bad.length === 0
+    ? pass(rejected.map((j) => `${j.rejectionCode} · ${j.id.slice(0, 18)}…`).join('\n'))
+    : fail(`tanınmayan ret kodu: ${bad.map((j) => j.rejectionCode).join(', ')}`);
+});
+
+gate.check('Bob\'un itibarı gerçek veriden geliyor', async () => {
+  const agent = await findAgentById(SUBGRAPH_URL, BOB_AGENT_ID);
+  if (!agent) return fail('Bob subgraph\'ta yok');
+  return agent.verifiedDeliveries > 0
+    ? pass(
+        `verifiedDeliveries=${agent.verifiedDeliveries} · rejectedAttempts=${agent.rejectedAttempts}\n` +
+          'sayaç yalnızca Verifier.sol event\'iyle artıyor — kullanıcı girdisi yok',
+      )
+    : fail(`verifiedDeliveries=${agent.verifiedDeliveries} — hâlâ sıfır`);
+});
+
+// ---------------------------------------------------------------------------
 // 3. Keşif — Alice Bob'u skill ile buluyor
 // ---------------------------------------------------------------------------
 gate.check('discoverBySkill Bob\'u buluyor ve endpoint veriyor', async () => {

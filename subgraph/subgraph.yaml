@@ -43,3 +43,35 @@ dataSources:
           handler: handleURIUpdated
         - event: Transfer(indexed address,indexed address,indexed uint256)
           handler: handleTransfer
+
+  # Verifier.sol — itibarın TEK kaynağı. `verifiedDeliveries` sadece buradan artıyor;
+  # kullanıcı girdisi ya da review UI'ı yok. Fraud yolu (`JobRejected`) da indeksleniyor,
+  # çünkü demo canlı bir reddi göstermek zorunda.
+  - kind: ethereum/contract
+    name: Verifier
+    network: base-sepolia
+    source:
+      address: "0x3B116D648B710f551e37223c4c4d39879AFEEb96"
+      abi: Verifier
+      # Kontratın deploy bloğu (.env VERIFIER_DEPLOY_BLOCK). Registry'nin startBlock'undan
+      # ileride — bu yüzden Verifier mapping'i de Agent oluşturabilmeli (src/entities.ts).
+      startBlock: 44593559
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      file: ./src/verifier.ts
+      entities:
+        - Agent
+        - Job
+        - Registry
+      abis:
+        - name: Verifier
+          file: ./abis/Verifier.json
+      eventHandlers:
+        # agentId BILEREK uint256 — Agent.id ondalık string, eşleşme tek satır.
+        # Gerekçe: subgraph/README.md Karar 2.
+        - event: JobVerified(indexed bytes32,bytes32,indexed address,indexed uint256,uint256)
+          handler: handleJobVerified
+        - event: JobRejected(indexed bytes32,indexed address,indexed uint256,uint8)
+          handler: handleJobRejected

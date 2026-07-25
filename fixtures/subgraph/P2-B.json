@@ -1,9 +1,9 @@
 {
-  "capturedAt": "2026-07-25T04:58:47.617Z",
-  "subgraphUrl": "https://api.studio.thegraph.com/query/1756943/confidential-agents/v0.0.1",
-  "indexedBlock": 44593616,
-  "chainHead": 44593620,
-  "lagBlocks": 4,
+  "capturedAt": "2026-07-25T05:14:19.100Z",
+  "subgraphUrl": "https://api.studio.thegraph.com/query/1756943/confidential-agents/v0.0.3",
+  "indexedBlock": 44594083,
+  "chainHead": 44594085,
+  "lagBlocks": 2,
   "bobFromSubgraph": {
     "agentId": "8429",
     "owner": "0x4f5cd20a4a3fbc9957f8d2a8d27d658b51fda326",
@@ -13,8 +13,8 @@
     "endpoint": "http://127.0.0.1:8811/task",
     "eciesPubKey": "0x043c3a176cb72e342666fc607d61ac9950fbe001c07ef8201a8834f576d54047152f6dda65006cb97c236c990d23094834637b69df5744b6c02b5ed9ca5ae9f34f",
     "stealthMetaAddress": null,
-    "verifiedDeliveries": 0,
-    "rejectedAttempts": 0,
+    "verifiedDeliveries": 1,
+    "rejectedAttempts": 1,
     "registeredBlock": "44584172"
   },
   "indexedAgentIds": [
@@ -24,5 +24,30 @@
     "8431",
     "8432"
   ],
-  "agentCount": 4
+  "agentCount": 4,
+  "registryCounters": {
+    "agentCount": 4,
+    "verifiedJobs": 1,
+    "rejectedJobs": 1
+  },
+  "jobs": [
+    {
+      "id": "0x4a4206e3c85dc3a891ef424f7f2699457ed12106cafcad1c34ccb3699dc72559",
+      "status": "REJECTED",
+      "rejectionCode": "MatchFalse",
+      "price": "0",
+      "agent": {
+        "id": "8429"
+      }
+    },
+    {
+      "id": "0x6488b364e891e8bff3278090ceda59d8e3bec7a761b013858319e59eeac81feb",
+      "status": "VERIFIED",
+      "rejectionCode": null,
+      "price": "1000000",
+      "agent": {
+        "id": "8429"
+      }
+    }
+  ]
 }

@@ -15,51 +15,15 @@
 // Yani Transfer, Registered'dan ÖNCE geliyor. Handler'lar bu yüzden sıradan
 // bağımsız: hangisi önce gelirse Agent'ı o oluşturur.
 
-import { BigInt, Bytes, ethereum, log } from '@graphprotocol/graph-ts';
+import { BigInt, log } from '@graphprotocol/graph-ts';
 import {
   MetadataSet,
   Registered,
   Transfer,
   URIUpdated,
 } from '../generated/IdentityRegistry/IdentityRegistry';
-import { Agent, AgentMetadata, Registry } from '../generated/schema';
-
-const REGISTRY_ID = 'global';
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-
-function getRegistry(): Registry {
-  let registry = Registry.load(REGISTRY_ID);
-  if (registry == null) {
-    registry = new Registry(REGISTRY_ID);
-    registry.agentCount = 0;
-    registry.verifiedJobs = 0;
-    registry.rejectedJobs = 0;
-  }
-  return registry as Registry;
-}
-
-/**
- * Agent'ı getir, yoksa oluştur.
- *
- * `created` bayrağı ile döndürmüyoruz; bunun yerine `registeredBlock == 0` olması
- * "henüz Registered görülmedi" anlamına geliyor. Transfer'ın Registered'dan önce
- * gelmesi normal olduğu için bu ayrım gerekli.
- */
-function getOrCreateAgent(agentId: BigInt, event: ethereum.Event): Agent {
-  const id = agentId.toString();
-  let agent = Agent.load(id);
-  if (agent == null) {
-    agent = new Agent(id);
-    agent.owner = Bytes.fromHexString(ZERO_ADDRESS) as Bytes;
-    agent.skills = [];
-    agent.registeredAt = event.block.timestamp;
-    agent.registeredBlock = BigInt.zero();
-    agent.updatedAt = event.block.timestamp;
-    agent.verifiedDeliveries = 0;
-    agent.rejectedAttempts = 0;
-  }
-  return agent as Agent;
-}
+import { AgentMetadata } from '../generated/schema';
+import { ZERO_ADDRESS, getOrCreateAgent, getRegistry } from './entities';
 
 export function handleRegistered(event: Registered): void {
   const agent = getOrCreateAgent(event.params.agentId, event);
