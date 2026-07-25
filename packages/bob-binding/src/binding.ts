@@ -43,6 +43,8 @@ import {
   type SealFields,
   type SealSignature,
   type StageMs,
+  type StoredBlob,
+  type StorageBackend,
   createStopwatch,
 } from '@ca/shared';
 
@@ -104,6 +106,16 @@ export interface BindingResponse {
   /** The address recovered from Alice's EIP-712 signature (verified INSIDE the enclave). */
   recoveredClient: string;
   clientSigOk: boolean;
+  /**
+   * P3-E: the PUBLIC half of the archive — where the deliverable was stored on 0G Storage.
+   *
+   * The AES key is NOT here. It goes only into `resultCipher`, under Alice's key. So the outer
+   * layer learns the address of a blob it cannot read — which is exactly the guarantee the
+   * archive has to preserve, or storing the deliverable would have undone the privacy boundary.
+   */
+  storage?: { rootHash: string; txHash: string; bytes: number; uploadMs: number };
+  /** Why the archive is missing. Set only when storage was ASKED FOR and failed. */
+  storageError?: string;
   /** The result, encrypted to Alice's `replyPubKey`. The outer layer cannot decrypt it. */
   resultCipher: string;
 }
@@ -156,6 +168,11 @@ export function enclavePublicKey(keys: Pick<EnclaveKeys, 'ecies'>): string {
 
 export interface RunBindingOptions {
   compute?: ComputeBackend;
+  /**
+   * P3-E: archive the deliverable on 0G Storage, encrypted. Absent → nothing is stored and
+   * `storage` stays undefined everywhere; no root hash is ever invented.
+   */
+  storage?: StorageBackend;
   /**
    * Test hook: the plaintext the enclave DECRYPTED.
    *
@@ -263,6 +280,28 @@ export async function runBinding(
   const seal = signSeal(fields, bodyHex, keys.binding);
   sw.mark('seal_sign');
 
+  // 6b. P3-E — archive the deliverable on 0G Storage, encrypted.
+  //
+  // The root hash is NOT folded into the sealed body, and that is deliberate rather than a
+  // shortcut: the body is the four fields the contract rebuilds, and adding a fifth would mean
+  // redeploying Verifier.sol. It is also unnecessary. `outputHash` IS sealed, and it is the
+  // keccak256 of the very bytes stored here — so swapping the blob does not go unnoticed, it
+  // fails the hash. The seal covers the CONTENT; the root hash is only the address it lives at.
+  //
+  // A failed upload does NOT fail the job. Storage is the bonus leg (BUILD-PLAN P3-E,
+  // "düşürülebilir"); the hero flow must survive it being down. The reason is reported rather
+  // than swallowed — an absent archive and a broken one must not look the same.
+  let storedBlob: StoredBlob | undefined;
+  let storageError: string | undefined;
+  if (options.storage) {
+    try {
+      storedBlob = await options.storage.put(output);
+    } catch (err) {
+      storageError = err instanceof Error ? err.message : String(err);
+    }
+    sw.mark('storage_upload');
+  }
+
   const bindingSigner = recoverBindingSigner(bodyHex, seal, wallet.address);
   const result: EchoResult = {
     v: 1,
@@ -283,6 +322,15 @@ export async function runBinding(
     ogSig: computed.ogSig,
     ogSigner: computed.ogSigner,
     intentEchoed,
+    // The key goes ONLY here — this object is about to be encrypted to Alice.
+    storage: storedBlob
+      ? {
+          rootHash: storedBlob.rootHash,
+          txHash: storedBlob.txHash,
+          keyHex: storedBlob.keyHex,
+          bytes: storedBlob.bytes,
+        }
+      : undefined,
     stageMs: sw.stages(),
   };
 
@@ -309,6 +357,16 @@ export async function runBinding(
     signer: wallet.address,
     recoveredClient,
     clientSigOk,
+    // No `keyHex` — see the BindingResponse doc comment. The outer layer gets the address only.
+    storage: storedBlob
+      ? {
+          rootHash: storedBlob.rootHash,
+          txHash: storedBlob.txHash,
+          bytes: storedBlob.bytes,
+          uploadMs: storedBlob.uploadMs,
+        }
+      : undefined,
+    storageError,
     resultCipher,
   };
 }

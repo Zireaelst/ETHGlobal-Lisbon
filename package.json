@@ -31,6 +31,7 @@
     "gate:P4-D": "tsx tests/gates/P4-D.ts",
     "gate:P4-B": "tsx tests/gates/P4-B.ts",
     "gate:P3-B": "tsx tests/gates/P3-B.ts",
+    "gate:P3-E": "tsx tests/gates/P3-E.ts",
     "measure:e2e": "tsx scripts/measure-e2e.ts"
   },
   "devDependencies": {

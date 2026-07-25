@@ -2,15 +2,15 @@
   "request": {
     "endpoint": "https://compute-network-6.integratenetwork.work/v1/proxy",
     "model": "qwen/qwen2.5-omni-7b",
-    "prompt": "ORDER-ID: 0x7becbe9cb4038d54abc71c42fc230b0c254a22c972b731ae32830c5ae3a0ece5\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0x7becbe9cb4038d54abc71c42fc230b0c254a22c972b731ae32830c5ae3a0ece5\n\nThen answer the brief below.\n\nBRIEF:\nSummarise the covenant risk in the attached filing in three sentences. (değiştirildi)\n\nDATA:\nACME Corp Q3-2026: revenue 41.2M, deferred revenue up 38% QoQ, DSO 71 days."
+    "prompt": "ORDER-ID: 0x7f650c7486739cff0f76809113d67a92f66edc00e8702c9c876b8d7a238247cd\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0x7f650c7486739cff0f76809113d67a92f66edc00e8702c9c876b8d7a238247cd\n\nThen answer the brief below.\n\nBRIEF:\nSummarise the covenant risk in the attached filing in three sentences. (değiştirildi)\n\nDATA:\nACME Corp Q3-2026: revenue 41.2M, deferred revenue up 38% QoQ, DSO 71 days."
   },
-  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0x7becbe9cb4038d54abc71c42fc230b0c254a22c972b731ae32830c5ae3a0ece5\\n\\nThe covenant risk in ACME Corp's Q3-2026 filing is highlighted by their revenue of $41.2 million and a significant increase in deferred revenue by 38% quarter-over-quarter (QoQ). Additionally, the Days Sales Outstanding (DSO) stands at 71 days, indicating potential challenges in managing accounts receivable effectively within the specified covenant terms.\",\"role\":\"assistant\"}}],\"created\":1784982272,\"id\":\"chatcmpl-8cec7e09-626b-466e-9b63-349ac3eceb96\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":142,\"completion_tokens_details\":{\"text_tokens\":142},\"prompt_tokens\":211,\"prompt_tokens_details\":{\"text_tokens\":211},\"total_tokens\":353}}",
-  "output": "ORDER-ID: 0x7becbe9cb4038d54abc71c42fc230b0c254a22c972b731ae32830c5ae3a0ece5\n\nThe covenant risk in ACME Corp's Q3-2026 filing is highlighted by their revenue of $41.2 million and a significant increase in deferred revenue by 38% quarter-over-quarter (QoQ). Additionally, the Days Sales Outstanding (DSO) stands at 71 days, indicating potential challenges in managing accounts receivable effectively within the specified covenant terms.",
-  "latencyMs": 2537,
-  "chatID": "8cec7e09-626b-466e-9b63-349ac3eceb96",
+  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0x7f650c7486739cff0f76809113d67a92f66edc00e8702c9c876b8d7a238247cd\\n\\nThe covenant risk summary from ACME Corp's Q3-2026 filing indicates that while revenue has increased by 38% quarter-over-quarter to $41.2 million and deferred revenue is growing, Days Sales Outstanding (DSO) stands at 71 days. This suggests potential challenges in managing cash flow and liquidity, which could impact the company's ability to meet its financial obligations as per the covenants outlined in their debt agreements.\",\"role\":\"assistant\"}}],\"created\":1785007949,\"id\":\"chatcmpl-3e6d6ce2-7907-4976-b22a-1bb34e154c82\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":162,\"completion_tokens_details\":{\"text_tokens\":162},\"prompt_tokens\":225,\"prompt_tokens_details\":{\"text_tokens\":225},\"total_tokens\":387}}",
+  "output": "ORDER-ID: 0x7f650c7486739cff0f76809113d67a92f66edc00e8702c9c876b8d7a238247cd\n\nThe covenant risk summary from ACME Corp's Q3-2026 filing indicates that while revenue has increased by 38% quarter-over-quarter to $41.2 million and deferred revenue is growing, Days Sales Outstanding (DSO) stands at 71 days. This suggests potential challenges in managing cash flow and liquidity, which could impact the company's ability to meet its financial obligations as per the covenants outlined in their debt agreements.",
+  "latencyMs": 2659,
+  "chatID": "3e6d6ce2-7907-4976-b22a-1bb34e154c82",
   "signature": {
-    "text": "f7bf9710a219e289682e0e52cf1f1d5076cb183cc918768fb696c08caf98cf27:88b00ff038bbdda4c2f2c07692803118fe9ddd3d2a47fd9ccbe48a3f27d60fd5:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
-    "signature": "0x668cd41592e2939338e804ee3f0afd7ee08cf2efc737b0d6582368e43f771280045bb670a53e4307e143643a9b2f17432f7d4aa5bc5ac50ca36069267619bfc91b",
+    "text": "6777a75310251ef8ffa6cbcb5ce9e4780e0f338d10cd5e377edff6acd853236d:1f030e21e27ab354a03d7e50c565985e5d72b0862022db46212f9cf490cd4d57:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signature": "0xb391ec858c846c7b5730c49967c289b7c48a5526d53d6b8fbcf0217c23ef11c6612cba74bc6b51090031993913097bd0bc7e86dfab8b5e06c2ce15f1ffd1974a1c",
     "signing_address": "0x83df4b8eba7c0b3b740019b8c9a77fff77d508cf",
     "signing_algo": "ecdsa",
     "provider_type": "centralized",
@@ -19,7 +19,7 @@
   },
   "verification": {
     "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
-    "responseSha256": "88b00ff038bbdda4c2f2c07692803118fe9ddd3d2a47fd9ccbe48a3f27d60fd5"
+    "responseSha256": "1f030e21e27ab354a03d7e50c565985e5d72b0862022db46212f9cf490cd4d57"
   },
   "requestKey": "b5f2b50d686dc0cf253799f869b2fb4cb5773626409fad97dc0a2438f8660cde"
 }

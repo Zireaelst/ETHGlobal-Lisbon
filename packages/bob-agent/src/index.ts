@@ -38,6 +38,7 @@ import {
   type ComputeBackend,
   type PaymentRequirements,
   type Seal,
+  type StorageBackend,
 } from '@ca/shared';
 import { recoverBindingSigner, runBinding, type BindingRequest } from '@ca/bob-binding';
 import type { AuthProof, PaymentBackend, Receipt } from '@ca/payment';
@@ -86,6 +87,11 @@ export interface BobAgentOptions {
    * changes (that is the whole reason the compute.ts boundary exists).
    */
   compute?: ComputeBackend;
+  /**
+   * P3-E: where the deliverable is archived. Like `compute`, it is handed to the enclave and
+   * the outer layer never touches the result — Bob learns the root hash, never the key.
+   */
+  storage?: StorageBackend;
   /**
    * The payment gate. WHEN SUPPLIED, Bob DOES NO WORK without a payment authorisation —
    * `/task` returns 402
@@ -327,6 +333,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
     try {
       bound = await runBinding(request2, { ecies: options.eciesPrivateKey, binding: options.bindingKey }, {
         compute: computeBackend,
+        storage: options.storage,
         onDecrypted: options.onDecrypted,
       });
     } catch (err) {

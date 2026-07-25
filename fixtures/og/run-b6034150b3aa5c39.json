@@ -2,15 +2,15 @@
   "request": {
     "endpoint": "https://compute-network-6.integratenetwork.work/v1/proxy",
     "model": "qwen/qwen2.5-omni-7b",
-    "prompt": "ORDER-ID: 0x8eed5ec4e25c794ca0778b1709eac27f434cdd87ef6649208e335641a6807131\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0x8eed5ec4e25c794ca0778b1709eac27f434cdd87ef6649208e335641a6807131\n\nThen answer the brief below.\n\nBRIEF:\nSummarise the covenant risk in the attached filing in three sentences.\n\nDATA:\nACME Corp Q3-2026: revenue 41.2M, deferred revenue up 38% QoQ, DSO 71 days."
+    "prompt": "ORDER-ID: 0xd6523a9f58c0b243410233f7bf568e2a9675363389cb8bb345334e16fbd73181\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0xd6523a9f58c0b243410233f7bf568e2a9675363389cb8bb345334e16fbd73181\n\nThen answer the brief below.\n\nBRIEF:\nSummarise the covenant risk in the attached filing in three sentences.\n\nDATA:\nACME Corp Q3-2026: revenue 41.2M, deferred revenue up 38% QoQ, DSO 71 days."
   },
-  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0x8eed5ec4e25c794ca0778b1709eac27f434cdd87ef6649208e335641a6807131\\n\\nThe covenant risk highlighted in ACME Corp's Q3-2026 filing indicates that while revenue has increased by 38% quarter-over-quarter (QoQ), the Days Sales Outstanding (DSO) stands at 71 days. This suggests potential challenges in managing cash flow and liquidity, as a higher DSO implies longer payment terms from customers, which could strain working capital and increase the risk of covenant breaches if not managed effectively.\",\"role\":\"assistant\"}}],\"created\":1784982283,\"id\":\"chatcmpl-eb01d26c-8181-491a-aef4-0d7a1ae0713f\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":157,\"completion_tokens_details\":{\"text_tokens\":157},\"prompt_tokens\":212,\"prompt_tokens_details\":{\"text_tokens\":212},\"total_tokens\":369}}",
-  "output": "ORDER-ID: 0x8eed5ec4e25c794ca0778b1709eac27f434cdd87ef6649208e335641a6807131\n\nThe covenant risk highlighted in ACME Corp's Q3-2026 filing indicates that while revenue has increased by 38% quarter-over-quarter (QoQ), the Days Sales Outstanding (DSO) stands at 71 days. This suggests potential challenges in managing cash flow and liquidity, as a higher DSO implies longer payment terms from customers, which could strain working capital and increase the risk of covenant breaches if not managed effectively.",
-  "latencyMs": 2586,
-  "chatID": "eb01d26c-8181-491a-aef4-0d7a1ae0713f",
+  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0xd6523a9f58c0b243410233f7bf568e2a9675363389cb8bb345334e16fbd73181\\n\\nThe covenant risk in ACME Corp's Q3-2026 filing is highlighted by a significant increase in deferred revenue (up 38% quarter-over-quarter), which could lead to potential cash flow challenges if not managed properly. Additionally, the Days Sales Outstanding (DSO) of 71 days indicates that there may be delays in collecting receivables, potentially straining liquidity and increasing the risk of default on financial obligations. These factors collectively suggest that ACME Corp may face difficulties meeting its debt service obligations unless it can effectively manage its deferred revenue and improve collection processes.\",\"role\":\"assistant\"}}],\"created\":1785007961,\"id\":\"chatcmpl-433a165f-504a-40de-8f3e-216567e7e138\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":186,\"completion_tokens_details\":{\"text_tokens\":186},\"prompt_tokens\":216,\"prompt_tokens_details\":{\"text_tokens\":216},\"total_tokens\":402}}",
+  "output": "ORDER-ID: 0xd6523a9f58c0b243410233f7bf568e2a9675363389cb8bb345334e16fbd73181\n\nThe covenant risk in ACME Corp's Q3-2026 filing is highlighted by a significant increase in deferred revenue (up 38% quarter-over-quarter), which could lead to potential cash flow challenges if not managed properly. Additionally, the Days Sales Outstanding (DSO) of 71 days indicates that there may be delays in collecting receivables, potentially straining liquidity and increasing the risk of default on financial obligations. These factors collectively suggest that ACME Corp may face difficulties meeting its debt service obligations unless it can effectively manage its deferred revenue and improve collection processes.",
+  "latencyMs": 3007,
+  "chatID": "433a165f-504a-40de-8f3e-216567e7e138",
   "signature": {
-    "text": "9576467e772d9f53a6b1e6427ded99179f0eacb0d1ba31a0a7e89733dd4bb56d:2f5cadff9e2f2a1b21d3ed30f085483b326e7db04639ea096abdfdfdaf06b322:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
-    "signature": "0x938740a848dcd766c3572fdd1022c0b9c6dc97cfc2e417acbd4cd893c407cfcb216ef557395f4917cb1ec455a30da7ae3cdee2c5c0434520ad4c2be4dbd23bc71c",
+    "text": "fe4f46c958dcbfa07e8b1ce1808748c323982a81933cd2a43ccffc7f2d1381a8:0bf2494a2c5a73fc6651ad4c264dcd0e34c8b2af5e685669715acf54ce8f48cf:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signature": "0xb683c2ce492bf01229d4b0e6e693ff74df0bdde72c7b77c41867520c86e31e5e170cc6cc01ae4b41ad4d82d17c8a609f90ff0910d3f97b69fb9ca8edcf8c59f81c",
     "signing_address": "0x83df4b8eba7c0b3b740019b8c9a77fff77d508cf",
     "signing_algo": "ecdsa",
     "provider_type": "centralized",
@@ -19,7 +19,7 @@
   },
   "verification": {
     "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
-    "responseSha256": "2f5cadff9e2f2a1b21d3ed30f085483b326e7db04639ea096abdfdfdaf06b322"
+    "responseSha256": "0bf2494a2c5a73fc6651ad4c264dcd0e34c8b2af5e685669715acf54ce8f48cf"
   },
   "requestKey": "b6034150b3aa5c398f3773e8bd380d7cb0c0894bcfc1d3a6f0dae4d20499fd08"
 }

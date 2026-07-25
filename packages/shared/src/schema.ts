@@ -250,6 +250,25 @@ export const EchoResultSchema = z.object({
    */
   intentEchoed: z.boolean(),
 
+  /**
+   * P3-E: where the deliverable was archived on 0G Storage, and the key that opens it.
+   *
+   * `keyHex` IS A SECRET and it is safe here for one reason: this whole object is ECIES-encrypted
+   * to Alice before it leaves the enclave. It is deliberately absent from `BindingResponse`, so
+   * Bob's outer layer carries the root hash it will publish and nothing that reads the blob.
+   *
+   * Absent when storage is switched off — no root hash is ever invented (the compute.ts rule).
+   */
+  storage: z
+    .object({
+      rootHash: Bytes32Schema,
+      txHash: z.string(),
+      /** AES-256-GCM, 32 bytes. Alice-only. */
+      keyHex: z.string().regex(/^0x[0-9a-fA-F]{64}$/, 'must be a 32-byte hex key'),
+      bytes: z.number().int().nonnegative(),
+    })
+    .optional(),
+
   /** P0-G: stage durations INSIDE the enclave. Durations only — never content. */
   stageMs: z.record(z.number()).optional(),
 });

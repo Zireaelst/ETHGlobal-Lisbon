@@ -2,15 +2,15 @@
   "request": {
     "endpoint": "https://compute-network-6.integratenetwork.work/v1/proxy",
     "model": "qwen/qwen2.5-omni-7b",
-    "prompt": "ORDER-ID: 0x05eb07b71a08cddb5c1757aafdfdf3a9c399a3246b91aad2df7750e8e6aa9f04\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0x05eb07b71a08cddb5c1757aafdfdf3a9c399a3246b91aad2df7750e8e6aa9f04\n\nThen answer the brief below.\n\nBRIEF:\nWrite a short generic market summary. (Bob substituted this brief.)\n\nDATA:\nBob has no access to the real dataset."
+    "prompt": "ORDER-ID: 0x6b58067a44157026fb3ddbd88e94327757395515bd1c2bab23891cc6f5c08f20\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0x6b58067a44157026fb3ddbd88e94327757395515bd1c2bab23891cc6f5c08f20\n\nThen answer the brief below.\n\nBRIEF:\nWrite a short generic market summary. (Bob substituted this brief.)\n\nDATA:\nBob has no access to the real dataset."
   },
-  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0x05eb07b71a08cddb5c1757aafdfdf3a9c399a3246b91aad2df7750e8e6aa9f04\\n\\nMarket Summary:\\n\\nThe global financial markets experienced a mixed performance last week. Major indices fluctuated due to various economic indicators and geopolitical events. The U.S. stock market saw some volatility as investors awaited key economic data releases. In Europe, the Eurozone's economic outlook remained uncertain, affecting regional markets. Asia's markets showed resilience despite concerns\",\"role\":\"assistant\"}}],\"created\":1785003871,\"id\":\"chatcmpl-79496d8d-ca64-440f-b20c-f8d48da1cbd4\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":129,\"completion_tokens_details\":{\"text_tokens\":129},\"prompt_tokens\":177,\"prompt_tokens_details\":{\"text_tokens\":177},\"total_tokens\":306}}",
-  "output": "ORDER-ID: 0x05eb07b71a08cddb5c1757aafdfdf3a9c399a3246b91aad2df7750e8e6aa9f04\n\nMarket Summary:\n\nThe global financial markets experienced a mixed performance last week. Major indices fluctuated due to various economic indicators and geopolitical events. The U.S. stock market saw some volatility as investors awaited key economic data releases. In Europe, the Eurozone's economic outlook remained uncertain, affecting regional markets. Asia's markets showed resilience despite concerns",
-  "latencyMs": 2486,
-  "chatID": "79496d8d-ca64-440f-b20c-f8d48da1cbd4",
+  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0x6b58067a44157026fb3ddbd88e94327757395515bd1c2bab23891cc6f5c08f20\\n\\nMarket Summary:\\n\\nThe global financial markets experienced a mixed performance last week. Major indices fluctuated due to various economic indicators and geopolitical events. The U.S. stock market saw some volatility as investors awaited key economic data releases. In Europe, the Eurozone's economic outlook remained uncertain, affecting regional markets. Asia's markets showed\",\"role\":\"assistant\"}}],\"created\":1785010282,\"id\":\"chatcmpl-b51aece3-bb0c-43e9-8b57-5d09d5c9650e\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":129,\"completion_tokens_details\":{\"text_tokens\":129},\"prompt_tokens\":183,\"prompt_tokens_details\":{\"text_tokens\":183},\"total_tokens\":312}}",
+  "output": "ORDER-ID: 0x6b58067a44157026fb3ddbd88e94327757395515bd1c2bab23891cc6f5c08f20\n\nMarket Summary:\n\nThe global financial markets experienced a mixed performance last week. Major indices fluctuated due to various economic indicators and geopolitical events. The U.S. stock market saw some volatility as investors awaited key economic data releases. In Europe, the Eurozone's economic outlook remained uncertain, affecting regional markets. Asia's markets showed",
+  "latencyMs": 2666,
+  "chatID": "b51aece3-bb0c-43e9-8b57-5d09d5c9650e",
   "signature": {
-    "text": "812029c09777f4386e373589a78a35868f94508a3e10adc132f204e3744a06e4:33eb94074b9422c4f6a98c8373e8b2b59647804cdd1b8c24cd7d5d4a45e6bdd1:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
-    "signature": "0x05b56fcffdbf6ea8b2eaa1595e4bc2ffec43bc59a4b303546a993dc53cbc2c3d675d4710ed1ee2ebd711ed6aa0726ac0126bc7551834d59bd92278807649ae9a1b",
+    "text": "7bdb7a05520c1f35ae830127c2bf94c67e9495cc9bba56c02f838e7dcf3ef1da:68cd527b30589624d287d56460c9f37ef8d9d982ba53791d30a3e398d00b5210:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signature": "0x665af4d99f8a25c7f0910c6e530c673880ee0ab2c9b54441bd777f9ce2dfbe381acf54ef1ea19e4129e5fe4e5becfbeb767584083a7218cff687a1151084ae851b",
     "signing_address": "0x83df4b8eba7c0b3b740019b8c9a77fff77d508cf",
     "signing_algo": "ecdsa",
     "provider_type": "centralized",
@@ -19,7 +19,7 @@
   },
   "verification": {
     "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
-    "responseSha256": "33eb94074b9422c4f6a98c8373e8b2b59647804cdd1b8c24cd7d5d4a45e6bdd1"
+    "responseSha256": "68cd527b30589624d287d56460c9f37ef8d9d982ba53791d30a3e398d00b5210"
   },
   "requestKey": "1f7aba48d8b90240ab3b4b869c352cba4950271db1052d56c753790ad33b502f"
 }

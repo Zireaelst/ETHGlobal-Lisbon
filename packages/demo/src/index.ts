@@ -25,6 +25,7 @@ import {
   describeCompute,
   describeReasoning,
   selectComputeBackend,
+  selectStorageBackend,
   selectReasoningBackend,
   createStopwatch,
   type StageMs,
@@ -78,6 +79,15 @@ export interface DemoReport {
   clientSigOk: boolean;
   bindingSigOk: boolean;
   computeProvider: string;
+  /**
+   * P3-E: where the deliverable is archived on 0G Storage. PUBLIC HALF ONLY.
+   *
+   * The AES key is deliberately absent. This object is serialised into `fixtures/runs/*.json`,
+   * which is tracked in git — putting the key here would publish the plaintext to anyone who
+   * clones the repo and undo the very boundary the archive is meant to preserve. Alice keeps
+   * the key in her own process; the gate reads it from her decrypted envelope.
+   */
+  storage?: { rootHash: string; txHash: string; bytes: number };
   ogVerified: boolean;
   /**
    * WHO DECIDED — the counterpart to `computeProvider`, which says who COMPUTED.
@@ -204,6 +214,15 @@ export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base
   });
   log(`[demo] compute: ${computeReason}`);
 
+  // P3-E is opt-in (OG_STORAGE=1): every job it archives costs faucet credit, so a run that
+  // did not ask for an archive is not billed for one.
+  const storageBackend = selectStorageBackend(process.env);
+  log(
+    storageBackend
+      ? '[demo] storage: OG_STORAGE=1 → the deliverable is archived on 0G Storage, encrypted'
+      : '[demo] storage: off (OG_STORAGE is not 1) — no archive, and no root hash is invented',
+  );
+
   const url = new URL(endpoint);
   cachedBob = createBobAgent({
     eciesPrivateKey: requireEnv('BOB_ECIES_PRIV'),
@@ -237,6 +256,7 @@ export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base
     // Where the model runs is chosen FROM THE ENVIRONMENT; whichever is selected, the result
     // labels itself correctly (none / fixture-replay / 0g-sealed-inference).
     compute: computeBackend,
+    storage: storageBackend ?? undefined,
     log: () => {},
   });
   await cachedBob.listen();
@@ -405,6 +425,9 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     reasoningProvider: reasoning.provider,
     decisions: job.decisions,
     output: result.output,
+    storage: result.storage
+      ? { rootHash: result.storage.rootHash, txHash: result.storage.txHash, bytes: result.storage.bytes }
+      : undefined,
     code,
     codeName,
     verified: code === 0,
@@ -558,6 +581,10 @@ export async function main(): Promise<void> {
     );
   }
   console.log(`output       : ${report.output.slice(0, 120)}${report.output.length > 120 ? '…' : ''}`);
+  if (report.storage) {
+    // Only the address is printed. The key that opens it stayed in Alice's envelope.
+    console.log(`archive      : 0G Storage ${report.storage.rootHash} · ${report.storage.bytes} bayt (şifreli)`);
+  }
   console.log('\n--- Zincir ne dedi ---');
   console.log(`verdict      : ${report.codeName}${report.verified ? '' : '  (REJECTED)'}`);
   console.log(`tx           : ${report.basescanUrl ?? '-'}`);
