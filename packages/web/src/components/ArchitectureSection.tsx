@@ -36,9 +36,9 @@ const STAGES = [
     icon: ShieldCheck,
     title: "Sealed inference",
     description:
-      "An attested enclave decrypts the brief, recomputes the hash, and runs the model on 0G Sealed Inference. The infra never sees the data.",
-    detail: "TeeML → /chat/completions → verify TEE signature",
-    tag: "Enclave · 0G",
+      "The intent hash rides at the top of the prompt into 0G Sealed Inference, and the model copies it back verbatim. The infra never sees the data.",
+    detail: "0G TeeML · intent hash echoed verbatim, measured 5/5",
+    tag: "0G enclave",
     tint: "cool" as FlowTint,
     span: "lg:col-span-2",
   },
@@ -47,10 +47,10 @@ const STAGES = [
     icon: FileCheck2,
     title: "Cryptographic receipt",
     description:
-      "The enclave signs the intent, the output, and its verdict with an ephemeral seal key issued to its own measured image.",
-    detail: "sign(sealKey) → { intentHash, outputHash, match }",
+      "0G's enclave signs the fingerprint of the raw response body — the body that carries the echoed hash. One changed byte and the signature stops matching.",
+    detail: 'sig over "…:sha256(body):…" · one hash, one answer',
     tint: "cool" as FlowTint,
-    tag: "Enclave · seal key",
+    tag: "0G TEE signature",
     span: "lg:col-span-2",
   },
   {
@@ -58,7 +58,7 @@ const STAGES = [
     icon: CheckCircle2,
     title: "On-chain verifier",
     description:
-      "Verifier.sol recovers both signatures independently — Alice's and the enclave's — and refuses anything where match is false.",
+      "Verifier.sol recovers Alice's intent signature and the enclave signer independently, and refuses anything where match is false.",
     detail: "ecrecover(sig) == registered signer && match",
     tag: "Base Sepolia · Verifier.sol",
     tint: "cool" as FlowTint,
@@ -245,6 +245,24 @@ export default function ArchitectureSection() {
           Replay flow
         </button>
       </motion.div>
+
+      {/*
+        The honest delta, stated on the page rather than left for someone to
+        discover. No TDX host was available, so the recompute that produces
+        `match` runs as ordinary code — the enclave attests that a response
+        carrying this intent hash was produced inside it, which is a real
+        guarantee but a narrower one. CLAUDE.md §11 forbids implying more.
+      */}
+      <Reveal delay={120} className="mx-auto mt-10 max-w-5xl">
+        <p className="border-t border-border pt-6 font-body text-[13px] font-extralight leading-relaxed text-muted-foreground">
+          <span className="text-foreground/70">One enclave, not two.</span> 0G
+          attests the compute and carries the intent through it. The recompute
+          that decides <span className="font-mono text-[12px]">match</span> runs
+          on an ordinary host — no TDX was available to us — so that check is
+          verifiable by the client holding the response, not yet by a stranger.
+          That gap is the whole delta, and nothing else in the pipeline changes.
+        </p>
+      </Reveal>
     </section>
   );
 }

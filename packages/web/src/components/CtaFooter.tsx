@@ -18,7 +18,7 @@ const BOUNDARIES = [
   },
   {
     claim: "Attestation",
-    body: "Signatures are verified on-chain. The enclave attestation is checked off-chain, at setup.",
+    body: "One enclave, and 0G built it. Signatures are verified on-chain; match is computed off-enclave, so it is client-verifiable, not yet third-party-verifiable.",
   },
 ];
 

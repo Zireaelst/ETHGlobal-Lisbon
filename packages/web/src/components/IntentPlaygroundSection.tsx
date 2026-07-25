@@ -46,7 +46,7 @@ function EnclavePhase() {
         0G Sealed Inference — sealed reasoning in progress.
       </p>
       <p className="mt-3 font-mono text-[12px] text-muted-foreground">
-        Recomputed hash matches the intent. Running the model.
+        The intent hash rides in with the prompt, and comes back verbatim.
       </p>
       <div className="mt-6 h-1 w-full overflow-hidden rounded-full bg-border/40">
         <motion.div
@@ -64,12 +64,12 @@ function ReceiptPhase() {
   return (
     <>
       <p className="font-body text-lg font-light text-foreground">
-        The enclave signs what it just did.
+        The enclave signs the fingerprint of what it produced.
       </p>
       <div className="mt-6 flex flex-col gap-2.5 font-mono text-[12.5px]">
-        <Row label="Intent hash" value="0x9f3a…c02e" />
-        <Row label="Output hash" value="0x71bd…44f1" />
-        <Row label="Enclave signature" value="0x2ac0…9d7b" />
+        <Row label="Intent hash, echoed" value="0x9f3a…c02e" />
+        <Row label="Body fingerprint" value="sha256 0x71bd…44f1" />
+        <Row label="0G TEE signature" value="0x2ac0…9d7b" />
       </div>
     </>
   );
@@ -78,7 +78,7 @@ function ReceiptPhase() {
 function VerifierPhase() {
   const checks = [
     "Intent signer matches the registered client",
-    "Enclave signer matches the registered seal key",
+    "Enclave signer matches the registered 0G TEE signer",
     "match == true",
   ];
   return (
