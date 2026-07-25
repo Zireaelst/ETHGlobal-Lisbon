@@ -1,0 +1,13 @@
+{
+  "capturedAt": "2026-07-25T10:17:34.691Z",
+  "chainId": 16602,
+  "provider": "0xa48f01287233509FD694a22Bf840225062E67836",
+  "model": "qwen/qwen2.5-omni-7b",
+  "url": "https://compute-network-6.integratenetwork.work",
+  "verifiability": "TeeML",
+  "teeSignerAddress": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
+  "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
+  "targetSeparated": true,
+  "providerType": "centralized",
+  "isAcknowledged": true
+}

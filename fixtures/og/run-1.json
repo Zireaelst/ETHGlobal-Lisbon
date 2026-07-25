@@ -1,0 +1,68 @@
+{
+  "capturedAt": "2026-07-25T10:17:34.692Z",
+  "request": {
+    "endpoint": "https://compute-network-6.integratenetwork.work/v1/proxy",
+    "model": "qwen/qwen2.5-omni-7b",
+    "prompt": "You are a security analyst. In exactly three sentences, explain why binding a payment intent hash to a model output matters for autonomous agent marketplaces."
+  },
+  "response": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "Binding a payment intent hash to a model output in autonomous agent marketplaces ensures secure and transparent transactions by linking the financial transaction directly with the specific service or action performed by the agent. This mechanism enhances accountability and reduces fraud risks, as each transaction can be traced back to its origin within the marketplace ecosystem. Additionally, it facilitates trust between buyers and sellers, as both parties have clear visibility into the financial implications of their interactions, thereby promoting fair trade practices.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "created": 1784974653,
+    "id": "chatcmpl-9bc257e1-c5ce-4cb4-ac63-4b59f1a94a5b",
+    "model": "qwen2.5-omni-7b",
+    "object": "chat.completion",
+    "system_fingerprint": null,
+    "usage": {
+      "completion_tokens": 92,
+      "completion_tokens_details": {
+        "text_tokens": 92
+      },
+      "prompt_tokens": 37,
+      "prompt_tokens_details": {
+        "text_tokens": 37
+      },
+      "total_tokens": 129
+    }
+  },
+  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"Binding a payment intent hash to a model output in autonomous agent marketplaces ensures secure and transparent transactions by linking the financial transaction directly with the specific service or action performed by the agent. This mechanism enhances accountability and reduces fraud risks, as each transaction can be traced back to its origin within the marketplace ecosystem. Additionally, it facilitates trust between buyers and sellers, as both parties have clear visibility into the financial implications of their interactions, thereby promoting fair trade practices.\",\"role\":\"assistant\"}}],\"created\":1784974653,\"id\":\"chatcmpl-9bc257e1-c5ce-4cb4-ac63-4b59f1a94a5b\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":92,\"completion_tokens_details\":{\"text_tokens\":92},\"prompt_tokens\":37,\"prompt_tokens_details\":{\"text_tokens\":37},\"total_tokens\":129}}",
+  "output": "Binding a payment intent hash to a model output in autonomous agent marketplaces ensures secure and transparent transactions by linking the financial transaction directly with the specific service or action performed by the agent. This mechanism enhances accountability and reduces fraud risks, as each transaction can be traced back to its origin within the marketplace ecosystem. Additionally, it facilitates trust between buyers and sellers, as both parties have clear visibility into the financial implications of their interactions, thereby promoting fair trade practices.",
+  "latencyMs": 1867,
+  "chatID": "9bc257e1-c5ce-4cb4-ac63-4b59f1a94a5b",
+  "signature": {
+    "text": "12f72f1464fc27f9ac3055ee43a5ee4df5a9462edccd5751b11e351254c0408a:236d989dbdeb6f4a70e3a87b3577632d17e25bc2ce851907e11327259b4148fd:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signature": "0x8000cdafee3c5f1cfea77bd992abcd3ae04176978ce9bf0795a7b1610d1778240798aa1c19e81288197d84a601c125f1caeb5f2cd4845f462d891050438c2f051c",
+    "signing_address": "0x83df4b8eba7c0b3b740019b8c9a77fff77d508cf",
+    "signing_algo": "ecdsa",
+    "provider_type": "centralized",
+    "provider_identity": "aliyun",
+    "tls_cert_fingerprint": "9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e"
+  },
+  "verification": {
+    "sdkProcessResponse": true,
+    "independentRecovered": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
+    "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
+    "independentValid": true,
+    "signedTextCoversOutput": true,
+    "scheme": "EIP-191 (ethers.verifyMessage)",
+    "signedTuple": "12f72f1464fc27f9ac3055ee43a5ee4df5a9462edccd5751b11e351254c0408a:236d989dbdeb6f4a70e3a87b3577632d17e25bc2ce851907e11327259b4148fd:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signedTupleParts": [
+      "12f72f1464fc27f9ac3055ee43a5ee4df5a9462edccd5751b11e351254c0408a",
+      "236d989dbdeb6f4a70e3a87b3577632d17e25bc2ce851907e11327259b4148fd",
+      "centralized",
+      "aliyun",
+      "9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e"
+    ],
+    "responseSha256": "236d989dbdeb6f4a70e3a87b3577632d17e25bc2ce851907e11327259b4148fd",
+    "responseDigestIndexInTuple": 1
+  }
+}
