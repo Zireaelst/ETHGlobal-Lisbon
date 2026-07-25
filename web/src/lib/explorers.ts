@@ -96,6 +96,42 @@ export function explorerFor(network: Network, kind: Kind, id: string | null | un
   }
 }
 
+/**
+ * An ERC-8004 agent's own page on Basescan.
+ *
+ * The registry is an ERC-721, so an agentId is an NFT token id and Basescan gives it an instance
+ * page. This is the strongest link for "agent 8429" — the registration itself, on chain, rather
+ * than the collection it belongs to.
+ */
+export function erc8004AgentUrl(registry: string | null | undefined, agentId: string | null | undefined) {
+  if (!registry || !agentId) return null;
+  return `${BASESCAN}/nft/${registry}/${agentId}`;
+}
+
+/**
+ * A single HCS message, straight from the public mirror node.
+ *
+ * HashScan has no per-message page, but the REST API does, and it returns exactly the bytes we
+ * committed. That is a better proof than a topic-level link anyway: the reader sees THIS stage of
+ * THIS job, base64 and all, from Hedera's own infrastructure rather than ours.
+ */
+export function hcsMessageUrl(topicId: string, sequenceNumber: number, network = "testnet") {
+  const host = network === "mainnet" ? "mainnet-public.mirrornode.hedera.com" : `${network}.mirrornode.hedera.com`;
+  return `https://${host}/api/v1/topics/${topicId}/messages/${sequenceNumber}`;
+}
+
+/**
+ * The x402 facilitator's capability document.
+ *
+ * Not an explorer, but it is the check that matters: `/supported` lists the schemes the
+ * facilitator will actually settle, including `hedera:testnet` and the fee payer our .env names.
+ * A judge can confirm the rail we claim to use is the rail it advertises.
+ */
+export function facilitatorSupportedUrl(base: string | null | undefined) {
+  if (!base) return null;
+  return `${base.replace(/\/$/, "")}/supported`;
+}
+
 /** The explorer's own name, so a link can say where it goes before it is clicked. */
 export function explorerName(network: Network): string {
   switch (network) {

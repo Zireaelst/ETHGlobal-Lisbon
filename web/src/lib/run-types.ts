@@ -119,6 +119,7 @@ export interface TimelineMessage {
   consensusIso: string;
   payload: Record<string, unknown>;
   raw?: string;
+  messageUrl: string;
 }
 
 export interface TimelineSnapshot {

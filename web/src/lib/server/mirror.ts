@@ -21,6 +21,8 @@ export interface TimelineMessage {
   payload: Record<string, unknown>;
   /** Undecodable payloads are surfaced, not dropped. */
   raw?: string;
+  /** This exact message on the public mirror node — Hedera's own record of it, not ours. */
+  messageUrl: string;
 }
 
 export interface TimelineSnapshot {
@@ -78,6 +80,7 @@ export async function fetchTimeline(intentHash?: string, limit = 50): Promise<Ti
       consensusIso: toIso(m.consensus_timestamp),
       payload,
       raw,
+      messageUrl: `${mirrorBase()}/api/v1/topics/${topicId}/messages/${m.sequence_number}`,
     };
   });
 

@@ -47,7 +47,7 @@ export function EvidencePanel({ evidence }: { evidence: NetworkEvidence[] }) {
                   </dt>
                   <dd className="min-w-0 text-sm">
                     {fact.kind === "text" || !fact.value ? (
-                      <Hash value={fact.value ?? "—"} why={fact.why} lead={28} tail={0} />
+                      <Hash value={fact.value ?? "—"} why={fact.why} href={fact.href} goesTo={fact.goesTo} lead={28} tail={0} />
                     ) : (
                       <Hash
                         value={fact.value}

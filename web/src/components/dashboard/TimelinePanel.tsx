@@ -122,7 +122,8 @@ export function TimelinePanel({ run }: { run: RunView | null }) {
                       value={String(m.payload.intentHash)}
                       lead={12}
                       tail={6}
-                      why="The job this message belongs to. The message itself is on HashScan via the topic link below."
+                      href={m.messageUrl}
+                      goesTo="this exact message on Hedera's public mirror node"
                     />
                   ) : null}
                   {"match" in m.payload ? ` · match=${String(m.payload.match)}` : null}

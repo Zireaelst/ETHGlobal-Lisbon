@@ -73,11 +73,25 @@ export function SpyPanel({ run }: { run: RunView | null }) {
             </div>
             <div className="space-y-3.5">
               <Field label="An intent commitment">
-                <Hash value={report.signedIntentHash} lead={14} tail={8} why="Carried in the verification transaction linked below." />
+                <Hash
+                  value={report.signedIntentHash}
+                  lead={14}
+                  tail={8}
+                  href={report.basescanUrl ? `${report.basescanUrl}#eventlog` : null}
+                  goesTo="the event log where an observer would find it"
+                  why="No transaction was sent for this run."
+                />
               </Field>
               <Field label="An output commitment">
                 {report.match ? (
-                  <Hash value={report.bodyIntentHash} lead={14} tail={8} why="Emitted inside JobVerified; see the transaction below." />
+                  <Hash
+                    value={report.bodyIntentHash}
+                    lead={14}
+                    tail={8}
+                    href={report.basescanUrl ? `${report.basescanUrl}#eventlog` : null}
+                    goesTo="the JobVerified event that emitted it"
+                    why="No transaction was sent for this run."
+                  />
                 ) : (
                   "—"
                 )}

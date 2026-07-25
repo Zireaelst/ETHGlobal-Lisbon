@@ -256,13 +256,17 @@ export function FraudPanel({
                   {/* A function argument, never an on-chain record of its own. */}
                   <Hash
                     value={report.signedIntentHash}
-                    why="The commitment Alice signed. It is an argument to verifyJob, not a record with a page of its own — the transaction it was passed to is linked below."
+                    href={report.basescanUrl ? `${report.basescanUrl}#eventlog` : null}
+                    goesTo="the event log of the transaction that carried it"
+                    why="No transaction was sent, so this commitment has no on-chain record yet."
                   />
                 </Field>
                 <Field label="The enclave&apos;s body carried">
                   <Hash
                     value={report.bodyIntentHash}
-                    why="The commitment inside the body the enclave signed. Under fraud this is the one Bob fabricated."
+                    href={report.basescanUrl ? `${report.basescanUrl}#eventlog` : null}
+                    goesTo="the event log — under fraud this is the commitment Bob fabricated"
+                    why="No transaction was sent, so this commitment has no on-chain record yet."
                   />
                 </Field>
                 <Field label="match">

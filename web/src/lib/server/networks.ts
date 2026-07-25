@@ -8,6 +8,7 @@
 import "server-only";
 import "./env";
 import { computeAddress } from "ethers";
+import { erc8004AgentUrl, facilitatorSupportedUrl } from "@/lib/explorers";
 
 /**
  * The compute payer's PUBLIC address, derived here from the key that pays for 0G inference.
@@ -32,8 +33,16 @@ export interface NetworkFact {
   /** Rendered via <Hash>. Null when the fact is real but has no explorer page. */
   value: string | null;
   kind: "tx" | "address" | "contract" | "token" | "account" | "topic" | "text";
-  /** Why there is deliberately no link, when there isn't one. */
+  /** Why there is deliberately no link, when there genuinely isn't one. */
   why?: string;
+  /**
+   * A checkable destination that is not an explorer page. Added after a first pass left several
+   * facts inert that a judge could in fact verify — an NFT instance page, a facilitator's
+   * capability document, the downloadable proof bundle.
+   */
+  href?: string | null;
+  /** Where `href` goes, named so a click is never a surprise. */
+  goesTo?: string;
 }
 
 export interface NetworkEvidence {
@@ -69,8 +78,10 @@ export function networkEvidence(): NetworkEvidence[] {
         },
         {
           label: "TEE signature over the response body",
-          value: null,
+          value: "download the bundle to verify it",
           kind: "text",
+          href: "/api/proof?mode=none",
+          goesTo: "the proof bundle — the response body plus the command to check the signature",
           why:
             "Off-chain by design. The TEE signs a tuple containing sha256 of the raw response body, so verifying it needs the body — that is what the downloadable bundle is for. No explorer holds it.",
         },
@@ -85,7 +96,13 @@ export function networkEvidence(): NetworkEvidence[] {
       facts: [
         { label: "Query endpoint (POST the query yourself)", value: env.SUBGRAPH_QUERY_URL ?? null, kind: "address" },
         { label: "ERC-8004 identity registry", value: env.ERC8004_IDENTITY ?? null, kind: "token" },
-        { label: "Bob's agentId", value: env.BOB_AGENT_ID ?? null, kind: "text", why: "An NFT token id inside the registry above, not an address of its own." },
+        {
+          label: "Bob's agentId",
+          value: env.BOB_AGENT_ID ?? null,
+          kind: "text",
+          href: erc8004AgentUrl(env.ERC8004_IDENTITY, env.BOB_AGENT_ID),
+          goesTo: "Bob's registration itself — the ERC-721 token page on Basescan",
+        },
       ],
     },
     {
@@ -98,7 +115,13 @@ export function networkEvidence(): NetworkEvidence[] {
         { label: "Consensus topic", value: env.HEDERA_TOPIC_ID ?? null, kind: "topic" },
         { label: "Operator account", value: env.HEDERA_OPERATOR_ID ?? null, kind: "account" },
         { label: "Bob's payout account", value: env.BOB_HEDERA_ACCOUNT ?? null, kind: "account" },
-        { label: "x402 facilitator", value: env.BLOCKY402_URL ?? null, kind: "text", why: "An HTTP facilitator endpoint, not a ledger entity." },
+        {
+          label: "x402 facilitator",
+          value: env.BLOCKY402_URL ?? null,
+          kind: "text",
+          href: facilitatorSupportedUrl(env.BLOCKY402_URL),
+          goesTo: `its /supported document — it advertises hedera:testnet and fee payer ${env.BLOCKY402_FEE_PAYER ?? "the account we name"}`,
+        },
       ],
     },
     {

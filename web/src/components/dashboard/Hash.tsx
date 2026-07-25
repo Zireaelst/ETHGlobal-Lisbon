@@ -22,6 +22,8 @@ export function Hash({
   lead = 10,
   tail = 6,
   why,
+  href: hrefOverride,
+  goesTo,
 }: {
   value: string | null | undefined;
   network?: Network;
@@ -30,8 +32,16 @@ export function Hash({
   tail?: number;
   /** Shown as a tooltip when there is deliberately no link. */
   why?: string;
+  /**
+   * A destination that is not an explorer page but is still checkable — an event log anchor, a
+   * mirror-node record, a facilitator's capability document. Worth linking: the first pass of
+   * this component was too strict and left values inert that a judge could in fact verify.
+   */
+  href?: string | null;
+  /** Where `href` goes, named in the tooltip so a click is never a surprise. */
+  goesTo?: string;
 }) {
-  const href = network ? explorerFor(network, kind, value) : null;
+  const href = hrefOverride ?? (network ? explorerFor(network, kind, value) : null);
 
   if (!value) return <span className="font-mono text-muted-foreground">—</span>;
 
@@ -51,7 +61,7 @@ export function Hash({
       href={href}
       target="_blank"
       rel="noreferrer"
-      title={`${value}\n\nOpens on ${explorerName(network!)}`}
+      title={`${value}\n\nOpens ${goesTo ?? (network ? `on ${explorerName(network)}` : "an external page")}`}
       className="font-mono text-cool underline decoration-cool/35 underline-offset-4 transition hover:decoration-cool"
     >
       {short(value, lead, tail)}
