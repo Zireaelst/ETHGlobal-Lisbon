@@ -26,9 +26,14 @@ export interface ComputeResult {
   /** Modelin ürettiği metin. */
   output: string;
   /**
-   * 0G TEE'nin ÇIKTI üzerindeki EIP-191 imzası.
-   * Yoksa undefined — uydurulmaz. (CLAUDE.md §3.1A: imza yalnızca çıktıyı kapsar,
-   * prompt'u değil; `chatId` çıktı↔istek bağını 0G'nin kendi defterinde kurar.)
+   * 0G TEE'nin EIP-191 imzası. Yoksa undefined — uydurulmaz.
+   *
+   * NE KAPSAR (P0-B'de ÖLÇÜLDÜ, CLAUDE.md §3.1 buna göre düzeltildi): imza çıktı
+   * metnini DEĞİL, şu demeti kapsıyor:
+   *     "<h1>:<sha256(ham yanıt gövdesi)>:<ProviderType>:<ProviderIdentity>:<h3>"
+   * Yani çıktı, kendisini içeren gövdenin PARMAK İZİ olarak imza kapsamında.
+   * Kurcalamaya karşı garanti aynı; kurulan cümle farklı.
+   * `chatId` çıktı↔istek bağını 0G'nin kendi defterinde kurar.
    */
   ogSig?: string;
   /** İmzadan kurtarılan adres — broker'ın `teeSignerAddress`'i ile karşılaştırılır. */

@@ -1,0 +1,33 @@
+{
+  "capturedAt": "2026-07-25T10:32:11.310Z",
+  "provider": "0xa48f01287233509FD694a22Bf840225062E67836",
+  "model": "qwen/qwen2.5-omni-7b",
+  "tariff": {
+    "inputPricePerToken": "995000000000",
+    "outputPricePerToken": "3980000000000"
+  },
+  "sample": {
+    "promptTokens": 37,
+    "completionTokens": 92,
+    "latencyMs": 2039,
+    "chatID": "832073de-8f04-43f2-aff4-55f2fba07982"
+  },
+  "cost": {
+    "formulaNeuron": "402975000000000",
+    "observedNeuron": "0",
+    "usedNeuron": "402975000000000",
+    "usedOG": 0.000402975,
+    "note": "bakiye farkı 0 görüldü (TEE settlement gecikmeli); tarife esas alındı"
+  },
+  "ledgerOG": 5,
+  "remainingCalls": 12407,
+  "allocation": {
+    "p3Development": 6203,
+    "dryRun": 3,
+    "demoAndVideos": 6,
+    "reserve": 6195
+  },
+  "minRequired": 12,
+  "storageBonusDecision": "VAR",
+  "storageBonusReason": "kalan çağrı (12407) 100'ün üzerinde — P3-E denenebilir"
+}
