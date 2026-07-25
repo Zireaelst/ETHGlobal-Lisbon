@@ -13,4 +13,12 @@ export * from './compute.js';
 export * from './compute-fixture.js';
 export * from './compute-0g.js';
 export * from './compute-select.js';
+// The agents' brain — who DECIDES, as opposed to what is verified (see reasoning.ts).
+// The two transports are deliberately NOT re-exported here: `reasoning-claude.ts` pulls in
+// node:child_process, and this barrel is imported by the Next.js dashboard. `selectReasoningBackend`
+// loads whichever one is asked for, lazily, so the browser bundle never sees either.
+export * from './reasoning.js';
+export * from './reasoning-prompts.js';
+export * from './reasoning-llm.js';
+export * from './reasoning-select.js';
 export * from './timeline.js';

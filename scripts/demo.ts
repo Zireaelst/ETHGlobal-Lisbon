@@ -23,11 +23,17 @@ import { runAliceJob } from '../packages/alice-agent/src/index.js';
 import { decodeBody } from '../packages/bob-binding/src/binding.js';
 import {
   describeCompute,
+  describeReasoning,
   selectComputeBackend,
+  selectReasoningBackend,
   createStopwatch,
   type StageMs,
   type Constraints,
   type EchoResult,
+  type HireDecision,
+  type PriceDecision,
+  type ReasoningProvider,
+  type ResultDecision,
 } from '../packages/shared/src/index.js';
 import { deriveAgentStealthKeys } from '../packages/payment/src/stealth.js';
 import { loadConfig, loadDotenv, repoRoot, requireEnv } from '../packages/shared/src/config.js';
@@ -73,6 +79,17 @@ export interface DemoReport {
   bindingSigOk: boolean;
   computeProvider: string;
   ogVerified: boolean;
+  /**
+   * WHO DECIDED — the counterpart to `computeProvider`, which says who COMPUTED.
+   * Two independent questions, two independent labels; the dashboard shows both.
+   */
+  reasoningProvider: ReasoningProvider;
+  /** The agents' own words at each decision point. Empty when they ran on the policy brain. */
+  decisions?: {
+    hire?: HireDecision;
+    price?: PriceDecision;
+    result?: ResultDecision;
+  };
   /** The output Alice decrypted and read. */
   output: string;
   /** The verdict code the contract returned. */
@@ -267,8 +284,21 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   const timeline = options.timeline === false ? undefined : await openTimeline(brief, data, log);
   sw.mark('hcs_open_topic');
 
+  // Alice's brain. Chosen from the environment and labelled honestly, exactly like compute:
+  // `policy` by default so the gates stay deterministic, `claude` for the live demo.
+  // The 0G backend shares the compute boundary, hence the same `bob` selection is reused.
+  const { backend: reasoning, reason: reasoningReason } = await selectReasoningBackend(process.env, {
+    compute: (await selectComputeBackend(process.env, { fixtureDir: resolve(root, 'fixtures/og') })).backend,
+    log,
+  });
+  log(`[demo] reasoning: ${reasoningReason}`);
+
   // --- 1-5. Discovery → intent → ECIES → Bob → enclave → Alice decrypts ---
   const job = await runAliceJob({
+    reasoning,
+    // Alice's ceiling: Bob quotes 1 USDC, she is authorised up to 5. The gap is what makes
+    // the approval a real decision rather than a rubber stamp.
+    maxPrice: 5_000_000n,
     discover: { subgraphUrl: requireEnv('SUBGRAPH_QUERY_URL'), skill: SKILL },
     brief,
     data,
@@ -369,6 +399,8 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     bindingSigOk: result.bindingSigOk,
     computeProvider: result.computeProvider,
     ogVerified: result.ogVerified,
+    reasoningProvider: reasoning.provider,
+    decisions: job.decisions,
     output: result.output,
     code,
     codeName,
@@ -509,6 +541,18 @@ export async function main(): Promise<void> {
   console.log(`enclave body : ${report.bodyIntentHash}`);
   console.log(`match        : ${report.match}`);
   console.log(`compute      : ${report.computeProvider} · ogVerified=${report.ogVerified}`);
+  console.log(`brain        : ${describeReasoning(report.reasoningProvider)}`);
+  if (report.decisions?.hire) console.log(`  hire       : ${report.decisions.hire.rationale}`);
+  if (report.decisions?.price) {
+    console.log(
+      `  price      : ${report.decisions.price.approve ? 'authorised' : 'DECLINED'} — ${report.decisions.price.rationale}`,
+    );
+  }
+  if (report.decisions?.result) {
+    console.log(
+      `  review     : ${report.decisions.result.accept ? 'accepted' : 'rejected'} — ${report.decisions.result.rationale}`,
+    );
+  }
   console.log(`output       : ${report.output.slice(0, 120)}${report.output.length > 120 ? '…' : ''}`);
   console.log('\n--- Zincir ne dedi ---');
   console.log(`verdict      : ${report.codeName}${report.verified ? '' : '  (REJECTED)'}`);
