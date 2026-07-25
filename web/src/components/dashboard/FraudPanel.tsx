@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Panel, Chip, Field, ProofLink } from "./Panel";
 import { Hash } from "./Hash";
-import { type FraudMode, type RunView } from "@/lib/run-types";
+import { type FraudMode, type PaymentRail, type RunView } from "@/lib/run-types";
 
 /**
  * THE panel. Four of the five show state; this one makes something happen.
@@ -47,6 +47,25 @@ const MODES: Array<{ mode: FraudMode; label: string; blurb: string; expect: stri
   },
 ];
 
+/**
+ * The rail is the operator's choice per run, not a deployment setting, because the two demos are
+ * different demos. Picking one in `.env` would mean the other claim can never be shown live.
+ */
+const RAILS: Array<{ rail: PaymentRail; label: string; buys: string }> = [
+  {
+    rail: "hedera",
+    label: "Hedera · x402",
+    buys:
+      "Autonomy and a consensus-timestamped trail: the agent quotes, is authorised and settles through the blocky402 facilitator, and every stage lands on HCS. The recipient is a plain account — this run buys no privacy.",
+  },
+  {
+    rail: "base",
+    label: "Base · stealth",
+    buys:
+      "Recipient privacy: payment goes to a fresh ERC-5564 stealth address derived per job, so the payout does not name Bob and two jobs of his cannot be linked by their payouts.",
+  },
+];
+
 export function FraudPanel({
   run,
   onRun,
@@ -57,6 +76,7 @@ export function FraudPanel({
   runnerEnabled: boolean;
 }) {
   const [mode, setMode] = useState<FraudMode>("substitute");
+  const [rail, setRail] = useState<PaymentRail>("hedera");
   const [logs, setLogs] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,12 +113,12 @@ export function FraudPanel({
       const res = await fetch("/api/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // The Hedera rail, not "none". With no rail the run never issues a 402, never authorises
-        // and never settles — so the one claim the payment layer exists to make ("money moves
-        // only after JobVerified") could not be demonstrated by the button that demonstrates
-        // everything else. On a fraud run this is exactly what stays unspent, and the timeline
-        // shows the missing SETTLED stage.
-        body: JSON.stringify({ mode, rail: "hedera" }),
+        // A real rail, never "none". With no rail the run issues no 402, authorises nothing and
+        // settles nothing — so the one claim the payment layer exists to make ("money moves only
+        // after JobVerified") could not be demonstrated by the button that demonstrates everything
+        // else. On a fraud run this is exactly what stays unspent, and the timeline shows the
+        // missing SETTLED stage.
+        body: JSON.stringify({ mode, rail }),
       });
 
       if (!res.ok || !res.body) {
@@ -138,9 +158,10 @@ export function FraudPanel({
     } finally {
       setBusy(false);
     }
-  }, [mode, onRun, append]);
+  }, [mode, rail, onRun, append]);
 
   const selected = MODES.find((m) => m.mode === mode) ?? MODES[1]!;
+  const selectedRail = RAILS.find((r) => r.rail === rail) ?? RAILS[0]!;
   const report = run?.report;
   const rejected = report ? !report.verified : false;
 
@@ -196,6 +217,31 @@ export function FraudPanel({
           <p className="mt-3 font-body text-xs font-light leading-relaxed text-muted-foreground">
             {selected.blurb}
           </p>
+
+          <div className="mt-5 border-t border-border/60 pt-4">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+              Payment rail
+            </p>
+            <div className="mt-2 flex gap-2">
+              {RAILS.map((r) => (
+                <button
+                  key={r.rail}
+                  type="button"
+                  onClick={() => setRail(r.rail)}
+                  disabled={busy}
+                  aria-pressed={r.rail === rail}
+                  className={`flex-1 rounded-md border px-3 py-2 font-mono text-[11px] transition disabled:opacity-50 ${
+                    r.rail === rail ? "border-warm/60 bg-warm/[0.08] text-foreground" : "border-border text-muted-foreground hover:border-warm/40"
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 font-body text-xs font-light leading-relaxed text-muted-foreground">
+              {selectedRail.buys}
+            </p>
+          </div>
 
           <button
             type="button"
@@ -254,6 +300,14 @@ export function FraudPanel({
                   {report.ogVerified ? " · TEE sig verified" : ""}
                 </Chip>
                 <Chip tone="neutral">{report.totalMs} ms</Chip>
+                {/* Read from the settlement link rather than from the button's state: this says
+                    which rail ACTUALLY carried the run, which is what a recorded run needs too. */}
+                {report.payment ? (
+                  <Chip tone={report.payment.settled ? "good" : "alert"}>
+                    {report.payment.explorerUrl?.includes("hashscan") ? "Hedera" : "Base"}
+                    {report.payment.settled ? " · settled" : " · not settled"}
+                  </Chip>
+                ) : null}
               </div>
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -297,6 +351,19 @@ export function FraudPanel({
                   <ProofLink href={report.basescanUrl}>
                     {rejected ? "JobRejected" : "JobVerified"} on Base Sepolia ↗
                   </ProofLink>
+                </p>
+              ) : null}
+
+              {/* The settlement, or the stated reason there isn't one. A fraud run's most
+                  load-bearing evidence is the payment that never happened, so it is named
+                  rather than left as an absence the reader has to notice. */}
+              {report.payment?.settled && report.payment.explorerUrl ? (
+                <p className="mt-2">
+                  <ProofLink href={report.payment.explorerUrl}>payment settled ↗</ProofLink>
+                </p>
+              ) : report.payment && !report.payment.settled ? (
+                <p className="mt-2 font-mono text-[11px] text-alert">
+                  payment not settled — {report.payment.skippedReason ?? "the job was not verified"}
                 </p>
               ) : null}
             </div>
