@@ -83,8 +83,21 @@ export async function fetchTimeline(intentHash?: string, limit = 50): Promise<Ti
 
   // Filtering happens here rather than in the query because the mirror node cannot search
   // inside a message body. One job's timeline is a handful of messages out of the last N.
-  const filtered = intentHash
-    ? messages.filter((m) => String(m.payload.intentHash ?? "").toLowerCase() === intentHash.toLowerCase())
+  //
+  // With no job specified, show the MOST RECENT job rather than the last 50 messages. The topic
+  // accumulates every run ever made, so an unfiltered list interleaves a dozen jobs and reads as
+  // noise — burying the one thing this panel exists to show: that a SINGLE job's stages are
+  // ordered and timestamped by consensus.
+  // NB: `messages` is still newest-first here (the query asked for order=desc), so the first
+  // intentHash found IS the most recent job. It is reversed into reading order further down —
+  // doing that lookup after the reverse would silently select the OLDEST job in the window,
+  // whose earlier stages have usually already fallen outside it.
+  const target =
+    intentHash?.toLowerCase() ??
+    messages.map((m) => String(m.payload.intentHash ?? "").toLowerCase()).find(Boolean);
+
+  const filtered = target
+    ? messages.filter((m) => String(m.payload.intentHash ?? "").toLowerCase() === target)
     : messages;
 
   return {

@@ -9,6 +9,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { DashboardClient } from "@/components/dashboard/DashboardClient";
 import { fetchDiscovery } from "@/lib/server/subgraph";
 import { runnerEnabled } from "@/lib/server/runner";
+import { networkEvidence } from "@/lib/server/networks";
 import type { DiscoverySnapshot } from "@/lib/run-types";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +46,7 @@ export default async function DashboardPage() {
           </p>
         </header>
 
-        <DashboardClient discovery={discovery} runnerEnabled={runnerEnabled()} />
+        <DashboardClient discovery={discovery} evidence={networkEvidence()} runnerEnabled={runnerEnabled()} />
       </main>
     </ThemeProvider>
   );

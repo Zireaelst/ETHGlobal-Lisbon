@@ -130,8 +130,16 @@ export interface TimelineSnapshot {
 
 export const BASESCAN = "https://sepolia.basescan.org";
 
-/** Shorten a hash for display without ever implying the full value is something else. */
+/**
+ * Shorten a hash for display without ever implying the full value is something else.
+ *
+ * The `tail <= 0` branch is a bug guard, not defensive padding: `slice(-0)` returns the WHOLE
+ * string, because -0 === 0 in JavaScript. A caller asking for "head only" therefore got the
+ * truncated head followed by the entire untruncated value — which is exactly what the evidence
+ * panel rendered for every long URL until this was fixed.
+ */
 export function short(hash: string | null | undefined, lead = 10, tail = 6): string {
   if (!hash) return "—";
-  return hash.length <= lead + tail + 1 ? hash : `${hash.slice(0, lead)}…${hash.slice(-tail)}`;
+  if (hash.length <= lead + tail + 1) return hash;
+  return tail <= 0 ? `${hash.slice(0, lead)}…` : `${hash.slice(0, lead)}…${hash.slice(-tail)}`;
 }

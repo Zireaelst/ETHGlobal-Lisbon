@@ -2,7 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Panel, Chip, Field, ProofLink } from "./Panel";
-import { short, type FraudMode, type RunView } from "@/lib/run-types";
+import { Hash } from "./Hash";
+import { type FraudMode, type RunView } from "@/lib/run-types";
 
 /**
  * THE panel. Four of the five show state; this one makes something happen.
@@ -251,8 +252,19 @@ export function FraudPanel({
               </div>
 
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Field label="Alice signed">{short(report.signedIntentHash)}</Field>
-                <Field label="The enclave&apos;s body carried">{short(report.bodyIntentHash)}</Field>
+                <Field label="Alice signed">
+                  {/* A function argument, never an on-chain record of its own. */}
+                  <Hash
+                    value={report.signedIntentHash}
+                    why="The commitment Alice signed. It is an argument to verifyJob, not a record with a page of its own — the transaction it was passed to is linked below."
+                  />
+                </Field>
+                <Field label="The enclave&apos;s body carried">
+                  <Hash
+                    value={report.bodyIntentHash}
+                    why="The commitment inside the body the enclave signed. Under fraud this is the one Bob fabricated."
+                  />
+                </Field>
                 <Field label="match">
                   <span className={report.match ? "text-warm" : "text-alert"}>{String(report.match)}</span>
                 </Field>

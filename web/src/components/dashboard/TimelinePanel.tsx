@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Panel, Chip, ProofLink } from "./Panel";
-import { short, type RunView, type TimelineSnapshot } from "@/lib/run-types";
+import { Hash } from "./Hash";
+import { type RunView, type TimelineSnapshot } from "@/lib/run-types";
 
 /**
  * The off-chain timeline, timestamped by Hedera consensus.
@@ -68,7 +69,9 @@ export function TimelinePanel({ run }: { run: RunView | null }) {
       actions={
         data ? (
           <>
-            <Chip tone="cool">topic {data.topicId}</Chip>
+            <Chip tone="cool">
+              topic <Hash value={data.topicId} network="hedera" kind="topic" lead={20} tail={0} />
+            </Chip>
             {intentHash ? <Chip tone="neutral">this job</Chip> : <Chip tone="neutral">latest</Chip>}
           </>
         ) : null
@@ -114,7 +117,14 @@ export function TimelinePanel({ run }: { run: RunView | null }) {
                   </p>
                 ) : null}
                 <div className="mt-1.5 font-mono text-[10px] text-muted-foreground opacity-80">
-                  {"intentHash" in m.payload ? short(String(m.payload.intentHash), 12, 6) : null}
+                  {"intentHash" in m.payload ? (
+                    <Hash
+                      value={String(m.payload.intentHash)}
+                      lead={12}
+                      tail={6}
+                      why="The job this message belongs to. The message itself is on HashScan via the topic link below."
+                    />
+                  ) : null}
                   {"match" in m.payload ? ` · match=${String(m.payload.match)}` : null}
                   {"attestation" in m.payload ? ` · attestation=${String(m.payload.attestation)}` : null}
                 </div>

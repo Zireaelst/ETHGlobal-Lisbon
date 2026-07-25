@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Panel, Chip, ProofLink } from "./Panel";
-import { short, type DiscoverySnapshot } from "@/lib/run-types";
+import { Hash } from "./Hash";
+import { type DiscoverySnapshot } from "@/lib/run-types";
 
 /**
  * The registry Alice actually shops in. Not a table of ours — the same subgraph query
@@ -87,8 +88,8 @@ export function DiscoveryPanel({ initial }: { initial: DiscoverySnapshot | null 
                         <span className="font-mono text-sm text-foreground">{agent.agentId}</span>
                         {i === 0 ? <Chip tone="good">top ranked</Chip> : null}
                       </div>
-                      <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-                        {short(agent.owner, 8, 6)}
+                      <div className="mt-0.5 text-[10px] text-muted-foreground">
+                        <Hash value={agent.owner} network="base" kind="address" lead={8} tail={6} />
                       </div>
                     </td>
                     <td className="px-1 py-3 font-body text-sm font-light text-muted-foreground">

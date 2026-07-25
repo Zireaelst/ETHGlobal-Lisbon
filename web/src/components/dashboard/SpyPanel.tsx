@@ -1,7 +1,8 @@
 "use client";
 
 import { Panel, Chip, Field, ProofLink } from "./Panel";
-import { short, type RunView } from "@/lib/run-types";
+import { Hash } from "./Hash";
+import { type RunView } from "@/lib/run-types";
 
 /**
  * The split screen. Left: what actually happened. Right: everything a chain observer can see.
@@ -71,9 +72,15 @@ export function SpyPanel({ run }: { run: RunView | null }) {
               On the public chain
             </div>
             <div className="space-y-3.5">
-              <Field label="An intent commitment">{short(report.signedIntentHash, 14, 8)}</Field>
+              <Field label="An intent commitment">
+                <Hash value={report.signedIntentHash} lead={14} tail={8} why="Carried in the verification transaction linked below." />
+              </Field>
               <Field label="An output commitment">
-                {report.match ? short(report.bodyIntentHash, 14, 8) : "—"}
+                {report.match ? (
+                  <Hash value={report.bodyIntentHash} lead={14} tail={8} why="Emitted inside JobVerified; see the transaction below." />
+                ) : (
+                  "—"
+                )}
               </Field>
               <Field label="An event">
                 {report.verified ? "JobVerified(intentHash, outputHash)" : `JobRejected(${report.codeName})`}

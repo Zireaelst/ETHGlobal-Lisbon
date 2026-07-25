@@ -1,7 +1,8 @@
 "use client";
 
 import { Panel, Chip, Field, ProofLink } from "./Panel";
-import { short, type RunView } from "@/lib/run-types";
+import { Hash } from "./Hash";
+import { type RunView } from "@/lib/run-types";
 
 /**
  * The panel whose entire job is to make itself unnecessary.
@@ -60,7 +61,7 @@ export function VerifyPanel({ run }: { run: RunView | null }) {
                 the contract&apos;s own event, on Base Sepolia ↗
               </ProofLink>{" "}
               <span className="font-mono text-[11px] text-muted-foreground">
-                · tx {short(report.txHash, 12, 8)}
+                · tx <Hash value={report.txHash} network="base" kind="tx" lead={12} tail={8} />
               </span>
             </p>
           ) : null}
