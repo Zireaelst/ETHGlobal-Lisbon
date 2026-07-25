@@ -69,11 +69,25 @@ model to be co-located — Bob's Tapp only does hashing + orchestration (light, 
 
 ### 3.1 The two signatures (both ecrecover-compatible)
 
-**A) 0G Sealed Inference signature** (proves a genuine 0G TEE produced the *output*; output-only):
+**A) 0G Sealed Inference signature** (proves a genuine 0G TEE produced the *output*):
 - Verify: `recoverAddress(hashMessage(text), signature) === teeSignerAddress` (ethers).
-- **EIP-191** personal_sign style. **Forwardable** + standalone-verifiable (there is a download link
-  `getChatSignatureDownloadLink`). Covers the OUTPUT text only, not the prompt. `chatID` ties output↔request
+- **EIP-191** personal_sign style. **Forwardable** + standalone-verifiable. `chatID` ties output↔request
   only in 0G's own ledger.
+- **CORRECTED IN P0-B (measured, not assumed).** The signed message is **NOT the output text**. It is a
+  pipe-free, colon-joined tuple:
+  ```
+  "<h1>:<sha256(raw response body)>:<ProviderType>:<ProviderIdentity>:<h3>"
+  ```
+  So the output IS covered — as the **fingerprint (sha256 digest) of the body that contains it**, not as
+  plain text. Verified by hashing every candidate against each digest; only the raw-body sha256 matched.
+  A one-byte change to the body drops out of the tuple (gate `P0-B` asserts this).
+  → **Hash the RAW response bytes.** A `JSON.parse`→`JSON.stringify` round-trip depends on key order and
+  breaks silently the day the provider reorders fields.
+- `chatID` comes from the **`ZG-Res-Key` response header**, not `completion.id` (the latter yields
+  `chat_id_not_found` from the signature endpoint).
+- **TeeML is necessary but not sufficient:** also require `teeSignerAcknowledged === true` on the service
+  struct. When false, `teeSignerAddress` is the provider's own claim, the contract owner has not vouched
+  for it, and `processResponse` refuses to verify.
 
 **B) Bob's Tapp seal-key signature** (proves Bob's attested code checked `match` and bound intent→output):
 - Preimage: `keccak256("agentId|sealId|timestamp|hex(sha256(body))")` — a pipe-joined ASCII string;
@@ -303,6 +317,11 @@ one README per sponsor naming exact SDKs, endpoints, contract addresses.
 - **Not** "first confidential agent payments" — ProwlFi / TACEO shipped before us.
 - **Not** "private on Hedera" — the Hedera run buys **autonomy**, not privacy (stealth is on the Base run).
 - **Not** "we built the TEE" — 0G did; we bind it to intent.
+- **Not** "the 0G signature covers the answer text" — it covers the answer's **fingerprint** (see §3.1).
+  Same guarantee against tampering, different sentence. Use the accurate one.
+- **Not** "decentralized compute" for the provider we pinned: `0xa48f…7836` reports
+  `ProviderType: centralized`, `ProviderIdentity: aliyun`. The TEE seal is real (dstack/Intel TDX); the
+  operator is a single cloud. If asked, say so plainly.
 - We verify signatures **on-chain** and the attestation **off-chain at setup** (not a raw on-chain TDX quote). Say so.
 
 ---
