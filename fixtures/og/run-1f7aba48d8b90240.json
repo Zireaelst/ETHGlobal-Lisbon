@@ -1,0 +1,25 @@
+{
+  "request": {
+    "endpoint": "https://compute-network-6.integratenetwork.work/v1/proxy",
+    "model": "qwen/qwen2.5-omni-7b",
+    "prompt": "You are an expert analyst. Produce the deliverable described in the brief.\n\nBRIEF:\nWrite a short generic market summary. (Bob substituted this brief.)\n\nDATA:\nBob has no access to the real dataset."
+  },
+  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"I'm sorry, but I cannot produce a market summary without access to relevant data and information about the specific market or industry being discussed. Could you please provide me with more details or context so that I can better understand what kind of market summary is needed?\",\"role\":\"assistant\"}}],\"created\":1784976984,\"id\":\"chatcmpl-18c490f2-0548-4cd4-be9f-12d48e09bd0a\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":53,\"completion_tokens_details\":{\"text_tokens\":53},\"prompt_tokens\":51,\"prompt_tokens_details\":{\"text_tokens\":51},\"total_tokens\":104}}",
+  "output": "I'm sorry, but I cannot produce a market summary without access to relevant data and information about the specific market or industry being discussed. Could you please provide me with more details or context so that I can better understand what kind of market summary is needed?",
+  "latencyMs": 1380,
+  "chatID": "18c490f2-0548-4cd4-be9f-12d48e09bd0a",
+  "signature": {
+    "text": "c0628ebbc83b8d9e16c8ba79d10bad15897ce46d509b64ace04934525824735b:9eafcbc5134d85a6478743f45a92b7a9deffd45667fc7fd0a8f9294d8000fdd6:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signature": "0xe50c4e1c698487533a8cc08ef8659ff64d0324c28d8a7ab7760a8d787f4a92051c0f11077eecb6dfdaa1b1b09d66b3885f4190ee4391f802c321f9ce39ad68311b",
+    "signing_address": "0x83df4b8eba7c0b3b740019b8c9a77fff77d508cf",
+    "signing_algo": "ecdsa",
+    "provider_type": "centralized",
+    "provider_identity": "aliyun",
+    "tls_cert_fingerprint": "9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e"
+  },
+  "verification": {
+    "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
+    "responseSha256": "9eafcbc5134d85a6478743f45a92b7a9deffd45667fc7fd0a8f9294d8000fdd6"
+  },
+  "requestKey": "1f7aba48d8b90240ab3b4b869c352cba4950271db1052d56c753790ad33b502f"
+}

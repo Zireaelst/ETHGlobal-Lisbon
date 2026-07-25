@@ -21,7 +21,12 @@ import { createBobAgent, type BobAgent } from '../packages/bob-agent/src/index.j
 import type { FraudMode } from '../packages/bob-agent/src/fraud.js';
 import { runAliceJob } from '../packages/alice-agent/src/index.js';
 import { decodeBody } from '../packages/bob-binding/src/binding.js';
-import { describeCompute, type Constraints, type EchoResult } from '../packages/shared/src/index.js';
+import {
+  describeCompute,
+  selectComputeBackend,
+  type Constraints,
+  type EchoResult,
+} from '../packages/shared/src/index.js';
 import { deriveAgentStealthKeys } from '../packages/payment/src/stealth.js';
 import { loadConfig, loadDotenv, repoRoot, requireEnv } from '../packages/shared/src/config.js';
 
@@ -166,6 +171,12 @@ export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base
   const endpoint = await readUtf8Metadata(registry, agentId, METADATA_KEYS.endpoint);
   if (!endpoint) throw new Error('Bob\'un zincirde endpoint metadata\'sı yok — pnpm gate:P2-A');
 
+  const { backend: computeBackend, reason: computeReason } = await selectComputeBackend(process.env, {
+    fixtureDir: resolve(repoRoot(), 'fixtures/og'),
+    recordDir: resolve(repoRoot(), 'fixtures/og'),
+  });
+  log(`[demo] compute: ${computeReason}`);
+
   const url = new URL(endpoint);
   cachedBob = createBobAgent({
     eciesPrivateKey: requireEnv('BOB_ECIES_PRIV'),
@@ -196,6 +207,9 @@ export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base
     // Bob'un ERC-5564 meta-adresi kök cüzdanından DETERMİNİSTİK türetiliyor —
     // ayrı sır saklamak gerekmiyor, meta-adres her koşuda aynı.
     stealthMetaAddress: deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob').metaAddress,
+    // Modelin nerede koştuğu ORTAMDAN seçiliyor; hangisi seçilirse seçilsin
+    // sonuç kendini doğru etiketliyor (none / fixture-replay / 0g-sealed-inference).
+    compute: computeBackend,
     log: () => {},
   });
   await cachedBob.listen();

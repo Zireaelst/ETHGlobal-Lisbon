@@ -1,0 +1,25 @@
+{
+  "request": {
+    "endpoint": "https://compute-network-6.integratenetwork.work/v1/proxy",
+    "model": "qwen/qwen2.5-omni-7b",
+    "prompt": "You are an expert analyst. Produce the deliverable described in the brief.\n\nBRIEF:\nSummarise the covenant risk in the attached filing in three sentences. (değiştirildi)\n\nDATA:\nACME Corp Q3-2026: revenue 41.2M, deferred revenue up 38% QoQ, DSO 71 days."
+  },
+  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ACME Corp's covenant risk is moderate due to its Q3-2026 revenue of $41.2 million and a deferred revenue increase of 38% quarter-over-quarter. However, the company's Days Sales Outstanding (DSO) of 71 days suggests potential cash flow challenges. Overall, ACME Corp appears to be managing its covenant risk effectively with strong revenue growth and deferred revenue, but the high DSO could indicate potential liquidity concerns if not addressed promptly.\",\"role\":\"assistant\"}}],\"created\":1784976882,\"id\":\"chatcmpl-a1c0d4d8-fda1-4abb-8c09-dbc34fce7a3b\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":101,\"completion_tokens_details\":{\"text_tokens\":101},\"prompt_tokens\":87,\"prompt_tokens_details\":{\"text_tokens\":87},\"total_tokens\":188}}",
+  "output": "ACME Corp's covenant risk is moderate due to its Q3-2026 revenue of $41.2 million and a deferred revenue increase of 38% quarter-over-quarter. However, the company's Days Sales Outstanding (DSO) of 71 days suggests potential cash flow challenges. Overall, ACME Corp appears to be managing its covenant risk effectively with strong revenue growth and deferred revenue, but the high DSO could indicate potential liquidity concerns if not addressed promptly.",
+  "latencyMs": 1917,
+  "chatID": "a1c0d4d8-fda1-4abb-8c09-dbc34fce7a3b",
+  "signature": {
+    "text": "e3b455138844aefebd23e8c28d962298777d928304c7fd491aa3024458423146:5837cd8d3af123632e15942d2791c6be3302954b2e1e8e135eb225ed70afc93b:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signature": "0x4e726f02d8d93b98e0ab2676ba9272b99a935adf39083fff17909253cc1f7a6b18288d91cc24ce63187f299bcc4bdb76a763a3108212abcd11384be78468f9791c",
+    "signing_address": "0x83df4b8eba7c0b3b740019b8c9a77fff77d508cf",
+    "signing_algo": "ecdsa",
+    "provider_type": "centralized",
+    "provider_identity": "aliyun",
+    "tls_cert_fingerprint": "9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e"
+  },
+  "verification": {
+    "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
+    "responseSha256": "5837cd8d3af123632e15942d2791c6be3302954b2e1e8e135eb225ed70afc93b"
+  },
+  "requestKey": "b5f2b50d686dc0cf253799f869b2fb4cb5773626409fad97dc0a2438f8660cde"
+}

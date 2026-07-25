@@ -10,4 +10,6 @@ export * from './identity.js';
 export * from './discovery.js';
 export * from './compute.js';
 export * from './compute-fixture.js';
+export * from './compute-0g.js';
+export * from './compute-select.js';
 export * from './timeline.js';
