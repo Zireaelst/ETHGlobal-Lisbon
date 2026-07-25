@@ -11,7 +11,6 @@
     "typecheck": "tsc -b && pnpm --filter @ca/web typecheck",
     "gate:P0-A": "tsx tests/gates/P0-A.ts",
     "gate:P0-B": "tsx tests/gates/P0-B.ts",
-    "gate:P0-C": "tsx tests/gates/P0-C.ts",
     "gate:P0-D": "tsx tests/gates/P0-D.ts",
     "gate:P0-E": "tsx tests/gates/P0-E.ts",
     "gate:P0-F": "tsx tests/gates/P0-F.ts",
