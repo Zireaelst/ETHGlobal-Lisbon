@@ -1,6 +1,6 @@
 // Load the repo-root .env into the dashboard's server process.
 //
-// Next.js reads .env files relative to the app directory (packages/web), but this is a monorepo
+// Next.js reads .env files relative to the app directory (web/), but this is a monorepo
 // and there is exactly one .env, at the root, shared by the agents, the gates and the scripts.
 // Duplicating it here would mean two files that must agree about a private key — a class of bug
 // worth designing out.

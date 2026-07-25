@@ -257,11 +257,18 @@ SUBGRAPH_STUDIO_DEPLOY_KEY=
 
 ## 7. Repo structure
 
-**pnpm workspace monorepo.** `pnpm-workspace.yaml` declares `packages/*` and `subgraph`, so
-**anything that needs its own package.json and dependency graph lives under `packages/`** — that is
-the only reason `web` is there rather than at the root. `scripts/` and `tests/` carry a package.json
-too, but purely as an `"type": "module"` marker (the root stays CJS so `scripts/recover.js` keeps
-working); they are deliberately NOT workspace members.
+**pnpm workspace monorepo.** `pnpm-workspace.yaml` declares `packages/*`, `subgraph` and `web`.
+
+`packages/` holds the **libraries and agents** — the things that import each other and build as one
+`tsc -b` graph. The two deliverables that are nobody's dependency sit at the root next to
+`contracts/`: `subgraph/` and `web/`. Membership of the workspace is declared per entry, so being a
+package has never required living under `packages/` — `subgraph/` was at the root from the start,
+and `web/` now matches it. A monorepo's top level should read as a list of what the project *is*,
+and "the demo dApp" belongs on that list.
+
+`scripts/` and `tests/` carry a package.json too, but purely as a `"type": "module"` marker (the
+root stays CJS so `scripts/recover.js` keeps working); they are deliberately NOT workspace members,
+which is why everything under them imports by relative path rather than by package name.
 
 ```
 packages/
@@ -289,10 +296,12 @@ packages/
   bob-agent/        # @ca/bob-agent — public HTTP server: 402, forwards work to the binding
     src/fraud.ts        # the flag that makes Bob answer a different job (§8 P3)
   alice-agent/      # @ca/alice-agent — discovers, signs intent, encrypts, pays, verifies
-  web/              # @ca/web — the demo dApp (Next.js, sources under src/)
-    src/app/            # App Router: landing page + /dashboard
-    src/components/     # hero, architecture, verification, fraud path, tracks
-    public/hero/        # hero stills — at the package root, NOT src/, or Next won't serve them
+  demo/             # @ca/demo — runDemo(): the end-to-end flow as a library (CLI + dashboard share it)
+web/                # @ca/web — the demo dApp (Next.js, sources under src/)
+  src/app/            # App Router: landing page + /dashboard + /api route handlers
+  src/components/dashboard/  # the five panels (§8 P5-A)
+  src/lib/server/     # subgraph, mirror node, the live runner — server-only
+  public/hero/        # hero stills — at the package root, NOT src/, or Next won't serve them
 contracts/          # Foundry — Verifier.sol + IntentLib.sol (§3.5), and their tests
 subgraph/           # @ca/subgraph — ERC-8004 index + JobVerified → verified-delivery count
 scripts/            # deploy + probes + measurement (recover.js, og-probe-echo.ts, measure-e2e.ts)
@@ -301,7 +310,7 @@ fixtures/           # recorded responses, so gates run without burning faucet fu
 ```
 
 **Build.** The root `tsc -b` solution build covers the Node packages only — a Next.js project does not
-belong in a `tsc -b` graph, so `packages/web` is not among the root `tsconfig.json` references and
+belong in a `tsc -b` graph, so `web` is not among the root `tsconfig.json` references and
 `pnpm build` does not touch it. Use **`pnpm build:all`** to build everything, or
 `pnpm --filter @ca/web <script>` to work on the web app alone.
 

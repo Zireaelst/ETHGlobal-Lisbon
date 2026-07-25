@@ -1,0 +1,64 @@
+{
+  "report": {
+    "fraudMode": "selfintent",
+    "signedIntentHash": "0x1e0e4c5a799530bba49833659972017853ece93e39807dbec82df9d159e03f77",
+    "bodyIntentHash": "0x17497bedd7f39c61b6635bee9b1fed53543d9723bd7bddf28f42d8bd5a029792",
+    "match": true,
+    "clientSigOk": false,
+    "bindingSigOk": true,
+    "computeProvider": "0g-sealed-inference",
+    "ogVerified": true,
+    "reasoningProvider": "claude-local",
+    "decisions": {
+      "hire": {
+        "provider": "claude-local",
+        "agentId": "8429",
+        "rationale": "Agent 8429 has a solid track record of verified work, while the other has none at all, so it's the safer bet despite some rejections.",
+        "latencyMs": 7246
+      },
+      "result": {
+        "provider": "claude-local",
+        "accept": false,
+        "rationale": "The delivery contains no actual revenue-recognition analysis—just an order ID and a note about compensation—so it fails to address the requested assessment.",
+        "latencyMs": 7453
+      }
+    },
+    "output": "ORDER-ID: 0x17497bedd7f39c61b6635bee9b1fed53543d9723bd7bddf28f42d8bd5a029792\n\nBob created this position solely to receive compensation for his efforts.",
+    "code": 3,
+    "codeName": "BadClientSig",
+    "verified": false,
+    "totalMs": 22906,
+    "stageMs": {
+      "discovery": 7451,
+      "agent_card": 5,
+      "intent_sign": 4,
+      "ecies_encrypt": 12,
+      "http_task_send1": 6404,
+      "http_result": 2,
+      "ecies_decrypt_result": 6,
+      "enclave_ecies_decrypt": 7,
+      "enclave_recompute": 1,
+      "enclave_client_sig_verify": 2,
+      "enclave_compute_0g": 6346,
+      "enclave_seal_sign": 5,
+      "hcs_open_topic": 7,
+      "alice_job_total": 21338,
+      "chain_verify_tx": 1561
+    },
+    "discoveredAgentId": "8429",
+    "txHash": "0x434a5dd950cea9aadb29e1b14f64c2a777ce1428f1835860575d36b04b694424",
+    "blockNumber": 44618248,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x434a5dd950cea9aadb29e1b14f64c2a777ce1428f1835860575d36b04b694424",
+    "timeline": {
+      "topicId": "0.0.9738448",
+      "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
+      "stages": [
+        "402_ISSUED",
+        "INTENT_COMMIT",
+        "ENCLAVE_INVOKED",
+        "OUTPUT_COMMIT"
+      ]
+    }
+  },
+  "recordedAt": "2026-07-25T18:39:47.396Z"
+}

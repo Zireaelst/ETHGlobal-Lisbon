@@ -36,7 +36,7 @@ const REQUIRED_PATHS = [
   'packages/bob-agent',
   'packages/bob-binding',
   'packages/payment',
-  'packages/web',
+  'web',
   'contracts/src',
   'subgraph',
   'fixtures/og',
