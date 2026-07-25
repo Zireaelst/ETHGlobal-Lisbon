@@ -25,3 +25,15 @@ Phase 1 feature work is on hold pending (a)/(b).
 ## Repo layout
 
 See `CLAUDE.md` §7. Spike scripts proving each Phase 0 leg live under `scripts/spikes/`.
+
+## Team setup
+
+After cloning, restore the Hedera sponsor skills (Claude Code / compatible agent tooling)
+from the checked-in manifest:
+
+```bash
+npx skills experimental_install
+```
+
+This reads `skills-lock.json` and re-fetches the exact same skill set (verified by hash) —
+no skill content is vendored in the repo itself.

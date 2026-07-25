@@ -15,8 +15,9 @@ contracts/broadcast/
 scripts/spikes/.hedera-x402-seller.json
 
 # local AI-tooling artifacts (Claude Code skills cache, local settings) — not part of the submission
+# skills-lock.json IS tracked (see README "Team setup") — it's a small manifest,
+# not the vendored skill content, so teammates can restore the same skill set.
 .claude/settings.local.json
 .claude/skills/
 .agents/
 agent/
-skills-lock.json
