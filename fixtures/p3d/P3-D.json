@@ -1,41 +1,56 @@
 {
-  "capturedAt": "2026-07-25T12:24:46.326Z",
+  "capturedAt": "2026-07-25T19:42:09.149Z",
   "honestRuns": [
     {
       "fraudMode": "none",
-      "signedIntentHash": "0x28b360d51bcfa36583798d3d59cd5adace52b0d53330260b5ead478b32012fdc",
-      "bodyIntentHash": "0x28b360d51bcfa36583798d3d59cd5adace52b0d53330260b5ead478b32012fdc",
+      "signedIntentHash": "0xe4be70ad69681422bab51797a913a55c7b4263e92363e1c5ef328d953cdca0be",
+      "bodyIntentHash": "0xe4be70ad69681422bab51797a913a55c7b4263e92363e1c5ef328d953cdca0be",
       "match": true,
       "clientSigOk": true,
       "bindingSigOk": true,
       "computeProvider": "0g-sealed-inference",
       "ogVerified": true,
-      "output": "ORDER-ID: 0x28b360d51bcfa36583798d3d59cd5adace52b0d53330260b5ead478b32012fdc\n\nTo assess revenue-recognition risk based on the provided data:\n\n1. **Revenue Recognition Timing**: The company reports Q3-2026 revenue of €12,400,000 and has €3,100,000 in deferred revenue. This suggests that some portion of the revenue recognized in Q3 is not yet cashed in or realized as immediate profit due to the deferred nature of certain contracts.\n\n2. **Contract Count**: With 41 contracts, it indicates a significant number of ongoing transactions which could introduce variability into revenue recognition. Each contract's terms regarding when revenue can be recognized (e.g., upon delivery, installation, or completion) will influence how much revenue is recognized in each period.\n\n3. **Risk Factors**:\n   - **Contract Terms**: Differences in contract terms across these 41 contracts may lead to variations in when revenue is recognized.\n   - **Market Conditions**: Economic conditions affecting customer demand or payment delays could impact the timing and amount of revenue recognized.\n   - **Internal Processes**: Any inefficiencies or changes in internal processes related to recognizing revenue from these contracts might affect the accuracy and consistency of revenue recognition.\n\n4. **Recommendations**:\n   - **Regular Review of Contracts**: Ensure regular review and updates of contract terms to manage revenue recognition accurately.\n   - **Stress Testing**: Conduct stress tests under different market scenarios to understand potential impacts on revenue recognition.\n   - **Training and Documentation**: Provide training to relevant staff on revenue recognition policies and ensure proper documentation of all revenue-related decisions.\n\nBy addressing these factors, the company can better mitigate risks associated with revenue recognition and maintain financial transparency.",
+      "reasoningProvider": "policy",
+      "decisions": {
+        "hire": {
+          "provider": "policy",
+          "rationale": "highest verified-delivery count (95) with 65 rejected attempts",
+          "latencyMs": 0,
+          "agentId": "8429"
+        },
+        "result": {
+          "provider": "policy",
+          "rationale": "the commitment matched, so the delivered work is the work that was ordered",
+          "latencyMs": 0,
+          "accept": true
+        }
+      },
+      "output": "ORDER-ID: 0xe4be70ad69681422bab51797a913a55c7b4263e92363e1c5ef328d953cdca0be\n\nRevenue recognition risk assessment based on the provided data:\n\n1. **Total Revenue Recognition Risk**: The total revenue recognized is calculated by subtracting the deferred revenue from the reported revenue.\n   - Total Recognized Revenue = Reported Revenue - Deferred Revenue\n   - Total Recognized Revenue = €12,400,000 - €3,100,000 = €9,300,000\n\n2. **Contract Analysis**:\n   - Number of Contracts: 41\n   - Average Contract Value (ACV): €12,400,000 / 41 ≈ €304,854 per contract\n\n3. **Deferred Revenue Impact**:\n   - Deferred Revenue: €3,100,000\n   - This indicates that there is significant revenue that has not yet been recognized and will be recognized over future periods. This can lead to fluctuations in quarterly revenues if the timing of recognizing deferred revenue changes significantly.\n\n4. **Risk Factors**:\n   - **Timing Variability**: If the timing of when deferred revenue is recognized varies significantly between quarters or years, it could lead to volatility in reported revenues.\n   - **Customer Concentration**: While not explicitly stated, having multiple large contracts could indicate higher dependency on specific customers, which might increase revenue recognition risks if those customers experience financial difficulties.\n   - **Market Conditions**: External market conditions affecting customer demand or payment schedules could also impact the recognition of deferred revenue.\n\n5. **Recommendations**:\n   - Regularly review and analyze deferred revenue balances to ensure they align with actual performance and customer commitments.\n   - Consider implementing more robust forecasting models to predict future revenue recognition accurately.\n   - Maintain open communication with key customers to manage expectations regarding payment schedules and potential delays.\n\nIn conclusion, while the current data shows manageable revenue recognition risk, ongoing monitoring and proactive management strategies are essential to mitigate any potential impacts on financial reporting stability.",
       "code": 0,
       "codeName": "OK",
       "verified": true,
-      "totalMs": 12815,
+      "totalMs": 18372,
       "stageMs": {
-        "discovery": 270,
-        "agent_card": 7,
+        "discovery": 479,
+        "agent_card": 5,
         "intent_sign": 6,
-        "ecies_encrypt": 34,
-        "http_task_send1": 9837,
+        "ecies_encrypt": 39,
+        "http_task_send1": 14417,
         "http_result": 2,
         "ecies_decrypt_result": 7,
-        "enclave_ecies_decrypt": 6,
+        "enclave_ecies_decrypt": 10,
         "enclave_recompute": 1,
-        "enclave_client_sig_verify": 3,
-        "enclave_compute_0g": 9798,
-        "enclave_seal_sign": 3,
-        "hcs_open_topic": 1253,
-        "alice_job_total": 10164,
-        "chain_verify_tx": 1398
+        "enclave_client_sig_verify": 4,
+        "enclave_compute_0g": 14365,
+        "enclave_seal_sign": 5,
+        "hcs_open_topic": 30,
+        "alice_job_total": 14957,
+        "chain_verify_tx": 3385
       },
       "discoveredAgentId": "8429",
-      "txHash": "0x26cd6cafb15441dfbfb2a08afdedb86b38b0ab54d81f65efc5b0cf752e1f23db",
-      "blockNumber": 44607006,
-      "basescanUrl": "https://sepolia.basescan.org/tx/0x26cd6cafb15441dfbfb2a08afdedb86b38b0ab54d81f65efc5b0cf752e1f23db",
+      "txHash": "0xaa53176ff7d4cccd6b068cb0c39a3cc277013148c6aec130d960b72615be2ed9",
+      "blockNumber": 44620131,
+      "basescanUrl": "https://sepolia.basescan.org/tx/0xaa53176ff7d4cccd6b068cb0c39a3cc277013148c6aec130d960b72615be2ed9",
       "timeline": {
         "topicId": "0.0.9738448",
         "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
@@ -49,39 +64,54 @@
     },
     {
       "fraudMode": "none",
-      "signedIntentHash": "0x79a3233987c1103a9700861cc41f8b418b6b7073dda1355a8287d02250b3c143",
-      "bodyIntentHash": "0x79a3233987c1103a9700861cc41f8b418b6b7073dda1355a8287d02250b3c143",
+      "signedIntentHash": "0x0644b85fbfeb7358b9325190b38b98c6da15bd6b9f7fb0d54e6b54ea87d6aaba",
+      "bodyIntentHash": "0x0644b85fbfeb7358b9325190b38b98c6da15bd6b9f7fb0d54e6b54ea87d6aaba",
       "match": true,
       "clientSigOk": true,
       "bindingSigOk": true,
       "computeProvider": "0g-sealed-inference",
       "ogVerified": true,
-      "output": "ORDER-ID: 0x79a3233987c1103a9700861cc41f8b418b6b7073dda1355a8287d02250b3c143\n\nRevenue recognition risk assessment based on the provided data:\n\nIn Q3 of 2026, the company reported total revenue of €12,400,000 EUR. However, there is also €3,100,000 EUR of revenue that has been deferred. This suggests that some transactions may not have been recognized as revenue immediately upon occurrence but rather at a later date when certain conditions are met or when payment terms are fulfilled.\n\nThe presence of deferred revenue can indicate potential risks related to revenue recognition timing and accuracy. It implies that the company might be relying on future events (such as customer payments) to recognize revenue currently recorded as deferred. If these future events do not occur as expected, it could lead to discrepancies between the reported revenue and actual cash inflows.\n\nAdditionally, having 41 contracts indicates that the company operates within a contract-based business model where revenue recognition depends heavily on specific milestones being reached or deliverables being completed. This complexity increases the risk associated with accurately predicting and recognizing revenue over time.\n\nTo mitigate these risks, the company should ensure robust internal controls and processes for managing deferred revenues. Regular audits and reviews of revenue recognition policies and practices would help maintain transparency and compliance with accounting standards. Furthermore, clear communication with stakeholders regarding revenue recognition methodologies and any changes thereto will foster trust and understanding among investors and other key parties.",
+      "reasoningProvider": "policy",
+      "decisions": {
+        "hire": {
+          "provider": "policy",
+          "rationale": "highest verified-delivery count (95) with 65 rejected attempts",
+          "latencyMs": 0,
+          "agentId": "8429"
+        },
+        "result": {
+          "provider": "policy",
+          "rationale": "the commitment matched, so the delivered work is the work that was ordered",
+          "latencyMs": 0,
+          "accept": true
+        }
+      },
+      "output": "ORDER-ID: 0x0644b85fbfeb7358b9325190b38b98c6da15bd6b9f7fb0d54e6b54ea87d6aaba\n\nTo assess revenue-recognition risk based on the provided data:\n\n1. **Revenue Recognition Method**: The company appears to use an accrual basis of accounting where revenues are recognized when earned and costs are matched against those revenues. However, there is also a significant amount of deferred revenue (3,100,000 EUR), which suggests that some transactions may be recognized over multiple periods.\n\n2. **Deferred Revenue Analysis**:\n   - **Amount**: There is a substantial deferred revenue balance of 3,100,000 EUR.\n   - **Number of Contracts**: 41 contracts exist, indicating that these are likely long-term or complex arrangements requiring careful monitoring.\n   \n3. **Risk Factors**:\n   - **Contract Complexity**: With 41 contracts, there could be variability in how each contract's performance obligations are satisfied and recognized as revenue.\n   - **Market Conditions**: Economic conditions affecting customer demand or payment schedules can impact deferred revenue recognition.\n   - **Customer Specifics**: Each customer’s payment patterns and satisfaction levels might differ significantly, influencing revenue recognition timing.\n   - **Regulatory Changes**: Any changes in accounting standards related to revenue recognition could affect future reporting practices.\n\n4. **Recommendations**:\n   - **Regular Review**: Conduct regular reviews of deferred revenue balances and associated contracts to ensure accurate recognition.\n   - **Internal Controls**: Strengthen internal controls around revenue recognition processes to minimize errors and fraud.\n   - **Training**: Provide ongoing training for finance staff on revenue recognition principles and any relevant updates.\n   - **External Auditing**: Engage external auditors who specialize in revenue recognition to provide independent oversight.\n\nBy addressing these factors, the company can mitigate potential risks associated with revenue recognition while ensuring compliance with accounting standards.",
       "code": 0,
       "codeName": "OK",
       "verified": true,
-      "totalMs": 11112,
+      "totalMs": 18215,
       "stageMs": {
-        "discovery": 296,
-        "agent_card": 2,
-        "intent_sign": 2,
-        "ecies_encrypt": 6,
-        "http_task_send1": 8732,
-        "http_result": 1,
-        "ecies_decrypt_result": 7,
-        "enclave_ecies_decrypt": 4,
+        "discovery": 384,
+        "agent_card": 3,
+        "intent_sign": 3,
+        "ecies_encrypt": 8,
+        "http_task_send1": 10287,
+        "http_result": 3,
+        "ecies_decrypt_result": 8,
+        "enclave_ecies_decrypt": 9,
         "enclave_recompute": 1,
         "enclave_client_sig_verify": 3,
-        "enclave_compute_0g": 8698,
-        "enclave_seal_sign": 2,
+        "enclave_compute_0g": 10247,
+        "enclave_seal_sign": 4,
         "hcs_open_topic": 5,
-        "alice_job_total": 9046,
-        "chain_verify_tx": 2061
+        "alice_job_total": 10697,
+        "chain_verify_tx": 7513
       },
       "discoveredAgentId": "8429",
-      "txHash": "0x2844525622155729dc85fadeae542c41b9d286c281e9fa8473676a2122dfb783",
-      "blockNumber": 44607014,
-      "basescanUrl": "https://sepolia.basescan.org/tx/0x2844525622155729dc85fadeae542c41b9d286c281e9fa8473676a2122dfb783",
+      "txHash": "0x29af76504c32a9bec64cea4be7e3408cf6b582af8ec5c875417d33c62adaf8d1",
+      "blockNumber": 44620140,
+      "basescanUrl": "https://sepolia.basescan.org/tx/0x29af76504c32a9bec64cea4be7e3408cf6b582af8ec5c875417d33c62adaf8d1",
       "timeline": {
         "topicId": "0.0.9738448",
         "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
@@ -95,39 +125,54 @@
     },
     {
       "fraudMode": "none",
-      "signedIntentHash": "0x75e74ec212596645a5f2ebc1c126b18c12ae576996e7e767cdd68c98308a5117",
-      "bodyIntentHash": "0x75e74ec212596645a5f2ebc1c126b18c12ae576996e7e767cdd68c98308a5117",
+      "signedIntentHash": "0xd33027d9ac744a6fef8260ee13c9610604f71cd140bfd41a64293afae34353c2",
+      "bodyIntentHash": "0xd33027d9ac744a6fef8260ee13c9610604f71cd140bfd41a64293afae34353c2",
       "match": true,
       "clientSigOk": true,
       "bindingSigOk": true,
       "computeProvider": "0g-sealed-inference",
       "ogVerified": true,
-      "output": "ORDER-ID: 0x75e74ec212596645a5f2ebc1c126b18c12ae576996e7e767cdd68c98308a5117\n\nRevenue recognition risk assessment based on the provided data:\n\n1. **Total Revenue Recognition Risk**: The total revenue recognized is 12,400,000 EUR, but there is also an amount of 3,100,000 EUR that is deferred. This indicates that not all revenue has been recognized as of the reporting period, which could be due to various factors such as contract terms, payment schedules, or performance obligations.\n\n2. **Number of Contracts**: There are 41 contracts involved. This number suggests that the company operates across multiple projects or agreements simultaneously, which can increase complexity and potential risks associated with revenue recognition.\n\n3. **Risk Factors**:\n   - **Payment Terms**: If payments are contingent upon certain milestones being met (e.g., delivery of goods, completion of services), delays in recognizing revenue may occur until these conditions are satisfied.\n   - **Contractual Obligations**: The presence of multiple contracts means that the company must manage different stages of revenue recognition for each agreement, which requires careful tracking and documentation.\n   - **Performance Risks**: For contracts involving performance obligations, there might be uncertainties regarding whether the company will meet its contractual obligations by the agreed-upon dates, potentially leading to deferrals or adjustments in revenue recognition.\n\n4. **Mitigation Strategies**:\n   - Implement robust internal controls to ensure timely and accurate recognition of revenue based on the progress towards fulfilling performance obligations.\n   - Regularly review and update revenue recognition policies to align with changes in business operations and regulatory requirements.\n   - Utilize technology solutions to automate and streamline the revenue recognition process, reducing human error and improving efficiency.\n\nIn conclusion, while the total revenue recognized is significant, the deferred portion highlights areas where revenue recognition risk exists. Effective management of contracts, adherence to payment terms, and continuous monitoring of performance obligations are crucial to mitigating these risks effectively.",
+      "reasoningProvider": "policy",
+      "decisions": {
+        "hire": {
+          "provider": "policy",
+          "rationale": "highest verified-delivery count (97) with 65 rejected attempts",
+          "latencyMs": 0,
+          "agentId": "8429"
+        },
+        "result": {
+          "provider": "policy",
+          "rationale": "the commitment matched, so the delivered work is the work that was ordered",
+          "latencyMs": 0,
+          "accept": true
+        }
+      },
+      "output": "ORDER-ID: 0xd33027d9ac744a6fef8260ee13c9610604f71cd140bfd41a64293afae34353c2\n\nRevenue recognition risk assessment based on the provided data:\n\nThe quarterly figures indicate that Q3-2026 revenue is reported at €12,400,000 EUR, with €3,100,000 EUR deferred. This suggests that there may be significant revenue recognition risks associated with these deferred amounts.\n\nHere's an analysis of potential revenue recognition risks:\n\n1. Timing of Revenue Recognition:\n   - The €3,100,000 EUR deferred revenue indicates that some portion of the revenue has not yet been recognized.\n   - If the company does not meet its performance obligations or deliverables within the specified timeframes, it could result in delayed revenue recognition.\n\n2. Contractual Terms and Conditions:\n   - With 41 contracts in place, there might be variability in when revenue can be recognized under different contract terms.\n   - Some contracts may have specific milestones or deliverables that need to be met before revenue can be recognized.\n\n3. Industry-Specific Factors:\n   - Depending on the industry, certain sectors (e.g., software licensing) may have more complex revenue recognition requirements compared to others.\n   - For example, if the company operates in a sector where revenue recognition is tied to specific usage metrics or customer adoption rates, there could be additional risks.\n\n4. Compliance and Regulatory Changes:\n   - There may be regulatory changes or updates that impact how revenue should be recognized over time.\n   - Ensuring compliance with evolving regulations is crucial to avoid penalties and maintain accurate financial reporting.\n\n5. Customer Concentration:\n   - While not explicitly stated, high concentration among customers could increase the risk of non-performance by key clients.\n   - This could lead to delays in recognizing revenue from those customers until they fulfill their contractual obligations.\n\nTo mitigate these risks, the company should:\n\n- Regularly review and update internal controls related to revenue recognition processes.\n- Ensure clear communication with customers regarding expected timelines and deliverables.\n- Stay informed about any relevant industry standards or regulatory changes affecting revenue recognition.\n- Implement robust monitoring systems to track progress against contractual obligations.\n\nBy addressing these areas proactively, the company can better manage revenue recognition risks and ensure accurate financial reporting.",
       "code": 0,
       "codeName": "OK",
       "verified": true,
-      "totalMs": 11739,
+      "totalMs": 19570,
       "stageMs": {
-        "discovery": 259,
+        "discovery": 792,
         "agent_card": 2,
         "intent_sign": 2,
-        "ecies_encrypt": 7,
-        "http_task_send1": 9638,
-        "http_result": 2,
-        "ecies_decrypt_result": 4,
-        "enclave_ecies_decrypt": 5,
-        "enclave_recompute": 1,
-        "enclave_client_sig_verify": 5,
-        "enclave_compute_0g": 9600,
+        "ecies_encrypt": 8,
+        "http_task_send1": 12205,
+        "http_result": 1,
+        "ecies_decrypt_result": 5,
+        "enclave_ecies_decrypt": 4,
+        "enclave_recompute": 0,
+        "enclave_client_sig_verify": 4,
+        "enclave_compute_0g": 12176,
         "enclave_seal_sign": 3,
-        "hcs_open_topic": 4,
-        "alice_job_total": 9914,
-        "chain_verify_tx": 1821
+        "hcs_open_topic": 3,
+        "alice_job_total": 13016,
+        "chain_verify_tx": 6551
       },
       "discoveredAgentId": "8429",
-      "txHash": "0x37ef13621cc010588a1d0647ec1da18b8db2527293cf43cca997aab304f9bc8a",
-      "blockNumber": 44607023,
-      "basescanUrl": "https://sepolia.basescan.org/tx/0x37ef13621cc010588a1d0647ec1da18b8db2527293cf43cca997aab304f9bc8a",
+      "txHash": "0xb250728ede323d42dce95883dbe9f548991fb549c558194748e1db98b141fbfb",
+      "blockNumber": 44620150,
+      "basescanUrl": "https://sepolia.basescan.org/tx/0xb250728ede323d42dce95883dbe9f548991fb549c558194748e1db98b141fbfb",
       "timeline": {
         "topicId": "0.0.9738448",
         "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
@@ -141,26 +186,26 @@
     }
   ],
   "jobVerifiedEvent": {
-    "intentHash": "0x28b360d51bcfa36583798d3d59cd5adace52b0d53330260b5ead478b32012fdc",
+    "intentHash": "0xe4be70ad69681422bab51797a913a55c7b4263e92363e1c5ef328d953cdca0be",
     "agentId": "8429",
     "price": "1000000",
-    "tx": "0x26cd6cafb15441dfbfb2a08afdedb86b38b0ab54d81f65efc5b0cf752e1f23db"
+    "tx": "0xaa53176ff7d4cccd6b068cb0c39a3cc277013148c6aec130d960b72615be2ed9"
   },
   "fraudRuns": {
     "substitute": {
       "code": 5,
       "name": "MatchFalse",
-      "tx": "0xe1768e53458236a852f615d6c0040d84be27e413a5feb4703292ec5f7068d74b"
+      "tx": "0x02b32400ae85575a2e295cf2a91327c738c787c5ada77ea9788e0e72f7faf96c"
     },
     "forge": {
       "code": 4,
       "name": "BadEnclaveSig",
-      "tx": "0x568deee92d097129b462c095eec6cb9c535c82ff5c9762e1949b016a338d5fbe"
+      "tx": "0x3ba2b3a1284d3d7a3906ac883aacd8c57724ad26a098882e1da99cbbdb2bb4eb"
     },
     "selfintent": {
       "code": 3,
       "name": "BadClientSig",
-      "tx": "0x92df38f3d87312bb98c6e3c1566709c5089e7f778b106d8e3fad6baafefd5920"
+      "tx": "0x8115917fac785e81e3d17d69827179c2877cd515029d8cd9358c3488fdb677d1"
     }
   },
   "verifier": "0x3B116D648B710f551e37223c4c4d39879AFEEb96"

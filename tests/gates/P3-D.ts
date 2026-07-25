@@ -205,7 +205,10 @@ gate.check('`pnpm demo:base` tek komut olarak çalışıyor', async () => {
       shell: true,
       timeout: 120_000,
     }).toString();
-    const ok = out.includes('JobVerified') && out.includes('karar        : OK');
+    // The report's label column is padded, so match on the field name and the verdict rather
+    // than on an exact run of spaces — the i18n pass renamed `karar` to `verdict` and this
+    // assertion silently kept looking for the old word.
+    const ok = out.includes('JobVerified') && /verdict\s*:\s*OK/.test(out);
     return ok
       ? pass(
           out
