@@ -1,0 +1,59 @@
+{
+  "_comment": "pnpm gate:P1-A tarafından üretilir. Elle düzenlemeyin — TS ile Solidity arasındaki tek gerçek kaynak.",
+  "brief": "Analyse the attached quarterly report and flag revenue-recognition risks.",
+  "data": "Q3-2026 revenue 12,400,000 EUR; deferred 3,100,000 EUR; 41 contracts.",
+  "constraints": {
+    "model": "qwen2.5-omni-7b",
+    "maxTokens": 2048,
+    "temperature": 0.2
+  },
+  "constraintsCanonical": "{\"maxTokens\":2048,\"model\":\"qwen2.5-omni-7b\",\"temperature\":0.2}",
+  "briefHash": "0x9025166a8fe519cf2ca632e0ba58f42e580f8a12a225bb64bd4a0d124caeb862",
+  "dataHash": "0x57906fcf1f2bdc628758cc9e6995195dc21514e93106b760b1314328b76c97b3",
+  "constraintsHash": "0x196ee8f451b9e8764bd36620e5cf93b2bf27d5381fe6fd8c70bda0cf71c042c3",
+  "price": "1000000",
+  "nonce": "42",
+  "intentHash": "0x45c611bbbcd60739158f9054bd63d939d6fd2fbbab413d814478ed6733a4da3b",
+  "domain": {
+    "name": "ConfidentialAgents",
+    "version": "1",
+    "chainId": 84532,
+    "verifyingContract": "0x00000000000000000000000000000000DeaDBeef"
+  },
+  "types": {
+    "Intent": [
+      {
+        "name": "intentHash",
+        "type": "bytes32"
+      },
+      {
+        "name": "client",
+        "type": "address"
+      },
+      {
+        "name": "agentId",
+        "type": "bytes32"
+      },
+      {
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256"
+      }
+    ]
+  },
+  "domainSeparator": "0x542194e56a07c7329d9afc002ed7364259bc487cfbb601f24a23610ba23d86b3",
+  "structHash": "0x1dbdf204ae10c487bbf9aec65274b7d230b9262cb18bb229456567faa2c29dd6",
+  "digest": "0x88998ce75c38328f2d7746423c59d9f6b5128a6ad0af1426b5fb49297d18adf5",
+  "intent": {
+    "intentHash": "0x45c611bbbcd60739158f9054bd63d939d6fd2fbbab413d814478ed6733a4da3b",
+    "client": "0x8Ae3e72Cd56F1A4f628673A2cBbF135d64Aa7BaD",
+    "agentId": "0x00000000000000000000000000000000000000000000000000000000000020ed",
+    "price": "1000000",
+    "deadline": "1900000000"
+  },
+  "signature": "0x5f743a30f2c23cbee5c7f8447c68acc7302cd261a6c2cfdd2281e5100739fc83436e3a4172f475fce6c4360af5cd03cc39d6492b3c190bf48bcdb684b0edd70a1c",
+  "expectedSigner": "0x8Ae3e72Cd56F1A4f628673A2cBbF135d64Aa7BaD"
+}

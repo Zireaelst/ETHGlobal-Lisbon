@@ -2,5 +2,11 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+test = "test"
+solc = "0.8.24"
+
+# TS tarafından üretilen fixture'ları okuyabilmek için (gate:P1-A intent.json'u yazar,
+# IntentLib.t.sol onu vm.readFile ile okur). Sadece OKUMA, sadece bu klasör.
+fs_permissions = [{ access = "read", path = "./test/fixtures" }]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
