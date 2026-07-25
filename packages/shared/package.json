@@ -5,16 +5,6 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": {
-    ".": "./dist/index.js",
-    "./config": "./dist/config.js",
-    "./canonical": "./dist/canonical.js",
-    "./intent": "./dist/intent.js",
-    "./ecies": "./dist/ecies.js",
-    "./sealsig": "./dist/sealsig.js",
-    "./ogsig": "./dist/ogsig.js",
-    "./schema": "./dist/schema.js"
-  },
   "scripts": {
     "build": "tsc -b"
   },

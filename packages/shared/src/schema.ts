@@ -100,6 +100,53 @@ export const ResultEnvelopeSchema = z.object({
 });
 export type ResultEnvelope = z.infer<typeof ResultEnvelopeSchema>;
 
+/** Kanonik ECIES public key: 0x04 + 128 hex (bkz. ecies.ts). */
+export const EciesPubKeySchema = z
+  .string()
+  .regex(/^0x04[0-9a-fA-F]{128}$/, 'kanonik ECIES public key olmalı (0x04 + 128 hex)');
+
+/** Bob'un `GET /.well-known/agent-card.json` yanıtı. */
+export const AgentCardSchema = z.object({
+  v: z.literal(1),
+  name: z.string().min(1),
+  /** ERC-8004 agentId, decimal string. */
+  agentId: UintStringSchema,
+  owner: AddressSchema,
+  skills: z.array(z.string().min(1)).min(1),
+  endpoint: z.string().url(),
+  eciesPubKey: EciesPubKeySchema,
+  price: z.object({
+    amount: UintStringSchema,
+    asset: z.string().min(1),
+    decimals: z.number().int().min(0).max(18),
+  }),
+  /** ERC-5564 stealth meta-address (P4-B). Henüz yoksa null. */
+  stealthMetaAddress: z.string().nullable(),
+});
+export type AgentCard = z.infer<typeof AgentCardSchema>;
+
+/**
+ * FAZ 1 sonucu — enclave ve 0G henüz yok.
+ *
+ * Bilerek `ResultEnvelope`'tan AYRI: seal/ogSig alanlarını sahte değerlerle
+ * doldurmak, henüz sahip olmadığımız bir güvenceyi varmış gibi gösterirdi.
+ * P3-B gerçek gövdeyi imzalamaya başlayınca akış `ResultEnvelope`'a geçer.
+ */
+export const EchoResultSchema = z.object({
+  v: z.literal(1),
+  stage: z.literal('echo'),
+  /** Alice'in imzaladığı taahhüt. */
+  intentHash: Bytes32Schema,
+  /** Bob'un paketten yeniden hesapladığı taahhüt. */
+  recomputedIntentHash: Bytes32Schema,
+  match: z.boolean(),
+  /** Alice'in EIP-712 imzasından kurtarılan adres beklenen client mı? */
+  clientSigOk: z.boolean(),
+  recoveredClient: AddressSchema,
+  output: z.string(),
+});
+export type EchoResult = z.infer<typeof EchoResultSchema>;
+
 // ---------------------------------------------------------------------------
 // bigint <-> wire dönüşümü — TEK yerde
 // ---------------------------------------------------------------------------

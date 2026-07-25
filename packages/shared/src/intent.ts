@@ -58,6 +58,15 @@ export interface Intent {
   deadline: bigint;
 }
 
+/**
+ * P3-A deploy edilene kadar kullanılan, AÇIKÇA sahte verifyingContract.
+ *
+ * Yer tutucu olduğu isminden belli olsun diye burada duruyor: bu adresle imzalanmış
+ * bir intent gerçek Verifier'da doğrulanamaz. VERIFIER_ADDRESS dolunca kullanılmayı
+ * bırakmalı — çağıran taraflar boş env'de UYARI basar.
+ */
+export const PLACEHOLDER_VERIFIER = '0x00000000000000000000000000000000DeaDBeef';
+
 export const EIP712_DOMAIN_NAME = 'ConfidentialAgents';
 export const EIP712_DOMAIN_VERSION = '1';
 export const BASE_SEPOLIA_CHAIN_ID = 84532;

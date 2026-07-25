@@ -15,7 +15,8 @@
     "gate:P0-F": "tsx tests/gates/P0-F.ts",
     "gate:P0-G": "tsx tests/gates/P0-G.ts",
     "gate:P1-A": "tsx tests/gates/P1-A.ts",
-    "gate:P1-B": "tsx tests/gates/P1-B.ts"
+    "gate:P1-B": "tsx tests/gates/P1-B.ts",
+    "gate:P1-C": "tsx tests/gates/P1-C.ts"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "^0.98.1",
