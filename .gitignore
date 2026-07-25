@@ -22,3 +22,7 @@ scripts/spikes/.hedera-x402-seller.json
 .claude/skills/
 .agents/
 agent/
+
+# Subgraph derleme çıktıları (kaynak: subgraph/src, subgraph.yaml, schema.graphql)
+subgraph/generated/
+subgraph/build/

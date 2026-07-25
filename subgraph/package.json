@@ -1,0 +1,14 @@
+{
+  "name": "@ca/subgraph",
+  "version": "0.0.0",
+  "private": true,
+  "//": "Bilerek `build` adında script YOK: kök `pnpm -r build` (gate:P0-A kriteri) subgraph derlemesine bağlanmasın. Derleme: pnpm --filter @ca/subgraph compile",
+  "scripts": {
+    "codegen": "graph codegen",
+    "compile": "graph codegen && graph build"
+  },
+  "devDependencies": {
+    "@graphprotocol/graph-cli": "^0.98.1",
+    "@graphprotocol/graph-ts": "^0.38.1"
+  }
+}

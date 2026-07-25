@@ -1,0 +1,74 @@
+"""
+Keşif ve doğrulanmış-teslimat itibarı (BUILD-PLAN P2-B).
+
+Tasarım notu: `verifiedDeliveries` bir kullanıcı girdisi DEĞİL — yalnızca Verifier.sol'ün
+yaydığı `JobVerified` event'i artırabilir. Yani itibar, ödenmiş ve doğrulanmış işlere
+bağlıdır. (CLAUDE.md §11 sınırı: bu "Sybil-proof" değil; şişirmek PAHALI, imkânsız değil.)
+
+Plandan tek sapma: `Agent.id` Bytes değil String (ondalık agentId).
+Sebebi: agentId bir uint256 ve AssemblyScript'te BigInt→Bytes dönüşümünün
+endianlığı sessiz hataya açık. Ondalık string hem tek anlamlı hem sorgularda
+okunaklı: agent(id: "8429"). `Job.id` doğal olarak bytes32 olduğu için Bytes kaldı.
+"""
+type Agent @entity(immutable: false) {
+  "ERC-8004 agentId (NFT token id), ondalık string."
+  id: String!
+  owner: Bytes!
+  "Kayıt sırasında verilen URI (agent card'a işaret edebilir)."
+  agentURI: String
+  "On-chain `skill` metadata'sından. Karar (a): metadata zincirde — bkz. DECISION.md."
+  skills: [String!]!
+  endpoint: String
+  eciesPubKey: String
+  "ERC-5564 stealth meta-address (P4-B)."
+  stealthMetaAddress: String
+  registeredAt: BigInt!
+  registeredBlock: BigInt!
+  "Kayıt/metadata en son ne zaman güncellendi."
+  updatedAt: BigInt!
+
+  "Verifier.sol `JobVerified` sayacı — P3-A deploy edilince dolmaya başlar."
+  verifiedDeliveries: Int!
+  "`JobRejected` sayacı — fraud yolu da indeksleniyor (demo bunu gösteriyor)."
+  rejectedAttempts: Int!
+
+  jobs: [Job!]! @derivedFrom(field: "agent")
+  metadata: [AgentMetadata!]! @derivedFrom(field: "agent")
+}
+
+"""
+Ham key/value metadata. Ayrı entity, çünkü registry keyfi anahtar yazmaya izin veriyor;
+şemaya sabitlediğimiz dört alanın dışındakileri de kaybetmeden indekslemek istiyoruz.
+"""
+type AgentMetadata @entity(immutable: false) {
+  "<agentId>-<key>"
+  id: String!
+  agent: Agent!
+  key: String!
+  value: String!
+  updatedAt: BigInt!
+}
+
+type Job @entity(immutable: false) {
+  "intentHash"
+  id: Bytes!
+  agent: Agent!
+  client: Bytes!
+  outputHash: Bytes
+  "VERIFIED | REJECTED"
+  status: String!
+  "Yalnızca REJECTED için: MatchFalse | BadEnclaveSig | BadClientSig | Expired | AlreadyVerified"
+  rejectionCode: String
+  price: BigInt!
+  timestamp: BigInt!
+  block: BigInt!
+  txHash: Bytes!
+}
+
+"Tek satırlık global sayaçlar — demo dApp'in üst şeridi için."
+type Registry @entity(immutable: false) {
+  id: String!
+  agentCount: Int!
+  verifiedJobs: Int!
+  rejectedJobs: Int!
+}

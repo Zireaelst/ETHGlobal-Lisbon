@@ -7,3 +7,4 @@ export * from './ecies.js';
 export * from './sealsig.js';
 export * from './ogsig.js';
 export * from './identity.js';
+export * from './discovery.js';

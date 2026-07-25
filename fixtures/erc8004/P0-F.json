@@ -1,9 +1,9 @@
 {
-  "capturedAt": "2026-07-25T02:34:04.694Z",
+  "capturedAt": "2026-07-25T03:55:08.162Z",
   "chainId": "84532",
   "registry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
   "registryCodeBytes": 130,
-  "headBlock": 44589278,
+  "headBlock": 44591710,
   "agents": [
     {
       "who": "Bob",
@@ -25,8 +25,8 @@
   "readBack": {
     "agentId": "8429",
     "owner": "0x4F5Cd20a4a3fBc9957f8D2A8D27D658B51Fda326",
-    "endpoint": "https://bob-agent.example.invalid/task",
-    "skill": "confidential-inference-relay"
+    "endpoint": "http://127.0.0.1:8811/task",
+    "skill": "market-analysis"
   },
   "metadataUpdatable": true,
   "subgraphStartBlock": 44584172

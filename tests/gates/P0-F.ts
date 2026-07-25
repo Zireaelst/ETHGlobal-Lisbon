@@ -374,16 +374,18 @@ subgraph hepsini indeksler. Agent card'ı HTTP'den çekmeye **gerek yok** (b yol
 
 ### İndekslenecek event'ler
 
+Alan adları resmî ABI'den (github.com/erc-8004/erc-8004-contracts, abis/IdentityRegistry.json):
+
 \`\`\`
 Registered(uint256 indexed agentId, string agentURI, address indexed owner)
-MetadataSet(uint256 indexed agentId, string indexed keyHash, string key, bytes value)
-URIUpdated(uint256 indexed agentId, string agentURI, address indexed owner)
+MetadataSet(uint256 indexed agentId, string indexed indexedMetadataKey, string metadataKey, bytes metadataValue)
+URIUpdated(uint256 indexed agentId, string newURI, address indexed updatedBy)
 Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
 \`\`\`
 
-**Dikkat — \`MetadataSet\` tuzağı:** \`keyHash\` \`indexed string\` olduğu için topic'te anahtarın
-**hash'i** durur, okunabilir hâli değil. Mapping'de \`event.params.key\` (non-indexed) kullanılmalı;
-\`keyHash\` üzerinden eşleştirmeye çalışmak sessizce boş metadata üretir.
+**Dikkat — \`MetadataSet\` tuzağı:** \`indexedMetadataKey\` \`indexed string\` olduğu için topic'te
+anahtarın **keccak hash'i** durur, okunabilir hâli değil. Mapping'de \`event.params.metadataKey\`
+(non-indexed) kullanılmalı; indexed alan üzerinden eşleştirmeye çalışmak sessizce boş metadata üretir.
 
 Canlı bir \`register()\` tx'i şu logları yayıyor (blok ${bob?.registeredBlock ?? '?'} örneği):
 \`Transfer\` (mint) → \`MetadataUpdate\` → \`Registered\` → her anahtar için bir \`MetadataSet\`.

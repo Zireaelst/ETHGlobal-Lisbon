@@ -1,0 +1,27 @@
+{
+  "capturedAt": "2026-07-25T03:54:42.460Z",
+  "subgraphUrl": "https://api.studio.thegraph.com/query/1756943/confidential-agents/v0.0.1",
+  "indexedBlock": 44591696,
+  "chainHead": 44591697,
+  "lagBlocks": 1,
+  "bobFromSubgraph": {
+    "agentId": "8429",
+    "owner": "0x4f5cd20a4a3fbc9957f8d2a8d27d658b51fda326",
+    "skills": [
+      "market-analysis"
+    ],
+    "endpoint": "http://127.0.0.1:8811/task",
+    "eciesPubKey": "0x043c3a176cb72e342666fc607d61ac9950fbe001c07ef8201a8834f576d54047152f6dda65006cb97c236c990d23094834637b69df5744b6c02b5ed9ca5ae9f34f",
+    "stealthMetaAddress": null,
+    "verifiedDeliveries": 0,
+    "rejectedAttempts": 0,
+    "registeredBlock": "44584172"
+  },
+  "indexedAgentIds": [
+    "8427",
+    "8429",
+    "8430",
+    "8431"
+  ],
+  "agentCount": 3
+}
