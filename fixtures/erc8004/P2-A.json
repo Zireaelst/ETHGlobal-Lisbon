@@ -1,0 +1,36 @@
+{
+  "capturedAt": "2026-07-25T03:32:57.671Z",
+  "bobMetadata": {
+    "skill": "market-analysis",
+    "endpoint": "http://127.0.0.1:8811/task",
+    "eciesPubKey": "0x043c3a176cb72e342666fc607d61ac9950fbe001c07ef8201a8834f576d54047152f6dda65006cb97c236c990d23094834637b69df5744b6c02b5ed9ca5ae9f34f"
+  },
+  "aliceMetadata": {
+    "skill": "client",
+    "eciesPubKey": "0x041db4b7b3bd89ba9f004214a02aae1ef02dc7194c38e400ff976a617576aa94e60d1ef7ceaa372cbff8aee11383a184c330cdfcc3468596f0c85e5435b30020a5"
+  },
+  "card": {
+    "v": 1,
+    "name": "Bob",
+    "agentId": "8429",
+    "owner": "0x4F5Cd20a4a3fBc9957f8D2A8D27D658B51Fda326",
+    "skills": [
+      "market-analysis"
+    ],
+    "endpoint": "http://127.0.0.1:8811/task",
+    "eciesPubKey": "0x043c3a176cb72e342666fc607d61ac9950fbe001c07ef8201a8834f576d54047152f6dda65006cb97c236c990d23094834637b69df5744b6c02b5ed9ca5ae9f34f",
+    "price": {
+      "amount": "1000000",
+      "asset": "USDC",
+      "decimals": 6
+    },
+    "stealthMetaAddress": null
+  },
+  "onChain": {
+    "skill": "market-analysis",
+    "endpoint": "http://127.0.0.1:8811/task",
+    "eciesPubKey": "0x043c3a176cb72e342666fc607d61ac9950fbe001c07ef8201a8834f576d54047152f6dda65006cb97c236c990d23094834637b69df5744b6c02b5ed9ca5ae9f34f"
+  },
+  "writes": [],
+  "bobPublicUrl": "http://127.0.0.1:8811"
+}
