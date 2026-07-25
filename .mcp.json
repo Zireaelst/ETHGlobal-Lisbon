@@ -1,7 +1,12 @@
 {
   "mcpServers": {
-    "hedera-docs": { "url": "https://docs.hedera.com/mcp" },
+    "hedera-docs": { "type": "http", "url": "https://docs.hedera.com/mcp" },
     "hedera-agent": { "command": "npx", "args": ["-y", "@hashgraph/hedera-agent-kit-mcp"] },
-    "thegraph": { "command": "uvx", "args": ["subgraph-mcp"], "env": { "THEGRAPH_API_KEY": "${THEGRAPH_API_KEY}" } }
+    "thegraph-subgraph": {
+      "type": "sse",
+      "url": "https://subgraphs.mcp.thegraph.com/sse",
+      "headers": { "Authorization": "Bearer ${THEGRAPH_API_KEY}" }
+    },
+    "substreams-search": { "command": "npx", "args": ["-y", "substreams-search-mcp"] }
   }
 }
