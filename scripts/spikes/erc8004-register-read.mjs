@@ -2,7 +2,7 @@
 //
 // Uses the canonical ERC-8004 (Trustless Agents) IdentityRegistry reference deployment
 // from https://github.com/erc-8004/erc-8004-contracts, live on Base Sepolia at
-// ERC8004_REGISTRY_ADDR (see .env). This is an ERC-721-based registry: `register()`
+// ERC8004_IDENTITY (see .env). This is an ERC-721-based registry: `register()`
 // mints an agentId NFT to the caller and optionally stores arbitrary key/value
 // metadata (bytes) alongside it in the same tx. We register Bob as an agent with
 // placeholder skill/endpoint/pubkey metadata, then read it all back to confirm the
@@ -20,8 +20,8 @@ const env = Object.fromEntries(
     })
 );
 
-const REGISTRY_ADDR = env.ERC8004_REGISTRY_ADDR;
-if (!REGISTRY_ADDR) throw new Error('ERC8004_REGISTRY_ADDR is empty in .env');
+const REGISTRY_ADDR = env.ERC8004_IDENTITY;
+if (!REGISTRY_ADDR) throw new Error('ERC8004_IDENTITY is empty in .env');
 
 // Minimal ABI slice for what we need (from erc-8004-contracts abis/IdentityRegistry.json).
 const ABI = [
@@ -32,8 +32,8 @@ const ABI = [
   'event Registered(uint256 indexed agentId, string agentURI, address indexed owner)',
 ];
 
-const provider = new ethers.JsonRpcProvider(env.BASE_SEPOLIA_RPC_URL);
-const wallet = new ethers.Wallet(env.BOB_PRIVATE_KEY, provider);
+const provider = new ethers.JsonRpcProvider(env.BASE_RPC_URL);
+const wallet = new ethers.Wallet(env.PRIVATE_KEY_BOB, provider);
 const registry = new ethers.Contract(REGISTRY_ADDR, ABI, wallet);
 
 console.log('--- network / signer ---');

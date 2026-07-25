@@ -32,9 +32,9 @@ const MIRROR_NODE_URL = 'https://testnet.mirrornode.hedera.com';
 export interface HederaX402Config {
   /** Payer's Hedera account id, e.g. "0.0.9695366". */
   accountId: string;
-  /** Payer's Hedera ECDSA private key (0x-prefixed hex or DER), from HEDERA_PRIVATE_KEY. */
+  /** Payer's Hedera ECDSA private key (0x-prefixed hex or DER), from HEDERA_OPERATOR_KEY. */
   privateKey: string;
-  /** blocky402 (or compatible) facilitator base URL, from X402_FACILITATOR_URL. */
+  /** blocky402 (or compatible) facilitator base URL, from BLOCKY402_URL. */
   facilitatorUrl: string;
 }
 
@@ -75,6 +75,9 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
         network: HEDERA_NETWORK,
         maxTimeoutSeconds: 60,
       });
+      if (!requirements) {
+        throw new Error(`hedera-x402: facilitator returned no payment requirements for ${HEDERA_NETWORK}`);
+      }
 
       const feePayer = (requirements.extra as { feePayer?: string } | undefined)?.feePayer ?? 'unknown';
       console.log(
@@ -105,8 +108,11 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
 
     async verify(txRef: string): Promise<boolean> {
       // txRef is a Hedera transaction id like "0.0.7162784@1784936701.955111199".
-      // Mirror Node REST wants "shard.realm.num-seconds-nanos".
-      const mirrorId = txRef.replace('@', '-').replace('.', '-');
+      // Mirror Node REST wants "shard.realm.num-seconds-nanos" — so only the '@' and the
+      // dot INSIDE the timestamp become dashes; the dots in the account id stay.
+      const [account, stamp] = txRef.split('@');
+      if (!account || !stamp) return false;
+      const mirrorId = `${account}-${stamp.replace('.', '-')}`;
       const url = `${MIRROR_NODE_URL}/api/v1/transactions/${mirrorId}`;
       const res = await fetch(url);
       if (!res.ok) return false;

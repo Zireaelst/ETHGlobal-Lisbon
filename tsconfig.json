@@ -1,17 +1,12 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "outDir": "dist",
-    "rootDir": ".",
-    "declaration": false,
-    "sourceMap": true
-  },
-  "include": ["agents", "tapp", "shared", "web", "scripts"],
-  "exclude": ["node_modules", "dist", "contracts"]
+  // Solution-style root config: no files of its own, just project references.
+  // `tsc -b` at the root builds every workspace package in dependency order.
+  "files": [],
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./packages/payment" },
+    { "path": "./packages/bob-binding" },
+    { "path": "./packages/bob-agent" },
+    { "path": "./packages/alice-agent" }
+  ]
 }

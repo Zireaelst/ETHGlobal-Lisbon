@@ -23,11 +23,11 @@ const PORT = Number(process.env.HEDERA_X402_PORT || 8402);
 const URL = `http://localhost:${PORT}/paid-resource`;
 
 console.log('--- P0(d) Hedera x402 client: setup ---');
-console.log({ accountId: env.HEDERA_ACCOUNT_ID, network: env.HEDERA_NETWORK, url: URL });
+console.log({ accountId: env.HEDERA_OPERATOR_ID, network: env.HEDERA_NETWORK, url: URL });
 
 const signer = createClientHederaSigner(
-  env.HEDERA_ACCOUNT_ID,
-  PrivateKey.fromStringECDSA(env.HEDERA_PRIVATE_KEY),
+  env.HEDERA_OPERATOR_ID,
+  PrivateKey.fromStringECDSA(env.HEDERA_OPERATOR_KEY),
   { network: 'hedera:testnet' }
 );
 

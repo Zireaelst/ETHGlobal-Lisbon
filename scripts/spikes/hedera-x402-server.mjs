@@ -53,8 +53,8 @@ async function getOrCreateSellerAccount() {
     return cached;
   }
   console.log('no cached seller account — creating a fresh testnet account (funded 2 HBAR)...');
-  const operatorId = AccountId.fromString(env.HEDERA_ACCOUNT_ID);
-  const operatorKey = PrivateKey.fromStringECDSA(env.HEDERA_PRIVATE_KEY);
+  const operatorId = AccountId.fromString(env.HEDERA_OPERATOR_ID);
+  const operatorKey = PrivateKey.fromStringECDSA(env.HEDERA_OPERATOR_KEY);
   const client = Client.forTestnet().setOperator(operatorId, operatorKey);
 
   const sellerKey = PrivateKey.generateECDSA();
@@ -76,9 +76,9 @@ const seller = await getOrCreateSellerAccount();
 const PAY_TO = seller.accountId;
 
 console.log('--- P0(d) Hedera x402 server: setup ---');
-console.log({ facilitator: env.X402_FACILITATOR_URL, payTo: PAY_TO, priceTinybars: PRICE_TINYBARS });
+console.log({ facilitator: env.BLOCKY402_URL, payTo: PAY_TO, priceTinybars: PRICE_TINYBARS });
 
-const facilitatorClient = new HTTPFacilitatorClient({ url: env.X402_FACILITATOR_URL });
+const facilitatorClient = new HTTPFacilitatorClient({ url: env.BLOCKY402_URL });
 const resourceServer = new x402ResourceServer(facilitatorClient);
 resourceServer.register('hedera:testnet', new ExactHederaScheme());
 

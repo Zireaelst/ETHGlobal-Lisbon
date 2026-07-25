@@ -1,0 +1,10 @@
+{
+  "name": "@ca/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "//": "demo-dApp (P5-A). Build zinciri P5'te kurulacak — şu an tsc -b kapsamı dışında.",
+  "scripts": {
+    "build": "echo 'web: P5-A'de kurulacak' && exit 0"
+  }
+}

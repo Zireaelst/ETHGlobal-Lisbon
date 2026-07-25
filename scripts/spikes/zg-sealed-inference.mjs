@@ -15,8 +15,8 @@ const env = Object.fromEntries(
 
 const PROVIDER = '0xa48f01287233509FD694a22Bf840225062E67836'; // chatbot, TeeML, qwen2.5-omni-7b
 
-const provider = new ethers.JsonRpcProvider(env.ZG_RPC_URL);
-const wallet = new ethers.Wallet(env.ALICE_PRIVATE_KEY, provider);
+const provider = new ethers.JsonRpcProvider(env.OG_RPC_URL);
+const wallet = new ethers.Wallet(env.PRIVATE_KEY_ALICE, provider);
 const broker = await createZGComputeNetworkBroker(wallet);
 
 console.log('--- account / funding ---');

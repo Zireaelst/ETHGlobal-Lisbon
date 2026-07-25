@@ -5,8 +5,15 @@
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc --noEmit",
-    "test": "node --test --import tsx dist/**/*.test.js"
+    "clean": "tsc -b --clean",
+    "typecheck": "tsc -b",
+    "gate:P0-A": "tsx tests/gates/P0-A.ts",
+    "gate:P0-B": "tsx tests/gates/P0-B.ts",
+    "gate:P0-C": "tsx tests/gates/P0-C.ts",
+    "gate:P0-D": "tsx tests/gates/P0-D.ts",
+    "gate:P0-E": "tsx tests/gates/P0-E.ts",
+    "gate:P0-F": "tsx tests/gates/P0-F.ts",
+    "gate:P0-G": "tsx tests/gates/P0-G.ts"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "^0.98.1",
@@ -24,8 +31,10 @@
     "@scopelift/stealth-address-sdk": "1.0.0-beta.5",
     "@x402/core": "2.19.0",
     "@x402/hedera": "^2.19.0",
+    "dotenv": "^16.4.5",
     "eth-crypto": "^4.1.0",
     "ethers": "^6.17.0",
-    "viem": "^2.55.8"
+    "viem": "^2.55.8",
+    "zod": "^3.23.8"
   }
 }

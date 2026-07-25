@@ -1,0 +1,31 @@
+{
+  "name": "@ca/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./config": "./dist/config.js",
+    "./canonical": "./dist/canonical.js",
+    "./intent": "./dist/intent.js",
+    "./ecies": "./dist/ecies.js",
+    "./sealsig": "./dist/sealsig.js",
+    "./ogsig": "./dist/ogsig.js",
+    "./schema": "./dist/schema.js"
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "eth-crypto": "^4.1.0",
+    "ethers": "^6.17.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

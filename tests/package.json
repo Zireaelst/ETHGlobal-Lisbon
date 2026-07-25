@@ -1,0 +1,6 @@
+{
+  "//": "Kapı testleri ESM. Kök package.json CJS kalıyor ki scripts/recover.js (CJS) bozulmasın.",
+  "name": "@ca/tests",
+  "private": true,
+  "type": "module"
+}

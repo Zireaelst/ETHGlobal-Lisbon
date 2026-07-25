@@ -1,0 +1,20 @@
+{
+  "name": "@ca/bob-binding",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/chat.js",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/chat.js"
+  },
+  "//": "ENCLAVE İÇİ kod — imageHash ile ölçülür. Bağımlılıkları MİNİMAL tut (BUILD-PLAN §2.1).",
+  "dependencies": {
+    "@ca/shared": "workspace:*",
+    "ethers": "^6.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
