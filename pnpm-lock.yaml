@@ -204,6 +204,12 @@ importers:
 
   packages/web:
     dependencies:
+      '@ca/demo':
+        specifier: workspace:*
+        version: link:../demo
+      '@ca/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@tailwindcss/postcss':
         specifier: ^4.3.3
         version: 4.3.3
