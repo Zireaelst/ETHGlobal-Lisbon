@@ -25,6 +25,12 @@ export default function SiteHeader() {
         ))}
         <div
           onClick={toggleTheme}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              toggleTheme();
+            }
+          }}
           role="button"
           tabIndex={0}
           className={styles.toggle}
