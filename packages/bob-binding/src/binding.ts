@@ -42,6 +42,8 @@ import {
   type EchoResult,
   type SealFields,
   type SealSignature,
+  type StageMs,
+  createStopwatch,
 } from '@ca/shared';
 
 /** Enclave'e giren iş emri — İÇERİK DEĞİL, ŞİFRELİ PAKET. */
@@ -89,6 +91,11 @@ export interface BindingResponse {
   computeLatencyMs: number;
   /** Çıktı Alice'in `intentHash`'ini birebir taşıyor mu (Level 0 bağlama). */
   intentEchoed: boolean;
+  /**
+   * Enclave İÇİNDEKİ aşama süreleri (P0-G dağılımı).
+   * Sadece SÜRE — içerik değil; gizlilik sınırını delmiyor.
+   */
+  stageMs: StageMs;
   /** İmzalanan ham gövde: abi.encode(bytes32,bytes32,bool,bytes32). */
   bodyHex: string;
   /** Seal imzası — `v` wrapper gibi atılmış (CLAUDE.md §3.1B). */
@@ -175,10 +182,12 @@ export async function runBinding(
   options: RunBindingOptions = {},
 ): Promise<BindingResponse> {
   const compute = options.compute ?? createNoComputeBackend();
+  const sw = createStopwatch();
 
   // 1-2. ÇÖZ ve doğrula. Bozuk paket burada patlar; dış katman içeriği hiç görmez.
   const decrypted = await decryptWith(keys.ecies, request.cipher);
   const envelope = parseOrThrow(TaskEnvelopeSchema, decrypted, 'TaskEnvelope');
+  sw.mark('ecies_decrypt');
   options.onDecrypted?.({ brief: envelope.brief, data: envelope.data, nonce: envelope.nonce });
 
   // 3. Taahhüdü İDDİADAN değil, GELEN İÇERİKTEN yeniden hesapla.
@@ -191,6 +200,7 @@ export async function runBinding(
     nonce: BigInt(envelope.nonce),
   });
   const match = recomputedIntentHash === claimedIntentHash;
+  sw.mark('recompute');
 
   // 4. Alice gerçekten bunu mu imzaladı? Nihai kararı kontrat verir.
   let recoveredClient = '0x0000000000000000000000000000000000000000';
@@ -212,6 +222,7 @@ export async function runBinding(
   } catch {
     clientSigOk = false;
   }
+  sw.mark('client_sig_verify');
 
   // 5. Modeli çağır. `match === false` olsa BİLE çağrılır ve sonuç imzalanır —
   //    enclave yalan söylemez, sadece raporlar.
@@ -236,6 +247,8 @@ export async function runBinding(
     : `[binding] Yeniden hesaplanan taahhüt istemcinin imzaladığıyla uyuşmuyor — ` +
       `iş sipariş edilen iş değil. (compute: ${computed.provider})`;
 
+  sw.mark('compute_0g');
+
   const outputHash = keccak256(toUtf8Bytes(output));
   const ogSigHash = computed.ogSig ? keccak256(computed.ogSig) : ZERO32;
   const bodyHex = encodeBody(claimedIntentHash, outputHash, match, ogSigHash);
@@ -248,6 +261,7 @@ export async function runBinding(
     timestamp: request.timestamp,
   };
   const seal = signSeal(fields, bodyHex, keys.binding);
+  sw.mark('seal_sign');
 
   const bindingSigner = recoverBindingSigner(bodyHex, seal, wallet.address);
   const result: EchoResult = {
@@ -269,11 +283,13 @@ export async function runBinding(
     ogSig: computed.ogSig,
     ogSigner: computed.ogSigner,
     intentEchoed,
+    stageMs: sw.stages(),
   };
 
   // 7. Sonucu ALICE'İN anahtarına şifrele. Paketin İÇİNDEKİ replyPubKey kullanılır —
   //    dış katmanın tel üzerinde ilettiği kopya değil (o kurcalanabilir).
   const resultCipher = await encryptFor(envelope.replyPubKey, result);
+  sw.mark('ecies_encrypt_result');
 
   return {
     claimedIntentHash,
@@ -287,6 +303,7 @@ export async function runBinding(
     computeProvider: computed.provider,
     computeLatencyMs: computed.latencyMs,
     intentEchoed,
+    stageMs: sw.stages(),
     bodyHex,
     seal,
     signer: wallet.address,

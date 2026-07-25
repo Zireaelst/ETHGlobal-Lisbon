@@ -246,6 +246,9 @@ export const EchoResultSchema = z.object({
    * içine girerdi (CLAUDE.md §11).
    */
   intentEchoed: z.boolean(),
+
+  /** P0-G: enclave İÇİNDEKİ aşama süreleri. Sadece süre — içerik değil. */
+  stageMs: z.record(z.number()).optional(),
 });
 export type EchoResult = z.infer<typeof EchoResultSchema>;
 

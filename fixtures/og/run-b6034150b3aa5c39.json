@@ -2,15 +2,15 @@
   "request": {
     "endpoint": "https://compute-network-6.integratenetwork.work/v1/proxy",
     "model": "qwen/qwen2.5-omni-7b",
-    "prompt": "ORDER-ID: 0x0c09730d2d061a1a783aa2d5fabdfc537afaef4272d4c5482fb76f731b495c8b\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0x0c09730d2d061a1a783aa2d5fabdfc537afaef4272d4c5482fb76f731b495c8b\n\nThen answer the brief below.\n\nBRIEF:\nSummarise the covenant risk in the attached filing in three sentences.\n\nDATA:\nACME Corp Q3-2026: revenue 41.2M, deferred revenue up 38% QoQ, DSO 71 days."
+    "prompt": "ORDER-ID: 0x8eed5ec4e25c794ca0778b1709eac27f434cdd87ef6649208e335641a6807131\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0x8eed5ec4e25c794ca0778b1709eac27f434cdd87ef6649208e335641a6807131\n\nThen answer the brief below.\n\nBRIEF:\nSummarise the covenant risk in the attached filing in three sentences.\n\nDATA:\nACME Corp Q3-2026: revenue 41.2M, deferred revenue up 38% QoQ, DSO 71 days."
   },
-  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0x0c09730d2d061a1a783aa2d5fabdfc537afaef4272d4c5482fb76f731b495c8b\\n\\nThe covenant risk in ACME Corp's Q3-2026 filing is highlighted by its revenue of $41.2 million and a significant increase in deferred revenue by 38% quarter-over-quarter (QoQ). Additionally, the Days Sales Outstanding (DSO) stands at 71 days, indicating potential challenges in managing cash flow effectively. These factors suggest that ACME Corp may face difficulties meeting its financial obligations if these trends continue or worsen.\",\"role\":\"assistant\"}}],\"created\":1784980340,\"id\":\"chatcmpl-4c9d96af-e3ee-4912-89d5-451791e770a1\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":161,\"completion_tokens_details\":{\"text_tokens\":161},\"prompt_tokens\":210,\"prompt_tokens_details\":{\"text_tokens\":210},\"total_tokens\":371}}",
-  "output": "ORDER-ID: 0x0c09730d2d061a1a783aa2d5fabdfc537afaef4272d4c5482fb76f731b495c8b\n\nThe covenant risk in ACME Corp's Q3-2026 filing is highlighted by its revenue of $41.2 million and a significant increase in deferred revenue by 38% quarter-over-quarter (QoQ). Additionally, the Days Sales Outstanding (DSO) stands at 71 days, indicating potential challenges in managing cash flow effectively. These factors suggest that ACME Corp may face difficulties meeting its financial obligations if these trends continue or worsen.",
-  "latencyMs": 2801,
-  "chatID": "4c9d96af-e3ee-4912-89d5-451791e770a1",
+  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0x8eed5ec4e25c794ca0778b1709eac27f434cdd87ef6649208e335641a6807131\\n\\nThe covenant risk highlighted in ACME Corp's Q3-2026 filing indicates that while revenue has increased by 38% quarter-over-quarter (QoQ), the Days Sales Outstanding (DSO) stands at 71 days. This suggests potential challenges in managing cash flow and liquidity, as a higher DSO implies longer payment terms from customers, which could strain working capital and increase the risk of covenant breaches if not managed effectively.\",\"role\":\"assistant\"}}],\"created\":1784982283,\"id\":\"chatcmpl-eb01d26c-8181-491a-aef4-0d7a1ae0713f\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":157,\"completion_tokens_details\":{\"text_tokens\":157},\"prompt_tokens\":212,\"prompt_tokens_details\":{\"text_tokens\":212},\"total_tokens\":369}}",
+  "output": "ORDER-ID: 0x8eed5ec4e25c794ca0778b1709eac27f434cdd87ef6649208e335641a6807131\n\nThe covenant risk highlighted in ACME Corp's Q3-2026 filing indicates that while revenue has increased by 38% quarter-over-quarter (QoQ), the Days Sales Outstanding (DSO) stands at 71 days. This suggests potential challenges in managing cash flow and liquidity, as a higher DSO implies longer payment terms from customers, which could strain working capital and increase the risk of covenant breaches if not managed effectively.",
+  "latencyMs": 2586,
+  "chatID": "eb01d26c-8181-491a-aef4-0d7a1ae0713f",
   "signature": {
-    "text": "c34a6cbc7ac3a0236d239dd13688c5009d0cc5c4d54edec4933800f70c321c6d:0483d05321515e18811d5718f834dfe5fee130a5a25eca390790af94ebf16acb:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
-    "signature": "0x1d0a64c42a8b3b5b70e91fc96edba06ebf11d2b9688a1c8650065fceca610c4c59b5a543039acf967a2e2aa56a6872c0d425c625c6032e49f87f79bf70da99f91c",
+    "text": "9576467e772d9f53a6b1e6427ded99179f0eacb0d1ba31a0a7e89733dd4bb56d:2f5cadff9e2f2a1b21d3ed30f085483b326e7db04639ea096abdfdfdaf06b322:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signature": "0x938740a848dcd766c3572fdd1022c0b9c6dc97cfc2e417acbd4cd893c407cfcb216ef557395f4917cb1ec455a30da7ae3cdee2c5c0434520ad4c2be4dbd23bc71c",
     "signing_address": "0x83df4b8eba7c0b3b740019b8c9a77fff77d508cf",
     "signing_algo": "ecdsa",
     "provider_type": "centralized",
@@ -19,7 +19,7 @@
   },
   "verification": {
     "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
-    "responseSha256": "0483d05321515e18811d5718f834dfe5fee130a5a25eca390790af94ebf16acb"
+    "responseSha256": "2f5cadff9e2f2a1b21d3ed30f085483b326e7db04639ea096abdfdfdaf06b322"
   },
   "requestKey": "b6034150b3aa5c398f3773e8bd380d7cb0c0894bcfc1d3a6f0dae4d20499fd08"
 }

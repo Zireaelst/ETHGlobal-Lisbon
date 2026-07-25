@@ -24,6 +24,8 @@ import { decodeBody } from '../packages/bob-binding/src/binding.js';
 import {
   describeCompute,
   selectComputeBackend,
+  createStopwatch,
+  type StageMs,
   type Constraints,
   type EchoResult,
 } from '../packages/shared/src/index.js';
@@ -82,6 +84,14 @@ export interface DemoReport {
   basescanUrl?: string;
   /** Alice'in ilk isteğinden zincirdeki karara kadar geçen süre. */
   totalMs: number;
+  /**
+   * P0-G: sürenin aşamalara dağılımı. Alice'in gördüğü aşamalar + enclave'in
+   * İÇ aşamaları (`enclave_*` önekiyle) + zincir onayı.
+   *
+   * `http_task_work` Bob'un tüm işini kapsar; `enclave_*` onun içini açar.
+   * İkisi ÜST ÜSTE binmez diye toplamı almıyoruz — baskın kalemi arıyoruz.
+   */
+  stageMs: StageMs;
   discoveredAgentId?: string;
   /** Ödeme sonucu. Fraud koşusunda `settled: false` ve `receipt` YOK. */
   payment?: {
@@ -249,11 +259,13 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   const nonce = options.nonce ?? BigInt(Date.now());
 
   const started = Date.now();
+  const sw = createStopwatch();
 
   // --- 0. Zaman çizelgesi (HCS) — HER koşuda yazılır ---
   // "Hedera = the timeline" ancak ödeme rayından bağımsız yazarsak doğru olur.
   // İçerik değil TAAHHÜT gider; brief/veri/çıktı topic'e asla çıkmaz.
   const timeline = options.timeline === false ? undefined : await openTimeline(brief, data, log);
+  sw.mark('hcs_open_topic');
 
   // --- 1-5. Keşif → intent → ECIES → Bob → enclave → Alice çözer ---
   const job = await runAliceJob({
@@ -269,6 +281,8 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     payment: rail === 'none' ? undefined : { backend: await makePaymentBackend(rail, false) },
     log,
   });
+
+  sw.mark('alice_job_total');
 
   const result: EchoResult = job.result;
   // Alice, zincire gönderilecek alanları Bob'un SÖZÜNDEN değil, enclave'in
@@ -360,11 +374,22 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     codeName,
     verified: code === 0,
     totalMs: 0,
+    stageMs: {},
     discoveredAgentId: job.discovered?.agentId,
   };
 
+  const collectStages = (): StageMs => ({
+    ...job.stageMs,
+    // Enclave'in İÇ dağılımı — `http_task_work` kaleminin içini açar.
+    ...Object.fromEntries(
+      Object.entries(result.stageMs ?? {}).map(([k, v]) => [`enclave_${k}`, v]),
+    ),
+    ...sw.stages(),
+  });
+
   if (options.dryRun) {
     report.totalMs = Date.now() - started;
+    report.stageMs = collectStages();
     return report;
   }
 
@@ -373,7 +398,9 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   // indeksler ve Basescan'de başarılı görünür (BUILD-PLAN P3-A gerekçesi).
   const tx = code === 0 ? await verifier.verifyJob(...args) : await verifier.verifyJobLenient(...args);
   const receipt = await tx.wait();
+  sw.mark('chain_verify_tx');
   report.totalMs = Date.now() - started;
+  report.stageMs = collectStages();
   report.txHash = tx.hash;
   report.blockNumber = receipt?.blockNumber;
   report.basescanUrl = `${BASESCAN}/tx/${tx.hash}`;

@@ -2,15 +2,15 @@
   "request": {
     "endpoint": "https://compute-network-6.integratenetwork.work/v1/proxy",
     "model": "qwen/qwen2.5-omni-7b",
-    "prompt": "ORDER-ID: 0x5eb61a5dba2d2194bd514090fe87fb06525e0616fbab8dd83ba8f118d739f428\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0x5eb61a5dba2d2194bd514090fe87fb06525e0616fbab8dd83ba8f118d739f428\n\nThen answer the brief below.\n\nBRIEF:\nWrite a short generic market summary. (Bob substituted this brief.)\n\nDATA:\nBob has no access to the real dataset."
+    "prompt": "ORDER-ID: 0xc1ce64ba87d557a48dde88e64ae2dd1233b86a6e2d2b3d0347fe20db59f5dc20\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0xc1ce64ba87d557a48dde88e64ae2dd1233b86a6e2d2b3d0347fe20db59f5dc20\n\nThen answer the brief below.\n\nBRIEF:\nWrite a short generic market summary. (Bob substituted this brief.)\n\nDATA:\nBob has no access to the real dataset."
   },
-  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0x5eb61a5dba2d2194bd514090fe87fb06525e0616fbab8dd83ba8f118d739f428\\n\\nMarket Summary:\\n\\nThe global financial markets experienced a mixed performance last week. Major indices fluctuated due to various factors including geopolitical tensions and economic data releases. The tech sector showed resilience despite concerns over interest rate hikes, while energy stocks were impacted by geopolitical events in the Middle East. Investors remain cautious as they await further economic indicators and central bank\",\"role\":\"assistant\"}}],\"created\":1784980521,\"id\":\"chatcmpl-3a811ad5-62db-44d8-a502-69b86045f17a\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":129,\"completion_tokens_details\":{\"text_tokens\":129},\"prompt_tokens\":177,\"prompt_tokens_details\":{\"text_tokens\":177},\"total_tokens\":306}}",
-  "output": "ORDER-ID: 0x5eb61a5dba2d2194bd514090fe87fb06525e0616fbab8dd83ba8f118d739f428\n\nMarket Summary:\n\nThe global financial markets experienced a mixed performance last week. Major indices fluctuated due to various factors including geopolitical tensions and economic data releases. The tech sector showed resilience despite concerns over interest rate hikes, while energy stocks were impacted by geopolitical events in the Middle East. Investors remain cautious as they await further economic indicators and central bank",
-  "latencyMs": 2372,
-  "chatID": "3a811ad5-62db-44d8-a502-69b86045f17a",
+  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0xc1ce64ba87d557a48dde88e64ae2dd1233b86a6e2d2b3d0347fe20db59f5dc20\\n\\nMarket Summary:\\n\\nThe global financial markets experienced a mixed performance last week. Major stock indices fluctuated due to ongoing geopolitical tensions and economic data releases. The tech sector showed resilience despite concerns over interest rate hikes, while energy stocks benefited from rising oil prices. The eurozone's economic indicators remained strong, supporting the euro's value against other major\",\"role\":\"assistant\"}}],\"created\":1784982462,\"id\":\"chatcmpl-8716d1f5-a2e1-42b4-81b4-cca552ff60ce\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":129,\"completion_tokens_details\":{\"text_tokens\":129},\"prompt_tokens\":177,\"prompt_tokens_details\":{\"text_tokens\":177},\"total_tokens\":306}}",
+  "output": "ORDER-ID: 0xc1ce64ba87d557a48dde88e64ae2dd1233b86a6e2d2b3d0347fe20db59f5dc20\n\nMarket Summary:\n\nThe global financial markets experienced a mixed performance last week. Major stock indices fluctuated due to ongoing geopolitical tensions and economic data releases. The tech sector showed resilience despite concerns over interest rate hikes, while energy stocks benefited from rising oil prices. The eurozone's economic indicators remained strong, supporting the euro's value against other major",
+  "latencyMs": 3446,
+  "chatID": "8716d1f5-a2e1-42b4-81b4-cca552ff60ce",
   "signature": {
-    "text": "68d719a9acfdada40794ce0cd14c78659f667105c4cee36a8d13c86ab614754c:9b8e2471358a30dada4eaffbd862231f1b7b7fa46f80ae4570e5428eea941c9b:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
-    "signature": "0x03df97854ae2052bd86c6b37be1c35a0e4f821fbd154ac2489b9c788b6b08e62342220943ed624caad0ba6f6b9d5722b3c612dc7770b7c988d4f552f2d0d4e861b",
+    "text": "435ce070f82cb51ba2f48c14bf7d2bd13dd5e7c6d33e796673c75204b0e767ae:1b700576752b89ee813b506e98455cbb8062d2e9771eed9efbbe8e6614dc2f0f:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signature": "0x66e90e891d1ceaa8d4990449a732df72d0a0ef034eccf2a0f466bde0e88443ab46ec1d013846a07900590c70bfd37e69f4fdc4a27f8d6ae694920394668a6ab41b",
     "signing_address": "0x83df4b8eba7c0b3b740019b8c9a77fff77d508cf",
     "signing_algo": "ecdsa",
     "provider_type": "centralized",
@@ -19,7 +19,7 @@
   },
   "verification": {
     "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
-    "responseSha256": "9b8e2471358a30dada4eaffbd862231f1b7b7fa46f80ae4570e5428eea941c9b"
+    "responseSha256": "1b700576752b89ee813b506e98455cbb8062d2e9771eed9efbbe8e6614dc2f0f"
   },
   "requestKey": "1f7aba48d8b90240ab3b4b869c352cba4950271db1052d56c753790ad33b502f"
 }

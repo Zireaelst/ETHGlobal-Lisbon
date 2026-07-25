@@ -8,6 +8,7 @@ export * from './sealsig.js';
 export * from './ogsig.js';
 export * from './identity.js';
 export * from './discovery.js';
+export * from './timing.js';
 export * from './compute.js';
 export * from './compute-fixture.js';
 export * from './compute-0g.js';

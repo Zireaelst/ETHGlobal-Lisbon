@@ -26,6 +26,8 @@ import {
   parseOrThrow,
   pickBestAgent,
   signIntent,
+  createStopwatch,
+  type StageMs,
   type DiscoveredAgent,
 } from '@ca/shared';
 import type { PaymentBackend } from '@ca/payment';
@@ -87,6 +89,8 @@ export interface AliceJobReport {
   claimedSeal: Seal;
   /** Bob çıkan imzayı/gövdeyi değiştirdi mi? */
   sealTampered: boolean;
+  /** P0-G: Alice'in gördüğü aşama süreleri. */
+  stageMs: StageMs;
   /** Bob 402 döndü mü — yani ödeme kapısı gerçekten çalıştı mı? */
   paymentRequired: boolean;
 }
@@ -102,6 +106,8 @@ export async function fetchAgentCard(bobUrl: string, fetchImpl: typeof fetch = f
 export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobReport> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const log = options.log ?? ((line: string) => console.log(line));
+  // P0-G: aşama süreleri. Ölçüm Alice tarafında çünkü "uçtan uca" onun beklediği süre.
+  const sw = createStopwatch();
 
   // --- keşif: adresi bilmiyorsak The Graph'ten bul ---
   let discovered: DiscoveredAgent | undefined;
@@ -121,7 +127,10 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
     throw new Error('bobUrl ya da discover verilmeli');
   }
 
+  sw.mark('discovery');
+
   const card = await fetchAgentCard(base, fetchImpl);
+  sw.mark('agent_card');
   log(`[alice] agent card alındı: agentId=${card.agentId} skills=${card.skills.join(',')}`);
 
   // Keşif ile kartın anlaşmadığı bir durumda SESSİZCE devam etmek, yanlış alıcıya
@@ -156,6 +165,7 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
   };
 
   const signature = await signIntent(intent, options.wallet, options.verifyingContract, options.chainId);
+  sw.mark('intent_sign');
   log(`[alice] intent imzalandı: ${intentHash.slice(0, 14)}…`);
 
   let envelope: Record<string, unknown> = {
@@ -176,6 +186,7 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
   // Bob'un kendi beyanı değil. (Yukarıda ikisinin eşit olduğu zaten doğrulandı.)
   const encryptTo = discovered?.eciesPubKey ?? card.eciesPubKey;
   const sentCipher = await encryptFor(encryptTo, envelope);
+  sw.mark('ecies_encrypt');
 
   // `intentHash` ve `replyPubKey` şifre DIŞINDA gidiyor: Bob'un dış katmanı paketi
   // çözemiyor (anahtar enclave'de) ama işi yönlendirip sonucu teslim edebilmeli.
@@ -195,6 +206,11 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
 
   // x402 akışı: önce ödemesiz dene. Bob 402 dönerse yetkilendirip TEKRAR gönder.
   let postRes = await send();
+  // Bu ilk istek İKİ farklı şey olabilir:
+  //   ödeme kapısı açıksa → sadece 402 turu (hızlı)
+  //   kapalıysa            → işin TAMAMI (0G çağrısı dahil)
+  // O yüzden nötr isimlendiriyoruz; hangisi olduğunu `paymentRequired` söylüyor.
+  sw.mark('http_task_send1');
   let paymentAuthorized: PaymentAuthorization | undefined;
 
   if (postRes.status === 402) {
@@ -215,7 +231,12 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
     paymentAuthorized = (await options.payment.backend.authorize(quote)) as unknown as PaymentAuthorization;
     log('[alice] ödeme yetkisi imzalandı — para henüz Alice\'te');
 
+    sw.mark('payment_authorize');
+
     postRes = await send(paymentAuthorized);
+    // Bu aşama Bob'un TÜM işini kapsıyor: enclave + 0G çağrısı + seal imzası.
+    // İç dağılımı `result.stageMs` ayrıca veriyor.
+    sw.mark('http_task_send2');
   }
 
   if (postRes.status !== 202) {
@@ -225,6 +246,7 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
   log(`[alice] paket gönderildi (${(sentCipher.length / 1024).toFixed(1)} KB şifreli)`);
 
   const resultRes = await fetchImpl(`${base}/result/${intentHash}`);
+  sw.mark('http_result');
   if (!resultRes.ok) throw new Error(`/result alınamadı: HTTP ${resultRes.status}`);
   const claimed = (await resultRes.json()) as { cipher: string; bodyHex: string; seal: Seal };
 
@@ -245,6 +267,8 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
     log('[alice] UYARI: Bob\'un ilettiği gövde/seal enclave\'in imzaladığından FARKLI');
   }
 
+  sw.mark('ecies_decrypt_result');
+
   const matched = result.match && result.recomputedIntentHash === intentHash && !sealTampered;
   log(`[alice] sonuç çözüldü: match=${result.match} clientSig=${result.clientSigOk ? 'ok' : 'HATALI'}`);
 
@@ -261,6 +285,7 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
     claimedSeal: claimed.seal,
     sealTampered,
     paymentRequired: paymentAuthorized !== undefined,
+    stageMs: sw.stages(),
   };
 }
 
