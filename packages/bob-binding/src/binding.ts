@@ -16,8 +16,16 @@
 //     sahip olmadığımız bir güvenceyi varmış gibi gösterirdi.
 //   - Bu yüzden imzalayan anahtar "binding key" diye geçiyor, "seal key" değil.
 
-import { AbiCoder, Wallet, keccak256, recoverAddress, toUtf8Bytes } from 'ethers';
-import { buildIntentHash, type Constraints } from '@ca/shared';
+import { AbiCoder, Wallet, keccak256, toUtf8Bytes } from 'ethers';
+import {
+  buildIntentHash,
+  recoverSealCandidates,
+  signSeal,
+  verifySeal,
+  type Constraints,
+  type SealFields,
+  type SealSignature,
+} from '@ca/shared';
 
 /** Enclave'e giren iş emri. */
 export interface BindingRequest {
@@ -28,6 +36,12 @@ export interface BindingRequest {
   constraints: Constraints;
   price: bigint;
   nonce: bigint;
+  /** Seal preimage'ının ilk alanı — wrapper'ın agent kimliği (ERC-8004 agentId'si DEĞİL). */
+  agentId: string;
+  /** Konteyner ömrü başına bir kez üretilen seal kimliği. */
+  sealId: string;
+  /** Ondalık saniye. */
+  timestamp: string;
 }
 
 /** Enclave'in imzalayıp döndürdüğü sonuç. */
@@ -42,8 +56,8 @@ export interface BindingResponse {
   ogSigHash: string;
   /** İmzalanan ham gövde: abi.encode(bytes32,bytes32,bool,bytes32). */
   bodyHex: string;
-  /** keccak256(body) üzerine 65-byte imza. */
-  signature: string;
+  /** Seal imzası — `v` wrapper gibi atılmış, sadece r‖s taşınıyor (CLAUDE.md §3.1B). */
+  seal: SealSignature;
   signer: string;
 }
 
@@ -72,9 +86,21 @@ export function decodeBody(bodyHex: string): {
   };
 }
 
-/** Gövdeyi imzalayan adresi kurtar. */
-export function recoverBindingSigner(bodyHex: string, signature: string): string {
-  return recoverAddress(keccak256(bodyHex), signature);
+/**
+ * Gövdeyi imzalayan adresi kurtar (`v` brute-force).
+ *
+ * Beklenen adres verilirse ona eşleşen adayı döndürür; verilmezse ilk adayı.
+ * Wrapper `v`'yi attığı için tek bir "doğru" cevap yoktur — çağıranın kime
+ * baktığını bilmesi gerekir.
+ */
+export function recoverBindingSigner(bodyHex: string, seal: SealSignature, expectedSigner?: string): string {
+  const candidates = recoverSealCandidates(seal, bodyHex, seal.r, seal.s);
+  if (expectedSigner) {
+    const want = expectedSigner.toLowerCase();
+    const hit = candidates.find((c) => c.address.toLowerCase() === want);
+    if (hit) return hit.address;
+  }
+  return candidates[0]?.address ?? '0x0000000000000000000000000000000000000000';
 }
 
 /**
@@ -104,11 +130,16 @@ export async function runBinding(request: BindingRequest, bindingKey: string): P
   const ogSigHash = ZERO32; // P3-B dolduracak
   const bodyHex = encodeBody(request.claimedIntentHash, outputHash, match, ogSigHash);
 
-  // ÖNEKSİZ ham secp256k1 imza. `wallet.signMessage` EIP-191 öneki ekler; kontrat
-  // gövdeyi alanlardan yeniden üretip doğrudan keccak256'sını kurtaracağı için önek
-  // istemiyoruz (§3.1(B): seal imzasında da EIP-191 yok).
+  // Seal formatında imzala (CLAUDE.md §3.1B). `v` bilerek atılıyor — canlı wrapper
+  // da atıyor; kontrat 27/28'i kendisi deniyor. Format aynı kaldığı için gerçek
+  // Tapp geldiğinde DEĞİŞEN TEK ŞEY anahtar olacak.
   const wallet = new Wallet(bindingKey);
-  const signature = wallet.signingKey.sign(keccak256(bodyHex)).serialized;
+  const fields: SealFields = {
+    agentId: request.agentId,
+    sealId: request.sealId,
+    timestamp: request.timestamp,
+  };
+  const seal = signSeal(fields, bodyHex, bindingKey);
 
   return {
     claimedIntentHash: request.claimedIntentHash,
@@ -118,7 +149,12 @@ export async function runBinding(request: BindingRequest, bindingKey: string): P
     outputHash,
     ogSigHash,
     bodyHex,
-    signature,
+    seal,
     signer: wallet.address,
   };
+}
+
+/** Enclave'in kendi imzasını doğruladığını gösteren yardımcı (testler için). */
+export function selfCheckSeal(response: BindingResponse): boolean {
+  return verifySeal(response.seal, response.bodyHex, response.signer);
 }

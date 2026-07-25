@@ -14,8 +14,8 @@
 // | selfintent  | kendi intent'ini uydurur, Alice imzası yok        | BadClientSig            |
 
 import type { BindingRequest, BindingResponse } from '@ca/bob-binding';
-import { buildIntentHash, type Constraints } from '@ca/shared';
-import { Wallet, keccak256 } from 'ethers';
+import { buildIntentHash, signSeal, type Constraints } from '@ca/shared';
+import { Wallet, keccak256, toUtf8Bytes } from 'ethers';
 
 export const FRAUD_MODES = ['none', 'substitute', 'tamper', 'forge', 'selfintent'] as const;
 export type FraudMode = (typeof FRAUD_MODES)[number];
@@ -103,10 +103,17 @@ export function applyPostBindingFraud(mode: FraudMode, response: BindingResponse
   if (mode !== 'forge') return response;
 
   // Deterministik "sahte" anahtar — demo tekrar edilebilir olsun diye rastgele değil.
-  const rogue = new Wallet(keccak256(Buffer.from('bob-rogue-key/not-the-enclave', 'utf8')));
+  const rogueKey = keccak256(toUtf8Bytes('bob-rogue-key/not-the-enclave'));
+  const rogue = new Wallet(rogueKey);
+  // Gövde DOĞRU kalıyor; sadece imza enclave'in anahtarıyla değil Bob'unkiyle atılıyor.
+  // Kontrat `enclaveSignerOf[agentId]` ile uyuşmadığı için BadEnclaveSig verecek.
   return {
     ...response,
-    signature: rogue.signingKey.sign(keccak256(response.bodyHex)).serialized,
+    seal: signSeal(
+      { agentId: response.seal.agentId, sealId: response.seal.sealId, timestamp: response.seal.timestamp },
+      response.bodyHex,
+      rogueKey,
+    ),
     signer: rogue.address,
   };
 }

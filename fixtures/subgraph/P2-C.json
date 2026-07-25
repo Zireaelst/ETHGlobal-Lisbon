@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-07-25T04:05:59.223Z",
+  "capturedAt": "2026-07-25T04:27:40.221Z",
   "discoveredAgent": {
     "agentId": "8429",
     "owner": "0x4f5cd20a4a3fbc9957f8d2a8d27d658b51fda326",
@@ -13,7 +13,6 @@
     "rejectedAttempts": 0,
     "registeredBlock": "44584172"
   },
-  "decoyRegisterTx": "0xcf84d6c5a6b6a8c31bc37e677f472199eae36b4f69fbffa5a2b40c5e04b5cdc3",
   "rankedIds": [
     "8429",
     "8432"

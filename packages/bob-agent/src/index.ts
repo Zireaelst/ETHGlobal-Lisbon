@@ -63,6 +63,11 @@ export interface BobAgentOptions {
   port?: number;
   /** Başlangıç hile modu. Çalışırken `setFraudMode` ile değişebilir. */
   fraudMode?: FraudMode;
+  /**
+   * Seal preimage'ının ilk alanı — wrapper'ın kendi agent kimliği.
+   * ERC-8004 `agentId`'sinden FARKLI olabilir; gerçek Tapp'te wrapper belirler.
+   */
+  sealAgentId?: string;
   /** Kartın `endpoint` alanı; verilmezse dinlenen adresten türetilir. */
   publicUrl?: string;
   log?: (line: string) => void;
@@ -139,6 +144,9 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
   // o yüzden mod çalışırken değişebilmeli.
   let fraudMode: FraudMode = options.fraudMode ?? 'none';
   const expectedBindingSigner = new Wallet(options.bindingKey).address;
+  // Seal kimliği konteyner ömrü başına bir kez üretilir (gerçek Tapp'te wrapper üretir).
+  // Süreç boyunca sabit kalması, P3-C'deki "restart etme" kuralının yerel karşılığı.
+  const sealId = keccak256(toUtf8Bytes(`seal/${expectedBindingSigner}/${options.agentId}`)).slice(0, 18);
 
   const url = () => options.publicUrl ?? `http://127.0.0.1:${boundPort}`;
 
@@ -235,6 +243,9 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
         constraints: envelope.constraints as Constraints,
         price: BigInt(envelope.intent.price),
         nonce: BigInt(envelope.nonce),
+        agentId: options.sealAgentId ?? `agent-${options.agentId}`,
+        sealId,
+        timestamp: Math.floor(Date.now() / 1000).toString(),
       },
       { claimedIntentHash: envelope.intent.intentHash, clientSignatureValid: clientSigValid },
     );
@@ -245,7 +256,8 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
     // --- hile katmanı: enclave'den DÖNDÜKTEN sonra ---
     const finalBinding = applyPostBindingFraud(mode, bound);
 
-    const bindingSigner = recoverBindingSigner(finalBinding.bodyHex, finalBinding.signature);
+    // `v` atıldığı için beklenen imzacıyı vererek doğru pariteyi seçtiriyoruz.
+    const bindingSigner = recoverBindingSigner(finalBinding.bodyHex, finalBinding.seal, expectedBindingSigner);
     const bindingSigOk = bindingSigner.toLowerCase() === expectedBindingSigner.toLowerCase();
 
     const result: EchoResult = {
@@ -258,7 +270,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
       recoveredClient,
       output: finalBinding.output,
       bodyHex: finalBinding.bodyHex,
-      bindingSig: finalBinding.signature,
+      seal: finalBinding.seal,
       bindingSigner,
       expectedBindingSigner,
       bindingSigOk,

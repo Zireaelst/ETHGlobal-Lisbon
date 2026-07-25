@@ -150,7 +150,8 @@ export const EchoResultSchema = z.object({
   // fonksiyon ve anahtar attested enclave'den gelmiyor. P3-B/P3-C gerçeğiyle değiştirecek.
   /** İmzalanan ham gövde: abi.encode(bytes32,bytes32,bool,bytes32). */
   bodyHex: z.string().regex(/^0x[0-9a-fA-F]*$/, 'hex olmalı'),
-  bindingSig: SignatureSchema,
+  /** Seal imzası — `v` atılmış, sadece r‖s (CLAUDE.md §3.1B). Kontrat iki pariteyi de dener. */
+  seal: SealSchema,
   /** Gövde imzasından kurtarılan adres. */
   bindingSigner: AddressSchema,
   /** Kayıtlı binding anahtarı — kontrattaki enclaveSignerOf'un FAZ 1 karşılığı. */

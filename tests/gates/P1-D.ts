@@ -142,8 +142,15 @@ gate.check('İmzalanan gövde alanlardan yeniden üretilebiliyor (kontratın yap
   const problems: string[] = [];
   if (body.intentHash !== none.result.intentHash) problems.push('intentHash gövdeyle uyuşmuyor');
   if (body.match !== none.result.match) problems.push('match gövdeyle uyuşmuyor');
-  if (recoverBindingSigner(none.result.bodyHex, none.result.bindingSig) !== none.result.bindingSigner) {
-    problems.push('gövdeden kurtarılan imzacı raporlananla uyuşmuyor');
+  // `v` atıldığı için beklenen imzacıyı verip doğru pariteyi seçtiriyoruz — kontrat da
+  // aynı şeyi yapıyor (27, tutmazsa 28).
+  const recovered = recoverBindingSigner(
+    none.result.bodyHex,
+    none.result.seal,
+    none.result.expectedBindingSigner,
+  );
+  if (recovered !== none.result.bindingSigner) {
+    problems.push(`gövdeden kurtarılan imzacı ${recovered} ≠ raporlanan ${none.result.bindingSigner}`);
   }
   return problems.length === 0
     ? pass(`abi.decode → intentHash ${body.intentHash.slice(0, 18)}… match=${body.match}`)
