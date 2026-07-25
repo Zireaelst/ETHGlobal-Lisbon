@@ -1,4 +1,7 @@
-import styles from "./ArchitectureSection.module.css";
+import { ArrowRight } from "lucide-react";
+import { Reveal } from "@/components/Reveal";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 const NODES = [
   { label: "Alice-agent", detail: "discovers · signs intent · pays" },
@@ -9,25 +12,42 @@ const NODES = [
 
 export default function ArchitectureSection() {
   return (
-    <section id="architecture" className={`section ${styles.section}`}>
-      <div className={styles.eyebrow}>Architecture</div>
-      <div className={styles.diagram}>
+    <section id="architecture" className="section px-8 py-32 sm:px-16 md:py-40">
+      <Reveal>
+        <Badge className="w-fit text-warm">Architecture</Badge>
+      </Reveal>
+
+      <Reveal
+        delay={120}
+        className="mt-14 flex flex-col items-stretch gap-4 lg:flex-row lg:items-center lg:gap-3"
+      >
         {NODES.map((node, i) => (
-          <div className={styles.nodeWrap} key={node.label}>
-            <div className={styles.node}>
-              <div className={styles.nodeLabel}>{node.label}</div>
-              <div className={styles.nodeDetail}>{node.detail}</div>
-            </div>
+          <div key={node.label} className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-center">
+            <Card className="min-w-[180px] p-5 hover:bg-fill">
+              <div className="font-mono text-xs tracking-wide text-foreground">
+                {node.label}
+              </div>
+              <div className="mt-2 font-body text-[13px] font-extralight text-muted-foreground">
+                {node.detail}
+              </div>
+            </Card>
             {i < NODES.length - 1 && (
-              <div className={styles.arrow} aria-hidden="true" />
+              <ArrowRight
+                aria-hidden="true"
+                strokeWidth={1.5}
+                className="h-5 w-5 shrink-0 rotate-90 text-cool self-center lg:rotate-0"
+              />
             )}
           </div>
         ))}
-      </div>
-      <p className={styles.legend}>
-        Base = the verdict · Hedera = the timeline · The Graph = the read
-        layer · 0G = the compute.
-      </p>
+      </Reveal>
+
+      <Reveal delay={240}>
+        <p className="mt-10 font-mono text-xs tracking-wide text-muted-foreground">
+          Base = the verdict · Hedera = the timeline · The Graph = the read
+          layer · 0G = the compute.
+        </p>
+      </Reveal>
     </section>
   );
 }

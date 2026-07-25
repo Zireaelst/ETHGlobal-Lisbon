@@ -1,4 +1,6 @@
-import styles from "./TracksSection.module.css";
+import { Reveal } from "@/components/Reveal";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 
 const TRACKS = [
   {
@@ -20,14 +22,19 @@ const TRACKS = [
 
 export default function TracksSection() {
   return (
-    <section id="tracks" className={`section ${styles.section}`}>
-      <div className={styles.eyebrow}>Tracks</div>
-      <div className={styles.cards}>
-        {TRACKS.map((track) => (
-          <div className={styles.card} key={track.name}>
-            <div className={styles.cardTitle}>{track.name}</div>
-            <p className={styles.cardBody}>{track.detail}</p>
-          </div>
+    <section id="tracks" className="section px-8 py-32 sm:px-16 md:py-40">
+      <Reveal>
+        <Badge className="w-fit text-cool">Tracks</Badge>
+      </Reveal>
+
+      <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {TRACKS.map((track, i) => (
+          <Reveal key={track.name} delay={i * 120}>
+            <Card className="h-full">
+              <CardTitle>{track.name}</CardTitle>
+              <CardDescription>{track.detail}</CardDescription>
+            </Card>
+          </Reveal>
         ))}
       </div>
     </section>
