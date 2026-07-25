@@ -1,0 +1,52 @@
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: clamp(64px, 10vh, 140px) clamp(32px, 7vw, 132px) clamp(48px, 8vh, 100px);
+  text-align: center;
+}
+
+.ctas {
+  display: flex;
+  gap: 20px;
+}
+
+.primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 30px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--fill);
+  transition: border-color 0.5s ease, letter-spacing 0.5s ease;
+}
+.primary:hover {
+  border-color: var(--ink);
+  letter-spacing: 0.14em;
+}
+
+.boundaries {
+  max-width: 560px;
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+
+.marks {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
