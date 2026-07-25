@@ -1,0 +1,96 @@
+.section {
+  padding: clamp(96px, 16vh, 200px) clamp(32px, 7vw, 132px);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--chap-warm);
+  margin-bottom: 48px;
+}
+
+.diagram {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.nodeWrap {
+  display: flex;
+  align-items: center;
+}
+
+.node {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px 22px;
+  min-width: 180px;
+  background: var(--fill);
+}
+
+.nodeLabel {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.nodeDetail {
+  font-family: var(--font-body);
+  font-weight: 200;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.arrow {
+  width: clamp(24px, 3vw, 48px);
+  height: 1px;
+  margin: 0 8px;
+  background: linear-gradient(90deg, var(--chap-warm), var(--chap-cool));
+  position: relative;
+}
+.arrow::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-top: 1px solid var(--chap-cool);
+  border-right: 1px solid var(--chap-cool);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+@media (max-width: 860px) {
+  .diagram {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .nodeWrap {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .arrow {
+    width: 1px;
+    height: 24px;
+    margin: 8px 0 8px 20px;
+  }
+  .arrow::after {
+    right: auto;
+    left: 50%;
+    top: auto;
+    bottom: 0;
+    transform: translateX(-50%) rotate(135deg);
+  }
+}
+
+.legend {
+  margin: 40px 0 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
