@@ -118,8 +118,43 @@ async function openTimeline(brief: string, data: string, log: (l: string) => voi
   });
 }
 
+/**
+ * Ödeme backend'i kur. AYNI fabrikayı hem Bob (doğrulama+settle) hem Alice
+ * (yetkilendirme) kullanıyor — ray farkı Alice'in kodunda görünmüyor (P4-A kriteri).
+ */
+export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolean) {
+  const cfg = loadConfig();
+  const provider = new ethers.JsonRpcProvider(cfg.BASE_RPC_URL);
+  const verifierAddress = requireEnv('VERIFIER_ADDRESS');
+  if (rail === 'hedera') {
+    const { createHederaX402Backend } = await import('../packages/payment/src/hedera-x402.js');
+    const { createHederaSigner } = await import('../packages/payment/src/signer/hedera-signer.js');
+    return createHederaX402Backend({
+      signer: createHederaSigner({ accountId: cfg.HEDERA_OPERATOR_ID }),
+      facilitatorUrl: cfg.BLOCKY402_URL,
+      verifierProvider: provider,
+      verifierAddress,
+      payoutAccountId: forBob ? process.env.BOB_HEDERA_ACCOUNT : undefined,
+    });
+  }
+  const { createBaseStealthBackend } = await import('../packages/payment/src/base-stealth.js');
+  const { deriveAgentStealthKeys } = await import('../packages/payment/src/stealth.js');
+  const bobKeys = deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob');
+  return createBaseStealthBackend({
+    provider,
+    payerPrivateKey: cfg.PRIVATE_KEY_ALICE,
+    relayerPrivateKey: cfg.PRIVATE_KEY_DEPLOYER,
+    usdcAddress: cfg.USDC_BASE_SEPOLIA,
+    verifierAddress,
+    recipientMetaAddress: bobKeys.metaAddress,
+    // Bob tarafı: gelen ödemenin KENDİSİNE ait olduğunu doğrulamak için.
+    viewingPrivateKey: forBob ? bobKeys.viewingPrivateKey : undefined,
+    spendingPublicKey: forBob ? bobKeys.spendingPublicKey : undefined,
+  });
+}
+
 /** Bob'u zincirde kayıtlı endpoint'inin portunda ayağa kaldır (bir kez). */
-export async function ensureBob(log: (l: string) => void): Promise<BobAgent> {
+export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base' | 'none' = 'none'): Promise<BobAgent> {
   if (cachedBob) return cachedBob;
   loadDotenv();
   const cfg = loadConfig();
@@ -145,6 +180,19 @@ export async function ensureBob(log: (l: string) => void): Promise<BobAgent> {
     publicUrl: `${url.protocol}//${url.host}`,
     fraudMode: 'none',
     hederaAccount: process.env.BOB_HEDERA_ACCOUNT,
+    // ÖDEME KAPISI: yetki olmadan iş yok. Yetkiyi Bob tutar, JobVerified sonrası
+    // POST /settle ile kendisi gönderir (CLAUDE.md §7).
+    payment:
+      rail === 'none'
+        ? undefined
+        : {
+            backend: await makePaymentBackend(rail, true),
+            recipient:
+              rail === 'hedera'
+                ? (process.env.BOB_HEDERA_ACCOUNT ?? cfg.HEDERA_OPERATOR_ID)
+                : deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob').metaAddress,
+            network: rail === 'hedera' ? 'hedera:testnet' : 'base-sepolia',
+          },
     // Bob'un ERC-5564 meta-adresi kök cüzdanından DETERMİNİSTİK türetiliyor —
     // ayrı sır saklamak gerekmiyor, meta-adres her koşuda aynı.
     stealthMetaAddress: deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob').metaAddress,
@@ -177,7 +225,8 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   ).abi;
   const verifier = new ethers.Contract(verifierAddress, abi, alice);
 
-  const bob = await ensureBob(log);
+  const rail = options.paymentRail ?? (process.env.PAYMENT_BACKEND as DemoOptions['paymentRail']) ?? 'none';
+  const bob = await ensureBob(log, rail);
   bob.setFraudMode(fraudMode);
 
   const constraints: Constraints = { model: 'qwen2.5-omni-7b', maxTokens: 2048, temperature: 0.2 };
@@ -203,6 +252,7 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     verifyingContract: verifierAddress,
     chainId: CHAIN_ID,
     nonce,
+    payment: rail === 'none' ? undefined : { backend: await makePaymentBackend(rail, false) },
     log,
   });
 
@@ -319,10 +369,9 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   );
   log(`[demo] ${report.basescanUrl}`);
 
-  // --- 7. ÖDEME — yalnızca JobVerified'tan SONRA ---
-  const rail = options.paymentRail ?? (process.env.PAYMENT_BACKEND as DemoOptions['paymentRail']) ?? 'none';
+  // --- 7. SETTLEMENT — BOB tetikler, yalnızca JobVerified'tan SONRA ---
   if (rail !== 'none') {
-    report.payment = await runPayment(rail, job, report, log);
+    report.payment = await settleViaBob(bob.url(), job, report, log);
   }
 
   // SETTLED yalnızca gerçekten settle olduysa yazılır. Fraud koşusunda bu satır
@@ -354,73 +403,46 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
 }
 
 /**
- * Ödeme akışı: quote → authorize (para HAREKET ETMEZ) → settle (JobVerified'tan SONRA).
+ * Settlement'ı BOB tetikler — ekonomik teşvik onda: JobVerified olmadan parasını alamıyor.
  *
- * Fraud koşusunda `JobVerified` hiç oluşmadığı için `settle()` HİÇ ÇAĞRILMIYOR.
- * Demonun en güçlü cümlesi bu: "ödeme asla settle olmadı."
+ * Yetki zaten Bob'da (402 kapısından geçerken bıraktık). Fraud koşusunda JobVerified
+ * hiç oluşmaz, dolayısıyla bu çağrı 402 ile döner ve para HİÇ hareket etmez.
  */
-async function runPayment(
-  rail: 'hedera' | 'base',
+async function settleViaBob(
+  bobUrl: string,
   job: Awaited<ReturnType<typeof runAliceJob>>,
   report: DemoReport,
   log: (l: string) => void,
 ): Promise<DemoReport['payment']> {
-  const cfg = loadConfig();
-  const { createHederaX402Backend } = await import('../packages/payment/src/hedera-x402.js');
-  const { createBaseStealthBackend } = await import('../packages/payment/src/base-stealth.js');
-  const { createHederaSigner } = await import('../packages/payment/src/signer/hedera-signer.js');
-  const provider = new ethers.JsonRpcProvider(cfg.BASE_RPC_URL);
-  const verifierAddress = requireEnv('VERIFIER_ADDRESS');
+  const rail = job.paymentRequired ? 'x402' : 'none';
 
-  const backend =
-    rail === 'hedera'
-      ? createHederaX402Backend({
-          // Anahtar BURAYA GİRMİYOR — delegated signer env'den kendisi okuyor.
-          signer: createHederaSigner({ accountId: cfg.HEDERA_OPERATOR_ID }),
-          facilitatorUrl: cfg.BLOCKY402_URL,
-          verifierProvider: provider,
-          verifierAddress,
-        })
-      : createBaseStealthBackend({
-          provider,
-          payerPrivateKey: cfg.PRIVATE_KEY_ALICE,
-          // Gas'ı relayer öder — Alice değil. Hedera'da bu rolü blocky402 oynuyor.
-          relayerPrivateKey: cfg.PRIVATE_KEY_DEPLOYER,
-          usdcAddress: cfg.USDC_BASE_SEPOLIA,
-          verifierAddress,
-          recipientMetaAddress: job.card.stealthMetaAddress ?? undefined,
-          log,
-        });
-
-  const recipient =
-    rail === 'hedera'
-      ? (job.card.hederaAccount ?? requireEnv('HEDERA_OPERATOR_ID'))
-      : (job.card.stealthMetaAddress ?? '');
-
-  const quote = await backend.quote({
-    intentHash: job.intent.intentHash,
-    amount: job.card.price.amount,
-    recipient,
-  });
-  const proof = await backend.authorize(quote);
-  log(`[demo] ödeme yetkilendirildi (${backend.rail}) — para HENÜZ hareket etmedi`);
-
-  // KURAL: doğrulanmamış iş için settle YOK.
+  // KURAL: doğrulanmamış iş için settle YOK. Fraud koşusu buradan döner ve
+  // Bob'un elindeki yetki HİÇ gönderilmez — "ödeme asla settle olmadı".
   if (!report.verified || !report.txHash) {
     log(`[demo] ÖDEME SETTLE EDİLMEDİ — iş doğrulanmadı (${report.codeName})`);
     return {
-      rail: backend.rail,
+      rail,
       quoted: true,
-      authorized: true,
+      authorized: job.paymentRequired,
       settled: false,
       skippedReason: `JobVerified yok (${report.codeName})`,
     };
   }
 
-  const receipt = await backend.settle(proof, report.txHash);
+  const res = await fetch(`${bobUrl}/settle`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ intentHash: job.intent.intentHash, jobVerifiedTx: report.txHash }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    log(`[demo] settle reddedildi (HTTP ${res.status}): ${body.slice(0, 120)}`);
+    return { rail, quoted: true, authorized: true, settled: false, skippedReason: `HTTP ${res.status}` };
+  }
+  const { receipt } = (await res.json()) as { receipt: { rail: string; txRef: string; explorerUrl: string } };
   log(`[demo] ödeme settle oldu: ${receipt.explorerUrl}`);
   return {
-    rail: backend.rail,
+    rail: receipt.rail,
     quoted: true,
     authorized: true,
     settled: true,

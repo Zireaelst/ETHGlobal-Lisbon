@@ -15,7 +15,7 @@
 // bağlar ve gizliliği bozar. Bob da parayı EIP-3009 ile çıkarıyor — stealth anahtar
 // yetkiyi imzalıyor, gas'ı yine relayer ödüyor. Böylece adres hiç ETH görmüyor.
 
-import { Contract, Wallet, hexlify, randomBytes, type JsonRpcProvider } from 'ethers';
+import { Contract, Wallet, hexlify, randomBytes, verifyTypedData, type JsonRpcProvider } from 'ethers';
 import {
   assertJobVerified,
   type AuthProof,
@@ -24,7 +24,7 @@ import {
   type QuoteRequest,
   type Receipt,
 } from './index.js';
-import { SCHEME_ID, deriveStealthPayment, type StealthPayment } from './stealth.js';
+import { SCHEME_ID, checkAnnouncement, deriveStealthPayment, type StealthPayment } from './stealth.js';
 
 const BASESCAN = 'https://sepolia.basescan.org';
 
@@ -76,6 +76,13 @@ export interface BaseStealthConfig {
   /** Bob'un ERC-5564 meta-adresi (agent card / registry'den). */
   recipientMetaAddress?: string;
   announcerAddress?: string;
+  /**
+   * BOB tarafı: gelen ödemenin kendisine ait olduğunu doğrulamak için.
+   * Görüntüleme anahtarı harcama yetkisi VERMEZ — sadece 'bu bana mı?' der.
+   * Alice tarafında gerekmez.
+   */
+  viewingPrivateKey?: string;
+  spendingPublicKey?: string;
   log?: (line: string) => void;
 }
 
@@ -138,6 +145,36 @@ export async function signTransferAuthorization(params: {
     viewTag: 0,
     metadata: '0x',
   };
+}
+
+/**
+ * EIP-3009 yetkisinin imzacısını kurtar — Bob'un "bu imza gerçekten ödeyene mi ait?"
+ * kontrolü. Digest yapının KENDİ alanlarından yeniden üretilir; iddiaya güvenilmez.
+ */
+export async function recoverTransferAuthorizationSigner(
+  provider: JsonRpcProvider,
+  usdcAddress: string,
+  auth: Pick<StealthAuthPayload, 'from' | 'to' | 'value' | 'validAfter' | 'validBefore' | 'nonce' | 'signature'>,
+): Promise<string> {
+  const usdc = new Contract(usdcAddress, USDC_ABI, provider);
+  const [name, version, network] = await Promise.all([
+    usdc.getFunction('name')() as Promise<string>,
+    usdc.getFunction('version')() as Promise<string>,
+    provider.getNetwork(),
+  ]);
+  return verifyTypedData(
+    { name, version, chainId: network.chainId, verifyingContract: usdcAddress },
+    TRANSFER_WITH_AUTHORIZATION_TYPES,
+    {
+      from: auth.from,
+      to: auth.to,
+      value: BigInt(auth.value),
+      validAfter: BigInt(auth.validAfter),
+      validBefore: BigInt(auth.validBefore),
+      nonce: auth.nonce,
+    },
+    auth.signature,
+  );
 }
 
 /** Yetkiyi zincire gönder — gas'ı GÖNDEREN öder, imzalayan değil. */
@@ -229,6 +266,55 @@ export function createBaseStealthBackend(config: BaseStealthConfig): PaymentBack
           metadata: pending.metadata,
         } satisfies StealthAuthPayload,
       };
+    },
+
+    async verifyAuthorization(proof, expected) {
+      if (proof.rail !== 'base-stealth') return { ok: false, reason: `yanlış ray: ${proof.rail}` };
+      if (proof.intentHash.toLowerCase() !== expected.intentHash.toLowerCase()) {
+        return { ok: false, reason: 'yetki başka bir işe ait' };
+      }
+      if (proof.amount !== expected.amount) {
+        return { ok: false, reason: `tutar ${proof.amount}, beklenen ${expected.amount}` };
+      }
+
+      const auth = proof.payload as StealthAuthPayload;
+      if (auth.to.toLowerCase() !== proof.payTo.toLowerCase()) {
+        return { ok: false, reason: 'yetkideki alıcı ile beyan edilen payTo farklı' };
+      }
+      if (BigInt(auth.value) !== BigInt(expected.amount)) {
+        return { ok: false, reason: 'imzalanan tutar beklenenden farklı' };
+      }
+      if (BigInt(auth.validBefore) <= BigInt(Math.floor(Date.now() / 1000))) {
+        return { ok: false, reason: 'yetkinin süresi geçmiş' };
+      }
+
+      // BU ÖDEME BANA MI? Stealth adres benim meta-adresimden mi türetilmiş?
+      // Geçici pubkey yetkiyle geldiği için bunu görüntüleme anahtarıyla
+      // doğrulayabiliyoruz — başkasına yapılmış ödeme burada elenir.
+      if (config.viewingPrivateKey && config.spendingPublicKey) {
+        const mine = checkAnnouncement(
+          { viewingPrivateKey: config.viewingPrivateKey, spendingPublicKey: config.spendingPublicKey },
+          auth.ephemeralPublicKey,
+        );
+        if (!mine || mine.stealthAddress.toLowerCase() !== auth.to.toLowerCase()) {
+          return { ok: false, reason: 'stealth adres bu agent\'ın meta-adresinden türetilmemiş' };
+        }
+      }
+
+      // İmza gerçekten ödeyene mi ait? EIP-3009 digest'ini yeniden kurup kurtar.
+      const signer = await recoverTransferAuthorizationSigner(config.provider, config.usdcAddress, auth);
+      if (signer.toLowerCase() !== auth.from.toLowerCase()) {
+        return { ok: false, reason: `imza ${signer} veriyor, beyan edilen ödeyen ${auth.from}` };
+      }
+
+      // Bakiye yetiyor mu? Yetmiyorsa iş yapıp sonra tahsil edememe riski var.
+      const usdc = new Contract(config.usdcAddress, USDC_ABI, config.provider);
+      const balance = (await usdc.getFunction('balanceOf')(auth.from)) as bigint;
+      if (balance < BigInt(auth.value)) {
+        return { ok: false, reason: `ödeyenin bakiyesi yetersiz (${balance})` };
+      }
+
+      return { ok: true };
     },
 
     async settle(proof: AuthProof, jobVerifiedTx: string): Promise<Receipt> {

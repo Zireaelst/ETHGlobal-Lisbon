@@ -56,6 +56,43 @@ export const TaskEnvelopeSchema = z.object({
 });
 export type TaskEnvelope = z.infer<typeof TaskEnvelopeSchema>;
 
+/** Ödeme rayı kimliği — iki backend, tek arayüz. */
+export const PaymentRailSchema = z.enum(['base-stealth', 'hedera-x402']);
+
+/**
+ * Bob'un HTTP 402 yanıtı: "önce ödeme yetkisi ver".
+ *
+ * `recipient` bir ADRES DEĞİL, bir TARİF: Base'de Bob'un ERC-5564 meta-adresi
+ * (Alice ondan TAZE bir stealth adres türetir — Bob bunu önceden bilemez),
+ * Hedera'da düz hesap kimliği.
+ */
+export const PaymentRequirementsSchema = z.object({
+  rail: PaymentRailSchema,
+  intentHash: Bytes32Schema,
+  amount: UintStringSchema,
+  asset: z.string().min(1),
+  decimals: z.number().int().min(0).max(18),
+  recipient: z.string().min(1),
+  network: z.string().min(1),
+  expiresAt: z.number().int().positive(),
+});
+export type PaymentRequirements = z.infer<typeof PaymentRequirementsSchema>;
+
+/**
+ * Alice'in imzaladığı, HENÜZ GÖNDERİLMEMİŞ ödeme yetkisi.
+ *
+ * `payload` raya özgü (Base: EIP-3009 imzası; Hedera: kısmi imzalı transfer).
+ * Bob bunu doğrular, işi yapar, `JobVerified` sonrası gönderir.
+ */
+export const PaymentAuthorizationSchema = z.object({
+  rail: PaymentRailSchema,
+  intentHash: Bytes32Schema,
+  payTo: z.string().min(1),
+  amount: UintStringSchema,
+  payload: z.unknown(),
+});
+export type PaymentAuthorization = z.infer<typeof PaymentAuthorizationSchema>;
+
 /**
  * Tel üzerindeki dış gövde: POST /task
  *
@@ -71,6 +108,14 @@ export const TaskRequestSchema = z.object({
   intentHash: Bytes32Schema,
   replyPubKey: EciesPubKeySchema,
   cipher: z.string().min(1),
+  /**
+   * Ödeme yetkisi. YOKSA Bob 402 döner ve İŞ YAPMAZ (CLAUDE.md §7).
+   *
+   * Bu bir EMANET (escrow) değil, imzalanmış bir izindir: para hâlâ Alice'in
+   * cüzdanında. Bob onu tutar, işi yapar ve `JobVerified` çıktıktan SONRA
+   * gönderir. Fraud koşusunda `JobVerified` hiç oluşmaz → yetki hiç gönderilmez.
+   */
+  payment: PaymentAuthorizationSchema.optional(),
 });
 export type TaskRequest = z.infer<typeof TaskRequestSchema>;
 

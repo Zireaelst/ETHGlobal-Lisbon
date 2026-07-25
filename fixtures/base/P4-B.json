@@ -1,16 +1,16 @@
 {
-  "capturedAt": "2026-07-25T07:37:05.233Z",
-  "stealthAddress": "0x203624d8A65c980e68c116b025bd6a48995348B1",
-  "settleTx": "0xc87553f51a564aa8c5c36b1437203bce3e99c198baca00764ec781461c672aab",
+  "capturedAt": "2026-07-25T08:35:25.638Z",
+  "stealthAddress": "0x6D6A6967e8812D576B928DB8A786f7BC216ED012",
+  "settleTx": "0xbe4cd5d8ab8a775082206f520c8041ca1f573a8a690f59ded237a602fe74277e",
   "amount": "1000000",
   "announcement": {
-    "stealthAddress": "0x203624d8A65c980e68c116b025bd6a48995348B1",
-    "ephemeralPublicKey": "0x0203d6da4d484ac568a22c690f1eddfba360c88f950f233397bcb41edcf4bdda5c",
-    "viewTag": 246
+    "stealthAddress": "0x6D6A6967e8812D576B928DB8A786f7BC216ED012",
+    "ephemeralPublicKey": "0x027800e6d0f56a6e78c181b8bae77861519eeb88b3c396f04bc45a15a55f0692f0",
+    "viewTag": 39
   },
   "sweep": {
-    "txHash": "0x4a07fda8562e99e9b60128e3d8864997fbeae09eadd19d79118f11fc72b0518c",
-    "sink": "0xb152D1e6F5cE8b9f5c1AE658fd8d26CC80969C91",
+    "txHash": "0xce35b30e00a8cda604164fd46a2a6993c87c29b0bd6ff157414da48a500f1254",
+    "sink": "0xFD0fa94880D450649dB9913b83eD1e338e3452f1",
     "amount": "1000000"
   },
   "unlinkability": {
@@ -19,8 +19,8 @@
     "bobAddress": "0x4F5Cd20a4a3fBc9957f8D2A8D27D658B51Fda326"
   },
   "ordering": {
-    "jobVerifiedBlock": 44598371,
-    "settleBlock": 44598372
+    "jobVerifiedBlock": 44600121,
+    "settleBlock": 44600121
   },
   "fraud": {
     "code": "MatchFalse",

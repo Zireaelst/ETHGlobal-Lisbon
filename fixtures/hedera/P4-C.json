@@ -1,9 +1,19 @@
 {
-  "capturedAt": "2026-07-25T07:37:40.607Z",
+  "capturedAt": "2026-07-25T08:33:28.255Z",
+  "paymentGate": {
+    "rail": "hedera-x402",
+    "intentHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "amount": "1000000",
+    "asset": "USDC",
+    "decimals": 6,
+    "recipient": "0.0.9738447",
+    "network": "hedera:testnet",
+    "expiresAt": 1784968709120
+  },
   "honest": {
     "fraudMode": "none",
-    "signedIntentHash": "0x78a8adddbde9dbd0441735541a1cbb03c95608fc823b21ed1194f549a2579b3a",
-    "bodyIntentHash": "0x78a8adddbde9dbd0441735541a1cbb03c95608fc823b21ed1194f549a2579b3a",
+    "signedIntentHash": "0x6f23a3504e0a22d3bb18b261aec85c0632f63c8e3337217211e04202325bd16a",
+    "bodyIntentHash": "0x6f23a3504e0a22d3bb18b261aec85c0632f63c8e3337217211e04202325bd16a",
     "match": true,
     "clientSigOk": true,
     "bindingSigOk": true,
@@ -13,18 +23,18 @@
     "code": 0,
     "codeName": "OK",
     "verified": true,
-    "totalMs": 2006,
+    "totalMs": 2405,
     "discoveredAgentId": "8429",
-    "txHash": "0xa256a6757ebf76b0bc8531d6835d748c025c0a8ce416c8c6fae98878d4cc66e0",
-    "blockNumber": 44598388,
-    "basescanUrl": "https://sepolia.basescan.org/tx/0xa256a6757ebf76b0bc8531d6835d748c025c0a8ce416c8c6fae98878d4cc66e0",
+    "txHash": "0x1bcf1d5570f6a5150ca1f3c888410fd692107eca2de6053a926ae8f633640389",
+    "blockNumber": 44600063,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x1bcf1d5570f6a5150ca1f3c888410fd692107eca2de6053a926ae8f633640389",
     "payment": {
       "rail": "hedera-x402",
       "quoted": true,
       "authorized": true,
       "settled": true,
-      "txRef": "0.0.7162784@1784965056.663933712",
-      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7162784-1784965056-663933712"
+      "txRef": "0.0.7162784@1784968406.765368001",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7162784-1784968406-765368001"
     },
     "timeline": {
       "topicId": "0.0.9738448",
@@ -41,8 +51,8 @@
   "mirrorTransaction": {
     "batch_key": null,
     "bytes": null,
-    "charged_tx_fee": 284886,
-    "consensus_timestamp": "1784965065.434619104",
+    "charged_tx_fee": 284994,
+    "consensus_timestamp": "1784968413.695591104",
     "entity_id": null,
     "high_volume": false,
     "high_volume_pricing_multiplier": 0,
@@ -51,24 +61,24 @@
     "memo_base64": "",
     "name": "CRYPTOTRANSFER",
     "nft_transfers": [],
-    "node": "0.0.3",
+    "node": "0.0.5",
     "nonce": 0,
     "parent_consensus_timestamp": null,
     "result": "SUCCESS",
     "scheduled": false,
     "staking_reward_transfers": [],
     "token_transfers": [],
-    "transaction_hash": "Zv7Gy5xdWbQFdFwHqO6NVonhowZQ86Z7krWiqq2dfbVP1Ks+x3YYBHi0LXGvnwpQ",
-    "transaction_id": "0.0.7162784-1784965056-663933712",
+    "transaction_hash": "CbFs8xqj+7rOxi+4kJvIKrOT6KYth0VALl/pUO70MqR3gVDQ09GnNJw0HjaEpH0y",
+    "transaction_id": "0.0.7162784-1784968406-765368001",
     "transfers": [
       {
         "account": "0.0.802",
-        "amount": 284886,
+        "amount": 284994,
         "is_approval": false
       },
       {
         "account": "0.0.7162784",
-        "amount": -284886,
+        "amount": -284994,
         "is_approval": false
       },
       {
@@ -83,12 +93,12 @@
       }
     ],
     "valid_duration_seconds": "120",
-    "valid_start_timestamp": "1784965056.663933712"
+    "valid_start_timestamp": "1784968406.765368001"
   },
   "fraud": {
     "fraudMode": "substitute",
-    "signedIntentHash": "0x0794b9d041af43f4cb42e09993d8382f21a55e2fbf484f8a21a42a3f5950d5fb",
-    "bodyIntentHash": "0x0794b9d041af43f4cb42e09993d8382f21a55e2fbf484f8a21a42a3f5950d5fb",
+    "signedIntentHash": "0x283ac66be26064bbe49d43d1af4521a7c270af0a32bc0009796437876b6f3979",
+    "bodyIntentHash": "0x283ac66be26064bbe49d43d1af4521a7c270af0a32bc0009796437876b6f3979",
     "match": false,
     "clientSigOk": false,
     "bindingSigOk": true,
@@ -98,13 +108,13 @@
     "code": 5,
     "codeName": "MatchFalse",
     "verified": false,
-    "totalMs": 1634,
+    "totalMs": 2574,
     "discoveredAgentId": "8429",
-    "txHash": "0x29ab00e201e0f801a59fbc8676db5a575a7c2f024edd99630b6e7769f49b4df7",
-    "blockNumber": 44598392,
-    "basescanUrl": "https://sepolia.basescan.org/tx/0x29ab00e201e0f801a59fbc8676db5a575a7c2f024edd99630b6e7769f49b4df7",
+    "txHash": "0xec07cf327759be3eafa8afa88b1b685a7b87edc21b63e1c51d0234400c15e6c7",
+    "blockNumber": 44600068,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0xec07cf327759be3eafa8afa88b1b685a7b87edc21b63e1c51d0234400c15e6c7",
     "payment": {
-      "rail": "hedera-x402",
+      "rail": "x402",
       "quoted": true,
       "authorized": true,
       "settled": false,

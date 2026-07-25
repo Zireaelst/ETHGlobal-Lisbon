@@ -18,6 +18,7 @@
 //        cipher: enclave'in Alice'in anahtarına şifrelediği sonuç (Bob çözemez)
 //        bodyHex/seal: Bob'un zincire gönderilmesini İDDİA ETTİĞİ artefaktlar —
 //        Alice ikisini karşılaştırıp kurcalamayı görebilir
+//   POST /settle                        — { intentHash, jobVerifiedTx } (Bob tetikler)
 //   POST /admin/fraud-mode              — demo fraud butonu
 //   GET  /health
 
@@ -35,9 +36,11 @@ import {
   parseOrThrow,
   type AgentCard,
   type ComputeBackend,
+  type PaymentRequirements,
   type Seal,
 } from '@ca/shared';
 import { recoverBindingSigner, runBinding, type BindingRequest } from '@ca/bob-binding';
+import type { AuthProof, PaymentBackend, Receipt } from '@ca/payment';
 import {
   applyPostBindingFraud,
   applyPreBindingFraud,
@@ -83,6 +86,19 @@ export interface BobAgentOptions {
    * değişmeyecek (compute.ts sınırının varlık sebebi bu).
    */
   compute?: ComputeBackend;
+  /**
+   * Ödeme kapısı. VERİLİRSE Bob ödeme yetkisi olmadan İŞ YAPMAZ — `/task` 402 döner
+   * (CLAUDE.md §7: "public HTTP server: 402, forwards work to the Tapp").
+   *
+   * Yetkiyi BOB tutar ve `JobVerified` çıktıktan SONRA `POST /settle` ile kendisi
+   * gönderir. Ekonomik teşvik zaten onda: doğrulama olmadan parasını alamıyor.
+   */
+  payment?: {
+    backend: PaymentBackend;
+    /** 402'de duyurulan alıcı tarifi: Base'de meta-adres, Hedera'da hesap kimliği. */
+    recipient: string;
+    network: string;
+  };
   /** Kartın `endpoint` alanı; verilmezse dinlenen adresten türetilir. */
   publicUrl?: string;
   log?: (line: string) => void;
@@ -129,6 +145,10 @@ export interface StoredResult {
    */
   bodyHex: string;
   seal: Seal;
+  /** Alice'in imzaladığı, HENÜZ GÖNDERİLMEMİŞ ödeme yetkisi. Bob tutar. */
+  payment?: AuthProof;
+  /** Settle edildiyse makbuz — tekrar settle denemesi buna düşer. */
+  settled?: Receipt;
   receivedAt: number;
 }
 
@@ -154,6 +174,13 @@ class HttpError extends Error {
     message: string,
   ) {
     super(message);
+  }
+}
+
+/** HTTP 402 — gövdede ödeme şartları taşınır, iş YAPILMAZ. */
+class PaymentRequiredError extends HttpError {
+  constructor(readonly requirements: PaymentRequirements) {
+    super(402, 'ödeme yetkisi gerekli');
   }
 }
 
@@ -195,6 +222,22 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
   const sealId = keccak256(toUtf8Bytes(`seal/${expectedBindingSigner}/${options.agentId}`)).slice(0, 18);
   const computeBackend = options.compute ?? createNoComputeBackend();
 
+  /** Bob'un 402 gövdesi: fiyat + alıcı TARİFİ (adres değil — Base'de meta-adres). */
+  const paymentRequirementsFor = (intentHash: string): PaymentRequirements => {
+    const p = options.payment;
+    if (!p) throw new Error('ödeme kapısı yapılandırılmamış');
+    return {
+      rail: p.backend.rail,
+      intentHash,
+      amount: options.price.amount,
+      asset: options.price.asset,
+      decimals: options.price.decimals,
+      recipient: p.recipient,
+      network: p.network,
+      expiresAt: Date.now() + 300_000,
+    };
+  };
+
   const url = () => options.publicUrl ?? `http://127.0.0.1:${boundPort}`;
 
   const card = (): AgentCard =>
@@ -233,6 +276,24 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
 
     if (request.to !== options.agentId) {
       throw new HttpError(404, `bu agent ${options.agentId}, paket ${request.to} için gönderilmiş`);
+    }
+
+    // --- ÖDEME KAPISI: yetki yoksa 402, iş YOK ---
+    let acceptedPayment: AuthProof | undefined;
+    if (options.payment) {
+      if (!request.payment) {
+        throw new PaymentRequiredError(paymentRequirementsFor(request.intentHash));
+      }
+      const proof = request.payment as unknown as AuthProof;
+      const check = await options.payment.backend.verifyAuthorization(proof, {
+        amount: options.price.amount,
+        intentHash: request.intentHash,
+      });
+      if (!check.ok) {
+        throw new HttpError(402, `ödeme yetkisi kabul edilmedi: ${check.reason ?? 'bilinmiyor'}`);
+      }
+      acceptedPayment = proof;
+      log(`[bob] ödeme yetkisi kabul edildi (${proof.rail}) — para HENÜZ hareket etmedi`);
     }
 
     // BURADA ÇÖZME YOK. Anahtar enclave'de; dış katmanın eline yalnızca ciphertext
@@ -302,6 +363,8 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
       // Hile uygulandıysa burada Bob'un DEĞİŞTİRDİĞİ hâli durur.
       bodyHex: finalBinding.bodyHex,
       seal: finalBinding.seal,
+      // Yetki BOB'DA durur; JobVerified çıkınca `POST /settle` ile gönderilir.
+      payment: acceptedPayment,
       receivedAt: Date.now(),
     });
 
@@ -355,6 +418,39 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
           sendJson(res, 200, { mode: fraudMode });
           return;
         }
+        // Settlement'ı BOB tetikler — ekonomik teşvik onda. Kapı `assertJobVerified`:
+        // doğrulanmamış iş için para serbest bırakılmaz (payment/guard.ts).
+        if (req.method === 'POST' && path === '/settle') {
+          if (!options.payment) throw new HttpError(400, 'ödeme kapısı yapılandırılmamış');
+          const body = await readBody(req);
+          let parsed: { intentHash?: string; jobVerifiedTx?: string };
+          try {
+            parsed = JSON.parse(body) as typeof parsed;
+          } catch {
+            throw new HttpError(400, 'gövde geçerli JSON değil');
+          }
+          if (!parsed.intentHash || !parsed.jobVerifiedTx) {
+            throw new HttpError(400, 'intentHash ve jobVerifiedTx zorunlu');
+          }
+          const stored = results.get(parsed.intentHash);
+          if (!stored) throw new HttpError(404, 'bu intentHash için iş yok');
+          if (!stored.payment) throw new HttpError(400, 'bu iş için saklanmış ödeme yetkisi yok');
+          if (stored.settled) {
+            sendJson(res, 200, { alreadySettled: true, receipt: stored.settled });
+            return;
+          }
+          try {
+            const receipt = await options.payment.backend.settle(stored.payment, parsed.jobVerifiedTx);
+            stored.settled = receipt;
+            log(`[bob] settle edildi: ${receipt.explorerUrl}`);
+            sendJson(res, 200, { receipt });
+          } catch (err) {
+            // Doğrulanmamış iş → SettlementNotAuthorizedError. Bu bir hata değil,
+            // sistemin doğru davranışı: "ödeme asla settle olmadı".
+            throw new HttpError(402, err instanceof Error ? err.message : String(err));
+          }
+          return;
+        }
         if (req.method === 'GET' && path.startsWith('/result/')) {
           const stored = results.get(path.slice('/result/'.length));
           if (!stored) {
@@ -366,6 +462,11 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
         }
         sendJson(res, 404, { error: 'NOT_FOUND' });
       } catch (err) {
+        // 402: gövde ödeme şartlarını taşır — istemci bunu okuyup yetkilendirir.
+        if (err instanceof PaymentRequiredError) {
+          sendJson(res, 402, { error: 'PAYMENT_REQUIRED', accepts: [err.requirements] });
+          return;
+        }
         if (err instanceof HttpError) {
           sendJson(res, err.status, { error: 'BAD_REQUEST', message: err.message });
           return;

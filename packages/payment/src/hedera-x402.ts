@@ -53,6 +53,14 @@ export interface HederaX402Config {
    */
   verifierProvider: JsonRpcProvider;
   verifierAddress: string;
+  /**
+   * Bu agent'ın ödeme aldığı Hedera hesabı.
+   *
+   * Bob tarafı gelen yetkinin GERÇEKTEN kendisine ödeme yaptığını kontrol etmek
+   * için kullanır — başkasına yapılmış bir ödeme yetkisiyle iş yaptırılamasın.
+   * Alice tarafında gerekmez.
+   */
+  payoutAccountId?: string;
 }
 
 /**
@@ -139,6 +147,27 @@ export function createHederaX402Backend(config: HederaX402Config): PaymentBacken
         amount: quote.amount,
         payload: { requirements, paymentPayload } satisfies HederaAuthPayload,
       };
+    },
+
+    async verifyAuthorization(proof, expected) {
+      if (proof.rail !== 'hedera-x402') return { ok: false, reason: `yanlış ray: ${proof.rail}` };
+      if (proof.intentHash.toLowerCase() !== expected.intentHash.toLowerCase()) {
+        return { ok: false, reason: 'yetki başka bir işe ait' };
+      }
+      if (proof.amount !== expected.amount) {
+        return { ok: false, reason: `tutar ${proof.amount}, beklenen ${expected.amount}` };
+      }
+      // Alıcı BU agent olmalı — başka birine ödeme yetkisi bize iş yaptırmaz.
+      if (proof.payTo !== config.payoutAccountId) {
+        return { ok: false, reason: `alıcı ${proof.payTo}, beklenen ${config.payoutAccountId}` };
+      }
+      // Facilitator'a verify ettir: imza geçerli mi, bakiye yeterli mi. Para HAREKET ETMEZ.
+      await ensureInitialized();
+      const { requirements, paymentPayload } = proof.payload as HederaAuthPayload;
+      const result = await resourceServer.verifyPayment(paymentPayload as never, requirements as never);
+      return result.isValid
+        ? { ok: true }
+        : { ok: false, reason: `facilitator reddetti: ${result.invalidReason ?? 'bilinmiyor'}` };
     },
 
     async settle(proof: AuthProof, jobVerifiedTx: string): Promise<Receipt> {

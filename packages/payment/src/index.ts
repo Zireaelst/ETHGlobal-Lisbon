@@ -67,11 +67,24 @@ export interface Receipt {
   jobVerifiedBlock?: number;
 }
 
+/** Bob'un yetkiyi kabul edip etmeme kararı. */
+export interface AuthorizationCheck {
+  ok: boolean;
+  reason?: string;
+}
+
 export interface PaymentBackend {
   readonly rail: PaymentRail;
   quote(request: QuoteRequest): Promise<PaymentQuote>;
   /** Alice yetkilendirir — para hareket etmez. */
   authorize(quote: PaymentQuote): Promise<AuthProof>;
+  /**
+   * BOB tarafı: gelen yetki gerçekten benim 402'me mi cevap veriyor?
+   *
+   * İşi yapmadan ÖNCE çalışır. Tutar, alıcı ve imza kontrol edilir; para hâlâ
+   * hareket etmez. Bu, "yabancı biri bedava iş yaptıramasın" kapısıdır.
+   */
+  verifyAuthorization(proof: AuthProof, expected: { amount: string; intentHash: string }): Promise<AuthorizationCheck>;
   /**
    * Parayı hareket ettir. `jobVerifiedTx` ZORUNLU ve doğrulanır.
    * @throws SettlementNotAuthorizedError iş doğrulanmadıysa

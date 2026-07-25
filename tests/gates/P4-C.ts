@@ -150,6 +150,83 @@ gate.check('Signer handle serileştirildiğinde anahtar SIZDIRMIYOR', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 2b. 402 KAPISI — ödeme yetkisi olmadan iş YOK (CLAUDE.md §7)
+// ---------------------------------------------------------------------------
+gate.check('Ödemesiz /task 402 dönüyor ve Bob İŞ YAPMIYOR', async () => {
+  const { ensureBob } = await import('../../scripts/demo.js');
+  const { eciesPublicKeyOf, encryptFor } = await import('../../packages/shared/src/index.js');
+  const bob = await ensureBob(() => {}, 'hedera');
+  const before = bob.processed.length;
+
+  const res = await fetch(`${bob.url()}/task`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to: requireEnv('BOB_AGENT_ID'),
+      intentHash: `0x${'11'.repeat(32)}`,
+      replyPubKey: eciesPublicKeyOf(requireEnv('ALICE_ECIES_PRIV')),
+      cipher: await encryptFor(eciesPublicKeyOf(requireEnv('BOB_ECIES_PRIV')), { v: 1 }),
+    }),
+  });
+
+  if (res.status !== 402) return fail(`ödemesiz istek ${res.status} döndü, 402 bekleniyordu`);
+  const body = (await res.json()) as { accepts?: Array<{ amount: string; recipient: string; rail: string }> };
+  const req = body.accepts?.[0];
+  if (!req) return fail('402 gövdesinde ödeme şartları yok');
+
+  // ASIL KANIT: iş sayacı artmadı — Bob paketi enclave'e bile göndermedi.
+  if (bob.processed.length !== before) return fail('402 döndü ama Bob yine de iş yaptı');
+
+  evidence.paymentGate = req;
+  return pass(
+    [
+      `402 · ${req.amount} ${(req as { asset?: string }).asset ?? ''} → ${req.recipient} (${req.rail})`,
+      'işlenmiş iş sayacı ARTMADI — yabancı bedava iş yaptıramıyor',
+    ].join('\n'),
+  );
+});
+
+gate.check('Yanlış tutarlı ödeme yetkisi reddediliyor', async () => {
+  const { makePaymentBackend } = await import('../../scripts/demo.js');
+  const bobSide = await makePaymentBackend('hedera', true);
+  const quote = await bobSide.quote({
+    intentHash: `0x${'22'.repeat(32)}`,
+    amount: '1',
+    recipient: process.env.BOB_HEDERA_ACCOUNT ?? cfg.HEDERA_OPERATOR_ID,
+  });
+  const proof = await bobSide.authorize(quote);
+
+  // Bob'un beklediği fiyat 1000000; yetki 1 tinybar için imzalanmış.
+  const check = await bobSide.verifyAuthorization(proof, {
+    amount: '1000000',
+    intentHash: `0x${'22'.repeat(32)}`,
+  });
+  return check.ok
+    ? fail('1 tinybarlık yetki 1000000 için kabul edildi')
+    : pass(`reddedildi: ${check.reason}`);
+});
+
+gate.check('Başka bir işe ait yetki reddediliyor', async () => {
+  const { makePaymentBackend } = await import('../../scripts/demo.js');
+  const bobSide = await makePaymentBackend('hedera', true);
+  const quote = await bobSide.quote({
+    intentHash: `0x${'33'.repeat(32)}`,
+    amount: '1000000',
+    recipient: process.env.BOB_HEDERA_ACCOUNT ?? cfg.HEDERA_OPERATOR_ID,
+  });
+  const proof = await bobSide.authorize(quote);
+
+  // Aynı tutar ama BAŞKA bir intentHash — bir işin yetkisi başka işe geçerli olmamalı.
+  const check = await bobSide.verifyAuthorization(proof, {
+    amount: '1000000',
+    intentHash: `0x${'44'.repeat(32)}`,
+  });
+  return check.ok
+    ? fail('bir işin yetkisi başka bir iş için kabul edildi')
+    : pass(`reddedildi: ${check.reason}`);
+});
+
+// ---------------------------------------------------------------------------
 // 3. Canlı ödeme — tek env değişikliğiyle
 // ---------------------------------------------------------------------------
 gate.check('PAYMENT_BACKEND=hedera ile dürüst iş settle oluyor', async () => {

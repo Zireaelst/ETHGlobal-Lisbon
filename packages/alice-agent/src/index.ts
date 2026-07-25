@@ -14,6 +14,8 @@ import {
   type Constraints,
   type EchoResult,
   type Intent,
+  type PaymentAuthorization,
+  type PaymentRequirements,
   type Seal,
   agentIdToBytes32,
   buildIntentHash,
@@ -26,6 +28,7 @@ import {
   signIntent,
   type DiscoveredAgent,
 } from '@ca/shared';
+import type { PaymentBackend } from '@ca/payment';
 import { Wallet } from 'ethers';
 
 export interface AliceJobOptions {
@@ -51,6 +54,11 @@ export interface AliceJobOptions {
   nonce?: bigint;
   /** Unix saniye. Verilmezse +1 saat. */
   deadline?: bigint;
+  /**
+   * Ödeme backend'i. Bob 402 dönerse Alice bununla yetkilendirir.
+   * Verilmezse ve Bob ödeme isterse iş HATA ile durur — sessizce devam etmez.
+   */
+  payment?: { backend: PaymentBackend };
   /** Testlerin gönderilen paketi bozabilmesi için kanca (fraud/mutasyon senaryoları). */
   tamper?: (envelope: Record<string, unknown>) => Record<string, unknown>;
   fetchImpl?: typeof fetch;
@@ -79,6 +87,8 @@ export interface AliceJobReport {
   claimedSeal: Seal;
   /** Bob çıkan imzayı/gövdeyi değiştirdi mi? */
   sealTampered: boolean;
+  /** Bob 402 döndü mü — yani ödeme kapısı gerçekten çalıştı mı? */
+  paymentRequired: boolean;
 }
 
 /** Bob'un keşif kartını çek ve doğrula. */
@@ -170,16 +180,44 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
   // `intentHash` ve `replyPubKey` şifre DIŞINDA gidiyor: Bob'un dış katmanı paketi
   // çözemiyor (anahtar enclave'de) ama işi yönlendirip sonucu teslim edebilmeli.
   // Sızıntı yok — ikisi de zaten herkese açık (zincirde ve Alice'in 8004 kaydında).
-  const postRes = await fetchImpl(`${base}/task`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      to: card.agentId,
-      intentHash,
-      replyPubKey: eciesPublicKeyOf(options.eciesPrivateKey),
-      cipher: sentCipher,
-    }),
-  });
+  const taskBody = {
+    to: card.agentId,
+    intentHash,
+    replyPubKey: eciesPublicKeyOf(options.eciesPrivateKey),
+    cipher: sentCipher,
+  };
+  const send = (payment?: unknown) =>
+    fetchImpl(`${base}/task`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payment ? { ...taskBody, payment } : taskBody),
+    });
+
+  // x402 akışı: önce ödemesiz dene. Bob 402 dönerse yetkilendirip TEKRAR gönder.
+  let postRes = await send();
+  let paymentAuthorized: PaymentAuthorization | undefined;
+
+  if (postRes.status === 402) {
+    if (!options.payment) {
+      throw new Error('Bob ödeme istedi (402) ama Alice\'e ödeme backend\'i verilmedi');
+    }
+    const body = (await postRes.json()) as { accepts?: PaymentRequirements[] };
+    const requirements = body.accepts?.[0];
+    if (!requirements) throw new Error('402 yanıtında ödeme şartları yok');
+    log(`[alice] 402 alındı: ${requirements.amount} ${requirements.asset} (${requirements.rail})`);
+
+    // Yetkilendirme — PARA HAREKET ETMEZ. Bob bunu tutar, JobVerified sonrası gönderir.
+    const quote = await options.payment.backend.quote({
+      intentHash: requirements.intentHash,
+      amount: requirements.amount,
+      recipient: requirements.recipient,
+    });
+    paymentAuthorized = (await options.payment.backend.authorize(quote)) as unknown as PaymentAuthorization;
+    log('[alice] ödeme yetkisi imzalandı — para henüz Alice\'te');
+
+    postRes = await send(paymentAuthorized);
+  }
+
   if (postRes.status !== 202) {
     const body = await postRes.text().catch(() => '');
     throw new Error(`/task 202 dönmedi: HTTP ${postRes.status} ${body}`);
@@ -222,6 +260,7 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
     claimedBodyHex: claimed.bodyHex,
     claimedSeal: claimed.seal,
     sealTampered,
+    paymentRequired: paymentAuthorized !== undefined,
   };
 }
 
