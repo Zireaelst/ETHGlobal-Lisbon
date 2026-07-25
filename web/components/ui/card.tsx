@@ -1,19 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border border-border bg-fill p-7 backdrop-blur-sm transition-colors duration-500",
-        "hover:border-foreground/40",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
 export function CardTitle({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div

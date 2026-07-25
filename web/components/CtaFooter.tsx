@@ -1,15 +1,15 @@
 import { GitBranch } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
-import { ButtonLink } from "@/components/ui/button";
+import { GlowButton } from "@/components/ui/glow-button";
 
 export default function CtaFooter() {
   return (
     <footer className="section flex flex-col items-center gap-7 px-8 py-24 text-center sm:px-16 sm:py-32">
       <Reveal>
-        <ButtonLink href="#">
+        <GlowButton href="#">
           <GitBranch className="h-4 w-4" strokeWidth={1.5} />
           Explore the repo
-        </ButtonLink>
+        </GlowButton>
       </Reveal>
 
       <Reveal delay={120}>

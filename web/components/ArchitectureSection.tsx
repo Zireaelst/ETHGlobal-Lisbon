@@ -1,13 +1,16 @@
+"use client";
+
 import { ArrowRight } from "lucide-react";
+import { motion } from "motion/react";
 import { Reveal } from "@/components/Reveal";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 const NODES = [
-  { label: "Alice-agent", detail: "discovers · signs intent · pays" },
-  { label: "Bob's Tapp (TEE #1)", detail: "recomputes hash · checks match" },
-  { label: "0G Sealed Inference (TEE #2)", detail: "runs the model" },
-  { label: "Verifier.sol", detail: "checks both signatures on-chain" },
+  { label: "Alice-agent", detail: "discovers · signs intent · pays", tint: "warm" as const },
+  { label: "Bob's Tapp (TEE #1)", detail: "recomputes hash · checks match", tint: "cool" as const },
+  { label: "0G Sealed Inference (TEE #2)", detail: "runs the model", tint: "cool" as const },
+  { label: "Verifier.sol", detail: "checks both signatures on-chain", tint: "warm" as const },
 ];
 
 export default function ArchitectureSection() {
@@ -23,20 +26,26 @@ export default function ArchitectureSection() {
       >
         {NODES.map((node, i) => (
           <div key={node.label} className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-center">
-            <Card className="min-w-[180px] p-5 hover:bg-fill">
+            <SpotlightCard tint={node.tint} className="min-w-[180px] p-5">
               <div className="font-mono text-xs tracking-wide text-foreground">
                 {node.label}
               </div>
               <div className="mt-2 font-body text-[13px] font-extralight text-muted-foreground">
                 {node.detail}
               </div>
-            </Card>
+            </SpotlightCard>
             {i < NODES.length - 1 && (
-              <ArrowRight
-                aria-hidden="true"
-                strokeWidth={1.5}
-                className="h-5 w-5 shrink-0 rotate-90 text-cool self-center lg:rotate-0"
-              />
+              <motion.div
+                className="flex shrink-0 items-center justify-center self-center"
+                animate={{ x: [0, 6, 0] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }}
+              >
+                <ArrowRight
+                  aria-hidden="true"
+                  strokeWidth={1.5}
+                  className="h-5 w-5 rotate-90 text-cool lg:rotate-0"
+                />
+              </motion.div>
             )}
           </div>
         ))}
