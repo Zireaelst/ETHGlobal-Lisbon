@@ -26,7 +26,8 @@
     "demo:base": "tsx scripts/demo-cli.ts",
     "gate:P3-D": "tsx tests/gates/P3-D.ts",
     "gate:P4-A": "tsx tests/gates/P4-A.ts",
-    "gate:P4-C": "tsx tests/gates/P4-C.ts"
+    "gate:P4-C": "tsx tests/gates/P4-C.ts",
+    "gate:P4-D": "tsx tests/gates/P4-D.ts"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "^0.98.1",

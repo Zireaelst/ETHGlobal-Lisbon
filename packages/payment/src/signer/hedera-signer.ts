@@ -17,6 +17,7 @@
 // içi KMS çağrısıyla değiştirilse çağıranların hiçbiri değişmez.
 
 import { createClientHederaSigner, PrivateKey } from '@x402/hedera';
+import { Client, PrivateKey as HieroPrivateKey } from '@hiero-ledger/sdk';
 
 const REDACTED = '[REDACTED — delegated signer içinde tutuluyor]';
 
@@ -71,6 +72,28 @@ export function createHederaSigner(options: HederaSignerOptions): HederaSignerHa
   };
 
   return handle as HederaSignerHandle;
+}
+
+/**
+ * HCS yazımı için operatör `Client`'ı — anahtar yine bu modülde kalır.
+ *
+ * Topic'e mesaj göndermek işlem ücreti gerektiriyor, yani bir operatör anahtarı
+ * şart. Onu çağırana geçirmek P4-C'nin delegated-signing sınırını delerdi; bunun
+ * yerine yapılandırılmış Client'ı döndürüyoruz. Client anahtarı dışarı vermez.
+ */
+export function createHederaOperatorClient(options: {
+  accountId: string;
+  keyEnvVar?: string;
+  network?: 'testnet' | 'mainnet';
+}): Client {
+  const envVar = options.keyEnvVar ?? 'HEDERA_OPERATOR_KEY';
+  const raw = process.env[envVar];
+  if (!raw || raw.trim() === '') {
+    throw new Error(`delegated signer: ${envVar} boş — HCS yazımı için operatör anahtarı gerekli`);
+  }
+  const client = (options.network ?? 'testnet') === 'testnet' ? Client.forTestnet() : Client.forMainnet();
+  client.setOperator(options.accountId, HieroPrivateKey.fromStringECDSA(raw.trim()));
+  return client;
 }
 
 /** Bir metnin anahtar sızdırıp sızdırmadığını denetlemek için (kapı kullanıyor). */

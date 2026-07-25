@@ -49,6 +49,8 @@ export interface DemoOptions {
    * Kural: settlement YALNIZCA JobVerified'tan sonra — fraud koşusunda hiç çağrılmaz.
    */
   paymentRail?: 'hedera' | 'base' | 'none';
+  /** HCS zaman çizelgesi. Varsayılan açık; latency ölçen kapılar kapatabilir. */
+  timeline?: boolean;
   log?: (line: string) => void;
 }
 
@@ -86,9 +88,34 @@ export interface DemoReport {
     txRef?: string;
     explorerUrl?: string;
   };
+  /** HCS zaman çizelgesi sonucu. */
+  timeline?: {
+    topicId: string;
+    hashscanUrl: string;
+    /** Yazılan aşamalar, gönderim sırasıyla. */
+    stages: string[];
+  };
 }
 
 let cachedBob: BobAgent | undefined;
+
+/** HCS zaman çizelgesini aç. Sırları verip kaza eseri sızıntıyı ağa çıkmadan yakalat. */
+async function openTimeline(brief: string, data: string, log: (l: string) => void) {
+  const cfg = loadConfig();
+  const topicId = process.env.HEDERA_TOPIC_ID;
+  if (!topicId) {
+    log('[hcs] HEDERA_TOPIC_ID boş — zaman çizelgesi atlandı');
+    return undefined;
+  }
+  const { createHcsTimeline } = await import('../packages/payment/src/hcs-timeline.js');
+  const { createHederaOperatorClient } = await import('../packages/payment/src/signer/hedera-signer.js');
+  return createHcsTimeline({
+    client: createHederaOperatorClient({ accountId: cfg.HEDERA_OPERATOR_ID }),
+    topicId,
+    secrets: [brief, data],
+    log,
+  });
+}
 
 /** Bob'u zincirde kayıtlı endpoint'inin portunda ayağa kaldır (bir kez). */
 export async function ensureBob(log: (l: string) => void): Promise<BobAgent> {
@@ -156,6 +183,11 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
 
   const started = Date.now();
 
+  // --- 0. Zaman çizelgesi (HCS) — HER koşuda yazılır ---
+  // "Hedera = the timeline" ancak ödeme rayından bağımsız yazarsak doğru olur.
+  // İçerik değil TAAHHÜT gider; brief/veri/çıktı topic'e asla çıkmaz.
+  const timeline = options.timeline === false ? undefined : await openTimeline(brief, data, log);
+
   // --- 1-5. Keşif → intent → ECIES → Bob → enclave → Alice çözer ---
   const job = await runAliceJob({
     discover: { subgraphUrl: requireEnv('SUBGRAPH_QUERY_URL'), skill: SKILL },
@@ -178,6 +210,51 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   log(
     `[demo] enclave: match=${body.match} · ${describeCompute({ provider: result.computeProvider, ogVerified: result.ogVerified })}`,
   );
+
+  // --- Zaman çizelgesi: 402 → intent → enclave → çıktı ---
+  // Sıra mantıksal sıradır; consensus sırası gönderim sırasını izler.
+  const agentIdDecimal = BigInt(job.intent.agentId).toString();
+  timeline?.record({
+    v: 1,
+    stage: '402_ISSUED',
+    intentHash: job.intent.intentHash,
+    by: 'agent',
+    price: job.card.price.amount,
+    currency: job.card.price.asset,
+    rail: (options.paymentRail ?? process.env.PAYMENT_BACKEND ?? 'none') as string,
+  });
+  timeline?.record({
+    v: 1,
+    stage: 'INTENT_COMMIT',
+    intentHash: job.intent.intentHash,
+    by: 'client',
+    client: job.intent.client,
+    agentId: agentIdDecimal,
+    deadline: job.intent.deadline.toString(),
+  });
+  timeline?.record({
+    v: 1,
+    stage: 'ENCLAVE_INVOKED',
+    intentHash: job.intent.intentHash,
+    by: 'agent',
+    agentId: agentIdDecimal,
+    // Ölçülmüş bir imaj yok — UYDURMUYORUZ. Gerçek Tapp gelince dolar.
+    imageHash: null,
+    attestation: 'none',
+    // Elimizde GERÇEKTEN olan şey: gövdeyi imzalayan anahtar.
+    bindingSigner: result.bindingSigner,
+  });
+  timeline?.record({
+    v: 1,
+    stage: 'OUTPUT_COMMIT',
+    intentHash: job.intent.intentHash,
+    by: 'agent',
+    outputHash: body.outputHash,
+    // Hile yapılsa bile buraya GERÇEK sonuç yazılır — red de zaman çizelgesinde.
+    match: body.match,
+    ogVerified: result.ogVerified,
+    computeProvider: result.computeProvider,
+  });
 
   // --- 6. Zincire götür ---
   const intent = {
@@ -240,6 +317,31 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   const rail = options.paymentRail ?? (process.env.PAYMENT_BACKEND as DemoOptions['paymentRail']) ?? 'none';
   if (rail !== 'none') {
     report.payment = await runPayment(rail, job, report, log);
+  }
+
+  // SETTLED yalnızca gerçekten settle olduysa yazılır. Fraud koşusunda bu satır
+  // hiç çalışmaz — zaman çizelgesinde de "ödeme olmadı" görünür.
+  if (report.payment?.settled && report.payment.txRef && report.txHash) {
+    timeline?.record({
+      v: 1,
+      stage: 'SETTLED',
+      intentHash: job.intent.intentHash,
+      by: 'client',
+      rail: report.payment.rail,
+      txId: report.payment.txRef,
+      jobVerifiedTx: report.txHash,
+    });
+  }
+
+  if (timeline) {
+    const written = await timeline.flush();
+    timeline.close();
+    report.timeline = {
+      topicId: timeline.topicId,
+      hashscanUrl: timeline.hashscanUrl,
+      stages: written.map((w) => w.event.stage),
+    };
+    log(`[hcs] zaman çizelgesi: ${report.timeline.stages.join(' → ')}`);
   }
 
   return report;

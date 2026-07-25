@@ -1,0 +1,62 @@
+{
+  "capturedAt": "2026-07-25T06:26:34.637Z",
+  "honestStages": [
+    "402_ISSUED",
+    "INTENT_COMMIT",
+    "ENCLAVE_INVOKED",
+    "OUTPUT_COMMIT",
+    "SETTLED"
+  ],
+  "honestTimeline": [
+    {
+      "seq": 23,
+      "stage": "402_ISSUED",
+      "consensusTimestamp": "1784960796.314645104"
+    },
+    {
+      "seq": 24,
+      "stage": "INTENT_COMMIT",
+      "consensusTimestamp": "1784960797.692675104"
+    },
+    {
+      "seq": 25,
+      "stage": "ENCLAVE_INVOKED",
+      "consensusTimestamp": "1784960799.094233104"
+    },
+    {
+      "seq": 26,
+      "stage": "OUTPUT_COMMIT",
+      "consensusTimestamp": "1784960800.033547104"
+    },
+    {
+      "seq": 27,
+      "stage": "SETTLED",
+      "consensusTimestamp": "1784960804.316840909"
+    }
+  ],
+  "fraudTimeline": [
+    {
+      "seq": 28,
+      "stage": "402_ISSUED",
+      "consensusTimestamp": "1784960808.635251937"
+    },
+    {
+      "seq": 29,
+      "stage": "INTENT_COMMIT",
+      "consensusTimestamp": "1784960810.157543238"
+    },
+    {
+      "seq": 30,
+      "stage": "ENCLAVE_INVOKED",
+      "consensusTimestamp": "1784960811.494721721"
+    },
+    {
+      "seq": 31,
+      "stage": "OUTPUT_COMMIT",
+      "consensusTimestamp": "1784960812.752535104"
+    }
+  ],
+  "topicId": "0.0.9738448",
+  "hashscanTopic": "https://hashscan.io/testnet/topic/0.0.9738448",
+  "demoDappRendering": "BEKLİYOR — P5-A paneli bu topic'i render edecek"
+}
