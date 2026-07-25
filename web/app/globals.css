@@ -5,6 +5,25 @@ body {
   background: #05060a;
 }
 
+:root {
+  --bg: rgba(5, 6, 10, 1);
+  --ink: rgba(242, 239, 232, 1);
+  --ink-soft: rgba(232, 227, 216, 0.6);
+  --line: rgba(232, 227, 216, 0.28);
+  --fill: rgba(255, 255, 255, 0.04);
+  --chap-warm: rgba(214, 168, 96, 0.8);
+  --chap-cool: rgba(150, 184, 255, 0.84);
+}
+
+.section {
+  background: var(--bg);
+  color: var(--ink);
+  transition:
+    background-color 0.6s ease,
+    color 0.6s ease;
+  scroll-margin-top: 100px;
+}
+
 * {
   box-sizing: border-box;
 }
