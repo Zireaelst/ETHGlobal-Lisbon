@@ -2,9 +2,32 @@
   "name": "@ca/web",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
-  "//": "The demo dApp (P5-A). Its build chain is set up in P5 — currently outside the scope of tsc -b.",
+  "//": "The demo dApp (P5-A). Next.js app under src/. Stays outside the root tsc -b solution build, which covers the Node packages; `pnpm --filter @ca/web typecheck` checks this one.",
   "scripts": {
-    "build": "echo 'web: P5-A'de kurulacak' && exit 0"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/lib/*.test.ts"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.26.0",
+    "motion": "^12.42.2",
+    "next": "^15.1.0",
+    "postcss": "^8.5.23",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
   }
 }
