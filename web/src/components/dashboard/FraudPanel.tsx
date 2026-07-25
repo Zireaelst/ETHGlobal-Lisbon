@@ -351,6 +351,12 @@ export function FraudPanel({
                   <ProofLink href={report.basescanUrl}>
                     {rejected ? "JobRejected" : "JobVerified"} on Base Sepolia ↗
                   </ProofLink>
+                  {/* Said once, where the confusion happens: the verdict is on Base on EVERY run,
+                      whichever rail carries the money, and it is what the money waits for. */}
+                  <span className="ml-2 font-body text-xs font-light text-muted-foreground">
+                    the verdict is always on Base — the rail only decides where the money moves,
+                    and only after this
+                  </span>
                 </p>
               ) : null}
 
@@ -396,7 +402,12 @@ export function FraudPanel({
                   rather than left as an absence the reader has to notice. */}
               {report.payment?.settled && report.payment.explorerUrl ? (
                 <p className="mt-2">
-                  <ProofLink href={report.payment.explorerUrl}>payment settled ↗</ProofLink>
+                  {/* Named, because every run also carries a Basescan link for the VERDICT and the
+                      two are easy to confuse. On the Hedera rail the Base link is not the payment
+                      at all — it is the JobVerified that had to happen before the payment could. */}
+                  <ProofLink href={report.payment.explorerUrl}>
+                    payment settled on {report.payment.explorerUrl.includes("hashscan") ? "Hedera" : "Base"} ↗
+                  </ProofLink>
                 </p>
               ) : report.payment && !report.payment.settled ? (
                 <p className="mt-2 font-mono text-[11px] text-alert">
