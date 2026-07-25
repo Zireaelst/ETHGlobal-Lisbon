@@ -85,12 +85,15 @@ export type CoreConfig = z.infer<typeof coreSchema>;
 /** Sonraki fazlarda dolan, kullanıldığı anda zorunlu olan alanlar. */
 const LATER_KEYS = [
   'VERIFIER_ADDRESS',
+  'ALICE_AGENT_ID',
+  'BOB_AGENT_ID',
   'OG_PROVIDER_ADDRESS',
   'OG_TAPP_ENDPOINT',
   'OG_AGENT_ID',
   'HEDERA_TOPIC_ID',
   'GRAPH_DEPLOY_KEY',
   'SUBGRAPH_SLUG',
+  'SUBGRAPH_START_BLOCK',
   'THEGRAPH_API_KEY',
   'ALICE_ECIES_PRIV',
   'BOB_ECIES_PRIV',

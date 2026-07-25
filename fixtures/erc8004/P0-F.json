@@ -1,0 +1,33 @@
+{
+  "capturedAt": "2026-07-25T02:34:04.694Z",
+  "chainId": "84532",
+  "registry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+  "registryCodeBytes": 130,
+  "headBlock": 44589278,
+  "agents": [
+    {
+      "who": "Bob",
+      "address": "0x4F5Cd20a4a3fBc9957f8D2A8D27D658B51Fda326",
+      "agentId": "8429",
+      "registeredBlock": 44584172,
+      "txHash": "0x5ef9773e296f38b7abc0b721f5cf58aa3b57d4639380cfd6f99f1d50970c2bb8",
+      "fresh": false
+    },
+    {
+      "who": "Alice",
+      "address": "0x827F728d4B7816019585891A1BCfAfF5aB93d823",
+      "agentId": "8431",
+      "registeredBlock": 44589222,
+      "txHash": "0x5c42b2f7d7bb5e2591a840a8f4259e6d63df9ac544c9a8a870a2e4806aa11ad7",
+      "fresh": false
+    }
+  ],
+  "readBack": {
+    "agentId": "8429",
+    "owner": "0x4F5Cd20a4a3fBc9957f8D2A8D27D658B51Fda326",
+    "endpoint": "https://bob-agent.example.invalid/task",
+    "skill": "confidential-inference-relay"
+  },
+  "metadataUpdatable": true,
+  "subgraphStartBlock": 44584172
+}
