@@ -19,9 +19,12 @@
 import { AbiCoder, Wallet, keccak256, toUtf8Bytes } from 'ethers';
 import {
   buildIntentHash,
+  createNoComputeBackend,
   recoverSealCandidates,
   signSeal,
   verifySeal,
+  type ComputeBackend,
+  type ComputeProvider,
   type Constraints,
   type SealFields,
   type SealSignature,
@@ -52,8 +55,17 @@ export interface BindingResponse {
   match: boolean;
   output: string;
   outputHash: string;
-  /** P3-B'de keccak256(ogSig) olacak; FAZ 1'de 0G çağrısı yok, sıfır. */
+  /** keccak256(ogSig) — 0G imzası yoksa sıfır (uydurulmuş bir taahhüt yazılmaz). */
   ogSigHash: string;
+  /** 0G TEE'nin çıktı imzası — yoksa undefined. */
+  ogSig?: string;
+  ogSigner?: string;
+  /** İmza enclave İÇİNDE doğrulandı mı. Doğrulanamadıysa false. */
+  ogVerified: boolean;
+  /** Çıktıyı kim üretti — dürüstlük etiketi, arayüze kadar taşınır. */
+  computeProvider: ComputeProvider;
+  /** Sadece compute çağrısının süresi (P0-G bütçe dağılımı için). */
+  computeLatencyMs: number;
   /** İmzalanan ham gövde: abi.encode(bytes32,bytes32,bool,bytes32). */
   bodyHex: string;
   /** Seal imzası — `v` wrapper gibi atılmış, sadece r‖s taşınıyor (CLAUDE.md §3.1B). */
@@ -111,7 +123,11 @@ export function recoverBindingSigner(bodyHex: string, seal: SealSignature, expec
  * 3. çıktıyı üret (FAZ 1: yer tutucu; P3-B: 0G Sealed Inference)
  * 4. gövdeyi kur ve İMZALA — match false olsa bile
  */
-export async function runBinding(request: BindingRequest, bindingKey: string): Promise<BindingResponse> {
+export async function runBinding(
+  request: BindingRequest,
+  bindingKey: string,
+  compute: ComputeBackend = createNoComputeBackend(),
+): Promise<BindingResponse> {
   const recomputedIntentHash = buildIntentHash({
     brief: request.brief,
     data: request.data,
@@ -121,13 +137,23 @@ export async function runBinding(request: BindingRequest, bindingKey: string): P
   });
   const match = recomputedIntentHash === request.claimedIntentHash;
 
+  // Modeli çağır. NEREDE koştuğu buranın işi değil — sınır compute.ts'te.
+  // `match === false` olsa bile çağrı yapılır ve sonuç imzalanır: enclave yalan
+  // söylemez, sadece raporlar. Reddi kontrat verir.
+  const computed = await compute.run({
+    brief: request.brief,
+    data: request.data,
+    constraints: request.constraints,
+  });
+
   const output = match
-    ? `[FAZ 1 binding] Brief ${request.brief.length} karakter, veri ${request.data.length} karakter işlendi. ` +
-      `Gerçek analiz P3-B'de 0G Sealed Inference'tan gelecek.`
-    : '[FAZ 1 binding] Yeniden hesaplanan taahhüt istemcinin imzaladığıyla uyuşmuyor — iş sipariş edilen iş değil.';
+    ? computed.output
+    : `[binding] Yeniden hesaplanan taahhüt istemcinin imzaladığıyla uyuşmuyor — ` +
+      `iş sipariş edilen iş değil. (compute: ${computed.provider})`;
 
   const outputHash = keccak256(toUtf8Bytes(output));
-  const ogSigHash = ZERO32; // P3-B dolduracak
+  // 0G imzası yoksa taahhüt SIFIR kalır; uydurma bir hash yazmıyoruz.
+  const ogSigHash = computed.ogSig ? keccak256(computed.ogSig) : ZERO32;
   const bodyHex = encodeBody(request.claimedIntentHash, outputHash, match, ogSigHash);
 
   // Seal formatında imzala (CLAUDE.md §3.1B). `v` bilerek atılıyor — canlı wrapper
@@ -148,6 +174,11 @@ export async function runBinding(request: BindingRequest, bindingKey: string): P
     output,
     outputHash,
     ogSigHash,
+    ogSig: computed.ogSig,
+    ogSigner: computed.ogSigner,
+    ogVerified: computed.ogVerified,
+    computeProvider: computed.provider,
+    computeLatencyMs: computed.latencyMs,
     bodyHex,
     seal,
     signer: wallet.address,

@@ -157,6 +157,14 @@ export const EchoResultSchema = z.object({
   /** Kayıtlı binding anahtarı — kontrattaki enclaveSignerOf'un FAZ 1 karşılığı. */
   expectedBindingSigner: AddressSchema,
   bindingSigOk: z.boolean(),
+
+  // --- 0G attestation durumu (compute.ts sınırından gelir) ---
+  // `provider: 'none'` ve `ogVerified: false` DÜRÜST bir cevaptır: sistem
+  // "burada TEE imzası yok" der; sahte imza üretmez.
+  computeProvider: z.enum(['none', '0g-sealed-inference', 'fixture-replay']),
+  ogVerified: z.boolean(),
+  ogSig: z.string().optional(),
+  ogSigner: AddressSchema.optional(),
 });
 export type EchoResult = z.infer<typeof EchoResultSchema>;
 

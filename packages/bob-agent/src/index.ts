@@ -24,8 +24,10 @@ import {
   TaskEnvelopeSchema,
   TaskRequestSchema,
   type AgentCard,
+  type ComputeBackend,
   type Constraints,
   type EchoResult,
+  createNoComputeBackend,
   decryptWith,
   eciesPublicKeyOf,
   encryptFor,
@@ -68,6 +70,12 @@ export interface BobAgentOptions {
    * ERC-8004 `agentId`'sinden FARKLI olabilir; gerçek Tapp'te wrapper belirler.
    */
   sealAgentId?: string;
+  /**
+   * Modelin nerede koşacağı. Verilmezse `none` — gerçek çıkarım ve TEE imzası YOK.
+   * 0G token'ı geldiğinde burası `createZeroGBackend(...)` olacak; başka hiçbir yer
+   * değişmeyecek (compute.ts sınırının varlık sebebi bu).
+   */
+  compute?: ComputeBackend;
   /** Kartın `endpoint` alanı; verilmezse dinlenen adresten türetilir. */
   publicUrl?: string;
   log?: (line: string) => void;
@@ -147,6 +155,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
   // Seal kimliği konteyner ömrü başına bir kez üretilir (gerçek Tapp'te wrapper üretir).
   // Süreç boyunca sabit kalması, P3-C'deki "restart etme" kuralının yerel karşılığı.
   const sealId = keccak256(toUtf8Bytes(`seal/${expectedBindingSigner}/${options.agentId}`)).slice(0, 18);
+  const computeBackend = options.compute ?? createNoComputeBackend();
 
   const url = () => options.publicUrl ?? `http://127.0.0.1:${boundPort}`;
 
@@ -251,7 +260,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
     );
 
     // --- DÜRÜST binding (enclave) — FRAUD_MODE buraya GİRMEZ ---
-    const bound = await runBinding(pre.request, options.bindingKey);
+    const bound = await runBinding(pre.request, options.bindingKey, computeBackend);
 
     // --- hile katmanı: enclave'den DÖNDÜKTEN sonra ---
     const finalBinding = applyPostBindingFraud(mode, bound);
@@ -274,6 +283,10 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
       bindingSigner,
       expectedBindingSigner,
       bindingSigOk,
+      computeProvider: finalBinding.computeProvider,
+      ogVerified: finalBinding.ogVerified,
+      ogSig: finalBinding.ogSig,
+      ogSigner: finalBinding.ogSigner,
     };
 
     processed.push(result);

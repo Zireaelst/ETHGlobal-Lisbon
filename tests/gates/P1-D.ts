@@ -160,6 +160,27 @@ gate.check('İmzalanan gövde alanlardan yeniden üretilebiliyor (kontratın yap
     : fail(problems.join('\n'));
 });
 
+gate.check('0G bağlı değilken sistem bunu DÜRÜSTÇE raporluyor', () => {
+  const none = observed.get('none');
+  if (!none) return fail('none koşusu yok');
+  const r = none.result;
+  const problems: string[] = [];
+
+  // Sahte bir TEE imzası üretmek, mock'lanabilecek en hassas şey olurdu.
+  if (r.ogVerified) problems.push('0G bağlı değilken ogVerified=true — sahte attestation iddiası');
+  if (r.ogSig !== undefined) problems.push('0G imzası yokken ogSig alanı dolu');
+  if (r.computeProvider !== 'none') problems.push(`computeProvider="${r.computeProvider}", beklenen "none"`);
+
+  // İmza yoksa gövdedeki taahhüt de SIFIR olmalı — uydurma hash yazılmamalı.
+  const body = decodeBody(r.bodyHex);
+  const zero = `0x${'00'.repeat(32)}`;
+  if (body.ogSigHash !== zero) problems.push(`ogSigHash sıfır değil (${body.ogSigHash.slice(0, 18)}…)`);
+
+  return problems.length === 0
+    ? pass('computeProvider="none" · ogVerified=false · ogSig yok · gövdede ogSigHash=0')
+    : fail(problems.join('\n'));
+});
+
 gate.check('forge modunda gövde DOĞRU ama imzacı yabancı', () => {
   const forge = observed.get('forge');
   if (!forge) return fail('forge koşusu yok');
