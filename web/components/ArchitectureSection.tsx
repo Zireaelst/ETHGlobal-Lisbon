@@ -30,14 +30,13 @@ export default function ArchitectureSection() {
 
         <Reveal delay={80}>
           <h2 className="font-display text-4xl font-light tracking-tight text-foreground sm:text-5xl md:text-6xl">
-            How it works
+            One intent. One verdict.
           </h2>
         </Reveal>
 
         <Reveal delay={160}>
-          <p className="max-w-xl font-body text-base font-extralight leading-relaxed text-muted-foreground">
-            One signed intent, carried through an attested enclave, to a
-            verdict onchain — each step checked before the next can happen.
+          <p className="max-w-md font-body text-base font-extralight leading-relaxed text-muted-foreground">
+            Every step is checked before the next can happen.
           </p>
         </Reveal>
       </div>
