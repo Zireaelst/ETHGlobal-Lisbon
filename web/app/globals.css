@@ -1,3 +1,8 @@
+@import "tailwindcss";
+@source "../app";
+@source "../components";
+@source "../lib";
+
 html,
 body {
   margin: 0;
@@ -13,6 +18,26 @@ body {
   --fill: rgba(255, 255, 255, 0.04);
   --chap-warm: rgba(214, 168, 96, 0.8);
   --chap-cool: rgba(150, 184, 255, 0.84);
+}
+
+/*
+ * Aliases our theme-tokens.ts-driven CSS variables (set at runtime by
+ * ThemeProvider, see web/lib/theme.tsx) into Tailwind's utility namespace,
+ * so section components below the hero can write `bg-background`,
+ * `text-foreground`, etc. and stay in sync with the same open/sealed
+ * toggle that drives the hero.
+ */
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --color-muted-foreground: var(--ink-soft);
+  --color-border: var(--line);
+  --color-fill: var(--fill);
+  --color-warm: var(--chap-warm);
+  --color-cool: var(--chap-cool);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
 .section {
