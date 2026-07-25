@@ -5,6 +5,12 @@ dist/
 !.env.example
 *.log
 
+# Next.js (web/)
+web/.next/
+web/out/
+web/next-env.d.ts
+*.tsbuildinfo
+
 # Foundry
 contracts/out/
 contracts/cache/
@@ -13,6 +19,10 @@ contracts/broadcast/
 # misc
 .DS_Store
 scripts/spikes/.hedera-x402-seller.json
+
+# Claude Design handoff bundle — source reference only, already ported into web/
+# (duplicates web/public/hero/*.png; kept local, not tracked)
+landing-page/
 
 # local AI-tooling artifacts (Claude Code skills cache, local settings) — not part of the submission
 # skills-lock.json IS tracked (see README "Team setup") — it's a small manifest,
