@@ -12,6 +12,6 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["agents", "tapp", "shared", "web", "scripts"],
-  "exclude": ["node_modules", "dist", "contracts"]
+  "include": ["agents", "tapp", "shared", "scripts"],
+  "exclude": ["node_modules", "dist", "contracts", "web"]
 }
