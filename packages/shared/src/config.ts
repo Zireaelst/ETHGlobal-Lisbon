@@ -85,6 +85,7 @@ export type CoreConfig = z.infer<typeof coreSchema>;
 /** Sonraki fazlarda dolan, kullanıldığı anda zorunlu olan alanlar. */
 const LATER_KEYS = [
   'VERIFIER_ADDRESS',
+  'VERIFIER_DEPLOY_BLOCK',
   'ALICE_AGENT_ID',
   'BOB_AGENT_ID',
   'DECOY_AGENT_ID',

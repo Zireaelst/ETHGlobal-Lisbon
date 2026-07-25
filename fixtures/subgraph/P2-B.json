@@ -1,9 +1,9 @@
 {
-  "capturedAt": "2026-07-25T04:06:26.789Z",
+  "capturedAt": "2026-07-25T04:58:47.617Z",
   "subgraphUrl": "https://api.studio.thegraph.com/query/1756943/confidential-agents/v0.0.1",
-  "indexedBlock": 44592049,
-  "chainHead": 44592049,
-  "lagBlocks": 0,
+  "indexedBlock": 44593616,
+  "chainHead": 44593620,
+  "lagBlocks": 4,
   "bobFromSubgraph": {
     "agentId": "8429",
     "owner": "0x4f5cd20a4a3fbc9957f8d2a8d27d658b51fda326",

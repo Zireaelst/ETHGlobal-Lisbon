@@ -30,6 +30,9 @@ loadDotenv();
 const root = repoRoot();
 const gate = new Gate('P1-C', 'Alice ↔ Bob gizli mesajlaşma (echo)');
 
+// Verifier deploy edildiyse GERÇEK adresi kullan — imzalar üretim domain'inde üretilsin.
+const VERIFYING_CONTRACT = optionalEnv('VERIFIER_ADDRESS') ?? PLACEHOLDER_VERIFIER;
+
 // Gizli iş — bu metnin ağa DÜZ olarak çıkmaması kapının konusu.
 const SECRET_BRIEF =
   'CONFIDENTIAL-BRIEF-ACME-ALPHA: assess revenue-recognition risk in the attached quarterly figures.';
@@ -57,7 +60,7 @@ gate.check('Bob ayağa kalkıyor ve agent-card şemadan geçiyor', async () => {
     owner: bobWallet.address,
     skills: ['market-analysis'],
     price: { amount: '1000000', asset: 'USDC', decimals: 6 },
-    verifyingContract: PLACEHOLDER_VERIFIER,
+    verifyingContract: VERIFYING_CONTRACT,
     bindingKey: BINDING_KEY,
     log: () => {}, // kapı çıktısını kirletme
     onDecrypted: (e) => decryptedByBob.push({ brief: e.brief, data: e.data, nonce: e.nonce }),
@@ -91,7 +94,7 @@ gate.check('Uçtan uca: Alice gönderir, Bob düz metni DOĞRU çözer', async (
     constraints: CONSTRAINTS,
     wallet: aliceWallet,
     eciesPrivateKey: aliceEcies,
-    verifyingContract: PLACEHOLDER_VERIFIER,
+    verifyingContract: VERIFYING_CONTRACT,
     nonce: 7n,
     log: () => {},
   });
@@ -143,7 +146,7 @@ gate.check('Tek karakter değişince Bob match:false döndürüyor', async () =>
     constraints: CONSTRAINTS,
     wallet: aliceWallet,
     eciesPrivateKey: aliceEcies,
-    verifyingContract: PLACEHOLDER_VERIFIER,
+    verifyingContract: VERIFYING_CONTRACT,
     nonce: 8n,
     // İmza atıldıktan SONRA brief'in bir karakterini değiştir — saldırganın yapacağı şey.
     tamper: (envelope) => ({ ...envelope, brief: `${SECRET_BRIEF.slice(0, -1)}X` }),
@@ -172,7 +175,7 @@ gate.check('Data\'nın tek byte\'ı değişince de match:false', async () => {
     constraints: CONSTRAINTS,
     wallet: aliceWallet,
     eciesPrivateKey: aliceEcies,
-    verifyingContract: PLACEHOLDER_VERIFIER,
+    verifyingContract: VERIFYING_CONTRACT,
     nonce: 9n,
     tamper: (envelope) => ({ ...envelope, data: SECRET_DATA.replace('12,400,000', '12,400,001') }),
     log: () => {},

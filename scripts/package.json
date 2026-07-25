@@ -1,0 +1,6 @@
+{
+  "//": "Deploy/yardımcı TS scriptleri ESM. Kök CJS kalıyor (scripts/recover.js CJS).",
+  "name": "@ca/scripts",
+  "private": true,
+  "type": "module"
+}

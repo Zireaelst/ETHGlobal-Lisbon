@@ -29,6 +29,9 @@ loadDotenv();
 const root = repoRoot();
 const gate = new Gate('P1-D', 'Fraud modu altyapısı (5 mod, runtime anahtar)');
 
+// Verifier deploy edildiyse GERÇEK adresi kullan — imzalar üretim domain'inde üretilsin.
+const VERIFYING_CONTRACT = optionalEnv('VERIFIER_ADDRESS') ?? PLACEHOLDER_VERIFIER;
+
 const BRIEF = 'Assess revenue-recognition risk in the attached quarterly figures.';
 const DATA = 'Q3-2026 revenue 12,400,000 EUR; deferred 3,100,000 EUR; 41 contracts.';
 const CONSTRAINTS: Constraints = { model: 'qwen2.5-omni-7b', maxTokens: 2048, temperature: 0.2 };
@@ -52,7 +55,7 @@ async function runJob(): Promise<{ result: EchoResult; signedIntentHash: string 
     constraints: CONSTRAINTS,
     wallet: aliceWallet,
     eciesPrivateKey: aliceEcies,
-    verifyingContract: PLACEHOLDER_VERIFIER,
+    verifyingContract: VERIFYING_CONTRACT,
     nonce: nonce++,
     log: () => {},
   });
@@ -66,7 +69,7 @@ gate.check('Bob ayakta, binding imzalayıcısı kayıtlı', async () => {
     owner: bobWallet.address,
     skills: ['market-analysis'],
     price: { amount: '1000000', asset: 'USDC', decimals: 6 },
-    verifyingContract: PLACEHOLDER_VERIFIER,
+    verifyingContract: VERIFYING_CONTRACT,
     bindingKey: BINDING_KEY,
     fraudMode: 'none',
     log: () => {},

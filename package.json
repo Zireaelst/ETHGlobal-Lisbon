@@ -21,7 +21,8 @@
     "gate:P2-A": "tsx tests/gates/P2-A.ts",
     "gate:P2-B": "tsx tests/gates/P2-B.ts",
     "gate:P2-C": "tsx tests/gates/P2-C.ts",
-    "gate:P3-A": "tsx tests/gates/P3-A.ts"
+    "gate:P3-A": "tsx tests/gates/P3-A.ts",
+    "deploy:verifier": "tsx scripts/deploy-verifier.ts"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "^0.98.1",
