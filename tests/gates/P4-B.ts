@@ -350,6 +350,56 @@ gate.check('FRAUD koşusunda settle HİÇ çağrılmadı (ödeme asla settle olm
   );
 });
 
+// ---------------------------------------------------------------------------
+// Başkasına yapılmış ödeme Bob'dan iş satın alamaz.
+//
+// Base rayının ayırt edici kontrolü bu. Yetki içinde gelen geçici pubkey'i Bob
+// KENDİ görüntüleme anahtarıyla tarıyor; adres onun meta-adresinden türememişse
+// para gerçek olsa bile iş yapmıyor. Mutlu yol bunu her koşuda çalıştırıyor ama
+// RED tarafını sadece burası gösteriyor.
+// ---------------------------------------------------------------------------
+gate.check('Yabancının meta-adresine yapılmış ödeme reddediliyor', async () => {
+  const { makePaymentBackend } = await import('../../scripts/demo.js');
+  const { createBaseStealthBackend } = await import('../../packages/payment/src/base-stealth.js');
+
+  const intentHash = `0x${'55'.repeat(32)}`;
+  const stranger = deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'stranger');
+
+  // Yabancının meta-adresine ödeyen bir Alice — imza, tutar, intentHash hepsi
+  // geçerli. Tek fark: stealth adres BOB'un değil, yabancının anahtarından.
+  const payerToStranger = createBaseStealthBackend({
+    provider,
+    payerPrivateKey: cfg.PRIVATE_KEY_ALICE,
+    relayerPrivateKey: cfg.PRIVATE_KEY_DEPLOYER,
+    usdcAddress: cfg.USDC_BASE_SEPOLIA,
+    verifierAddress: requireEnv('VERIFIER_ADDRESS'),
+    recipientMetaAddress: stranger.metaAddress,
+  });
+  const quote = await payerToStranger.quote({ intentHash, amount: '1000', recipient: stranger.metaAddress });
+  const proof = await payerToStranger.authorize(quote);
+
+  const bobSide = await makePaymentBackend('base', true);
+  const check = await bobSide.verifyAuthorization(proof, { amount: '1000', intentHash });
+  if (check.ok) return fail('yabancıya yapılmış ödeme Bob tarafından kabul edildi');
+
+  // Aynı kurulumda BOB'a yapılan ödeme geçmeli — kontrol her şeyi reddetmiyor.
+  const mineQuote = await bobSide.quote({ intentHash, amount: '1000', recipient: bobStealth.metaAddress });
+  const mine = await bobSide.verifyAuthorization(await bobSide.authorize(mineQuote), {
+    amount: '1000',
+    intentHash,
+  });
+  if (!mine.ok) return fail(`kendi ödemesi de reddedildi: ${mine.reason}`);
+
+  evidence.strangerRejected = check.reason;
+  return pass(
+    [
+      `yabancı: ${quote.payTo} → reddedildi (${check.reason})`,
+      `kendisi: ${mineQuote.payTo} → kabul`,
+      'ayrım görüntüleme anahtarıyla yapılıyor; harcama yetkisi gerekmiyor',
+    ].join('\n'),
+  );
+});
+
 gate.check('Kanıt dosyası yazıldı (fixtures/base/P4-B.json)', async () => {
   await closeBob();
   evidence.announcerAddress = ERC5564_ANNOUNCER;

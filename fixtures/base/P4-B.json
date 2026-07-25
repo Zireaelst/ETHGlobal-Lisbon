@@ -1,16 +1,16 @@
 {
-  "capturedAt": "2026-07-25T08:35:25.638Z",
-  "stealthAddress": "0x6D6A6967e8812D576B928DB8A786f7BC216ED012",
-  "settleTx": "0xbe4cd5d8ab8a775082206f520c8041ca1f573a8a690f59ded237a602fe74277e",
+  "capturedAt": "2026-07-25T09:04:18.304Z",
+  "stealthAddress": "0x104a4611589FF77A184a7da76e9407406a0B93BC",
+  "settleTx": "0x6b213ddbf989c3198220dea4c23dbeb8f6c083ee0df1f029ebc21ec4417c45a4",
   "amount": "1000000",
   "announcement": {
-    "stealthAddress": "0x6D6A6967e8812D576B928DB8A786f7BC216ED012",
-    "ephemeralPublicKey": "0x027800e6d0f56a6e78c181b8bae77861519eeb88b3c396f04bc45a15a55f0692f0",
-    "viewTag": 39
+    "stealthAddress": "0x104a4611589FF77A184a7da76e9407406a0B93BC",
+    "ephemeralPublicKey": "0x034b2555712d16ec174ee8c1053bcdbca50a3fddf5510c42ca84c3a6dcfdbb8dbc",
+    "viewTag": 209
   },
   "sweep": {
-    "txHash": "0xce35b30e00a8cda604164fd46a2a6993c87c29b0bd6ff157414da48a500f1254",
-    "sink": "0xFD0fa94880D450649dB9913b83eD1e338e3452f1",
+    "txHash": "0xf7a57d713146c2005faee82d1c487d7db4545253caa3276d27d754f9bbcd411d",
+    "sink": "0xc51596E9E1ddB7f7A6DD2fcB9Df083475c9C6dc7",
     "amount": "1000000"
   },
   "unlinkability": {
@@ -19,13 +19,14 @@
     "bobAddress": "0x4F5Cd20a4a3fBc9957f8D2A8D27D658B51Fda326"
   },
   "ordering": {
-    "jobVerifiedBlock": 44600121,
-    "settleBlock": 44600121
+    "jobVerifiedBlock": 44600988,
+    "settleBlock": 44600990
   },
   "fraud": {
     "code": "MatchFalse",
     "skipped": "JobVerified yok (MatchFalse)"
   },
+  "strangerRejected": "stealth adres bu agent'ın meta-adresinden türetilmemiş",
   "announcerAddress": "0x55649E01B5Df198D18D95b5cc5051630cfD45564",
   "registryAddress": "0x6538E6bf4B0eBd30A8Ea093027Ac2422ce5d6538",
   "metaAddress": "st:base:0x02ee3df921edef538a2b434e2806d215e2767d89f7532b05c794506880c11a1440038aff33d6222cfb9d182c628f462f909fb6b8ed1ba347f1feb49e02e62593be78"
