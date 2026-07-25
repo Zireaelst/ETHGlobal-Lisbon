@@ -9,7 +9,8 @@ type TokenName =
   | "line"
   | "fill"
   | "chapWarm"
-  | "chapCool";
+  | "chapCool"
+  | "chapAlert";
 
 export const THEME_TOKENS: Record<TokenName, Record<ThemeName, RgbaToken>> = {
   bg: { open: [243, 239, 230, 1], sealed: [5, 6, 10, 1] },
@@ -19,6 +20,9 @@ export const THEME_TOKENS: Record<TokenName, Record<ThemeName, RgbaToken>> = {
   fill: { open: [255, 255, 255, 0.34], sealed: [255, 255, 255, 0.04] },
   chapWarm: { open: [150, 112, 40, 0.92], sealed: [214, 168, 96, 0.8] },
   chapCool: { open: [48, 88, 168, 0.9], sealed: [150, 184, 255, 0.84] },
+  // Reserved for one thing only: a rejected verdict. Nothing decorative on
+  // the page may use it, so red always means "the chain said no".
+  chapAlert: { open: [168, 52, 40, 0.92], sealed: [232, 116, 96, 0.88] },
 };
 
 export function rgbaCss(token: RgbaToken): string {
@@ -35,5 +39,6 @@ export function cssVarsFor(theme: ThemeName): Record<string, string> {
     "--fill": rgbaCss(THEME_TOKENS.fill[theme]),
     "--chap-warm": rgbaCss(THEME_TOKENS.chapWarm[theme]),
     "--chap-cool": rgbaCss(THEME_TOKENS.chapCool[theme]),
+    "--chap-alert": rgbaCss(THEME_TOKENS.chapAlert[theme]),
   };
 }

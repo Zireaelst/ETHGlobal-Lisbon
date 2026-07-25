@@ -14,10 +14,11 @@ test("every token has both an open and a sealed value", () => {
   }
 });
 
-test("cssVarsFor returns all seven CSS custom properties for a theme", () => {
+test("cssVarsFor returns every themed CSS custom property", () => {
   const vars = cssVarsFor("sealed");
   assert.deepEqual(Object.keys(vars).sort(), [
     "--bg",
+    "--chap-alert",
     "--chap-cool",
     "--chap-warm",
     "--fill",

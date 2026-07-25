@@ -18,6 +18,7 @@ body {
   --fill: rgba(255, 255, 255, 0.04);
   --chap-warm: rgba(214, 168, 96, 0.8);
   --chap-cool: rgba(150, 184, 255, 0.84);
+  --chap-alert: rgba(232, 116, 96, 0.88);
 }
 
 /*
@@ -35,6 +36,7 @@ body {
   --color-fill: var(--fill);
   --color-warm: var(--chap-warm);
   --color-cool: var(--chap-cool);
+  --color-alert: var(--chap-alert);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
