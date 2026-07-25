@@ -3,6 +3,7 @@ import SiteHeader from "@/components/SiteHeader";
 import ThesisSection from "@/components/ThesisSection";
 import HowItWorksSection from "@/components/HowItWorksSection";
 import ArchitectureSection from "@/components/ArchitectureSection";
+import IntentPlaygroundSection from "@/components/IntentPlaygroundSection";
 import TracksSection from "@/components/TracksSection";
 import FraudDemoTeaser from "@/components/FraudDemoTeaser";
 import CtaFooter from "@/components/CtaFooter";
@@ -19,6 +20,8 @@ export default function Home() {
       <HowItWorksSection />
       <SectionDivider />
       <ArchitectureSection />
+      <SectionDivider />
+      <IntentPlaygroundSection />
       <SectionDivider />
       <TracksSection />
       <SectionDivider />
