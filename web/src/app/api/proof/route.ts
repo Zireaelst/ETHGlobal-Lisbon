@@ -47,6 +47,22 @@ export async function GET(request: Request) {
       "     node -e \"const {ethers}=require('ethers');const b=require('./bundle.json');\\",
       "       console.log(ethers.recoverAddress(b.binding.sealDigest, b.binding.seal))\"",
       "",
+      "3. THE DELIVERABLE ITSELF, if `archive` is present. The work is stored on 0G Storage,",
+      "   encrypted, and `archive.rootHash` is the address it is fetched by. You can download it",
+      "   from the network without asking us for anything:",
+      "",
+      "     npm i @0gfoundation/0g-ts-sdk",
+      "     node -e \"const {Indexer}=require('@0gfoundation/0g-ts-sdk');\\",
+      "       new Indexer('https://indexer-storage-testnet-turbo.0g.ai')\\",
+      "         .download('<archive.rootHash>','./blob.bin',true).then(console.log)\"",
+      "",
+      "   The blob is AES-256-GCM ciphertext and the key is NOT in this file — it exists only in",
+      "   the envelope encrypted to the client. So you can confirm the artefact EXISTS and is",
+      "   retrievable by anyone; reading it stays the client's privilege. The client, who does",
+      "   hold the key, checks one more thing: keccak256 of the decrypted bytes equals the",
+      "   `outputHash` inside the sealed body — the number the contract ruled on. That is what",
+      "   makes the archive the same work the chain verified rather than merely a file.",
+      "",
       "WHAT WE DO NOT CLAIM (CLAUDE.md §11):",
       "- The 0G TEE signature does NOT cover the answer text. It covers a colon-joined tuple",
       "  containing sha256 of the RAW response body — the answer's fingerprint. Same guarantee",
@@ -89,6 +105,20 @@ export async function GET(request: Request) {
     },
     timeline: report.timeline ?? null,
     payment: report.payment ?? null,
+    // Present only when the run archived its deliverable (OG_STORAGE=1). Null is the honest
+    // answer for a run that did not — an address we could not produce is not one we invent.
+    archive: report.storage
+      ? {
+          network: "0g-storage",
+          rootHash: report.storage.rootHash,
+          txHash: report.storage.txHash,
+          ciphertextBytes: report.storage.bytes,
+          indexer: process.env.OG_STORAGE_INDEXER ?? "https://indexer-storage-testnet-turbo.0g.ai",
+          encryption: "AES-256-GCM, iv‖tag‖ciphertext",
+          note:
+            "The key is deliberately absent from this bundle. Availability is what the archive adds; it adds no new claim about the work itself.",
+        }
+      : null,
   };
 
   return new NextResponse(`${JSON.stringify(bundle, null, 2)}\n`, {

@@ -9,6 +9,7 @@ import "server-only";
 import "./env";
 import { computeAddress } from "ethers";
 import { erc8004AgentUrl, facilitatorSupportedUrl } from "@/lib/explorers";
+import { readRecordedRun } from "./runner";
 
 /**
  * The compute payer's PUBLIC address, derived here from the key that pays for 0G inference.
@@ -55,6 +56,39 @@ export interface NetworkEvidence {
   facts: NetworkFact[];
 }
 
+/**
+ * The 0G Storage archive (P3-E), read from the last recorded honest run.
+ *
+ * There is no explorer page for a storage root — a blob is fetched from the indexer BY the root
+ * hash, so the checkable destination is the bundle, which carries the root plus the exact
+ * download command. Showing the hash with a link to an explorer that does not hold it would be
+ * the dead link this panel's whole arrangement is designed to avoid.
+ *
+ * When a run archived nothing, the fact says so. An address we did not produce is not one we
+ * invent (the same rule `compute.ts` follows for a missing TEE signature).
+ */
+function archiveFact(): NetworkFact {
+  const archive = readRecordedRun("none")?.report.storage;
+  if (!archive) {
+    return {
+      label: "Deliverable archive (0G Storage)",
+      value: null,
+      kind: "text",
+      why:
+        "This run did not archive its deliverable — storage is opt-in (OG_STORAGE=1) because every upload spends faucet credit. Nothing was stored, so there is no root hash to show.",
+    };
+  }
+  return {
+    label: "Deliverable archive (0G Storage)",
+    value: archive.rootHash,
+    kind: "text",
+    href: "/api/proof?mode=none",
+    goesTo: "the proof bundle — the root hash plus the command to download the blob yourself",
+    why:
+      "Fetched from the 0G indexer by root hash, not from an explorer. The blob is AES-256-GCM ciphertext and the key is not published: anyone can confirm the artefact exists and is retrievable, reading it stays the client's privilege.",
+  };
+}
+
 export function networkEvidence(): NetworkEvidence[] {
   const env = process.env;
 
@@ -85,6 +119,7 @@ export function networkEvidence(): NetworkEvidence[] {
           why:
             "Off-chain by design. The TEE signs a tuple containing sha256 of the raw response body, so verifying it needs the body — that is what the downloadable bundle is for. No explorer holds it.",
         },
+        archiveFact(),
       ],
     },
     {

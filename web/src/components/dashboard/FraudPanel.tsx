@@ -93,7 +93,12 @@ export function FraudPanel({
       const res = await fetch("/api/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, rail: "none" }),
+        // The Hedera rail, not "none". With no rail the run never issues a 402, never authorises
+        // and never settles — so the one claim the payment layer exists to make ("money moves
+        // only after JobVerified") could not be demonstrated by the button that demonstrates
+        // everything else. On a fraud run this is exactly what stays unspent, and the timeline
+        // shows the missing SETTLED stage.
+        body: JSON.stringify({ mode, rail: "hedera" }),
       });
 
       if (!res.ok || !res.body) {

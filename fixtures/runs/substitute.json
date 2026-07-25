@@ -1,54 +1,75 @@
 {
   "report": {
     "fraudMode": "substitute",
-    "signedIntentHash": "0x05eb07b71a08cddb5c1757aafdfdf3a9c399a3246b91aad2df7750e8e6aa9f04",
-    "bodyIntentHash": "0x05eb07b71a08cddb5c1757aafdfdf3a9c399a3246b91aad2df7750e8e6aa9f04",
+    "signedIntentHash": "0x9da692bb86325086cf94d95ff4d3000af626f5c362668565398f43762248c3cb",
+    "bodyIntentHash": "0x9da692bb86325086cf94d95ff4d3000af626f5c362668565398f43762248c3cb",
     "match": false,
     "clientSigOk": false,
     "bindingSigOk": true,
     "computeProvider": "0g-sealed-inference",
     "ogVerified": true,
-    "reasoningProvider": "claude-local",
+    "reasoningProvider": "policy",
     "decisions": {
       "hire": {
-        "provider": "claude-local",
-        "agentId": "8429",
-        "rationale": "8429 has a solid track record of verified work, while 8432 has zero history, making 8429 the safer choice despite its rejections.",
-        "latencyMs": 8525
+        "provider": "policy",
+        "rationale": "highest verified-delivery count (106) with 70 rejected attempts",
+        "latencyMs": 0,
+        "agentId": "8429"
+      },
+      "price": {
+        "provider": "policy",
+        "rationale": "1000000 USDC is within the 5000000 ceiling",
+        "latencyMs": 0,
+        "approve": true
       },
       "result": {
-        "provider": "claude-local",
-        "accept": false,
-        "rationale": "The commitment check failed, meaning what was delivered doesn't match what was agreed to, so it can't be trusted or accepted.",
-        "latencyMs": 7207
+        "provider": "policy",
+        "rationale": "the commitment did not match — this is not the job that was ordered",
+        "latencyMs": 0,
+        "accept": false
       }
     },
     "output": "[binding] The recomputed commitment does not match what the client signed — this is not the job that was ordered. (compute: 0g-sealed-inference)",
+    "storage": {
+      "rootHash": "0xbd6a033f8fc9c9423267c8182923c4113148a85247b7530daa3fe281553f4d7b",
+      "txHash": "0x97fa486b229049652550571c3755b5f08888548ec1b9ba3932549075dd5e5f90",
+      "bytes": 174
+    },
     "code": 5,
     "codeName": "MatchFalse",
     "verified": false,
-    "totalMs": 29063,
+    "totalMs": 27623,
     "stageMs": {
-      "discovery": 8713,
-      "agent_card": 6,
-      "intent_sign": 13,
-      "ecies_encrypt": 33,
-      "http_task_send1": 7405,
+      "discovery": 483,
+      "agent_card": 5,
+      "intent_sign": 2,
+      "ecies_encrypt": 10,
+      "http_task_send1": 4,
+      "payment_authorize": 667,
+      "http_task_send2": 24864,
       "http_result": 2,
       "ecies_decrypt_result": 6,
       "enclave_ecies_decrypt": 5,
-      "enclave_recompute": 0,
-      "enclave_client_sig_verify": 1,
-      "enclave_compute_0g": 7364,
-      "enclave_seal_sign": 3,
-      "hcs_open_topic": 29,
-      "alice_job_total": 23387,
-      "chain_verify_tx": 5647
+      "enclave_recompute": 1,
+      "enclave_client_sig_verify": 0,
+      "enclave_compute_0g": 6075,
+      "enclave_seal_sign": 2,
+      "enclave_storage_upload": 18368,
+      "hcs_open_topic": 2,
+      "alice_job_total": 26044,
+      "chain_verify_tx": 1577
     },
     "discoveredAgentId": "8429",
-    "txHash": "0x6cbb732a10a352cf6e87d2aa6c82bb18359ad18f147744d20a86a046f7dda924",
-    "blockNumber": 44617797,
-    "basescanUrl": "https://sepolia.basescan.org/tx/0x6cbb732a10a352cf6e87d2aa6c82bb18359ad18f147744d20a86a046f7dda924",
+    "txHash": "0x533d9fd03fd748cc657f5a1ff44f5d4573fc307ec5308f247a9ccc5f25502b35",
+    "blockNumber": 44623341,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x533d9fd03fd748cc657f5a1ff44f5d4573fc307ec5308f247a9ccc5f25502b35",
+    "payment": {
+      "rail": "x402",
+      "quoted": true,
+      "authorized": true,
+      "settled": false,
+      "skippedReason": "JobVerified yok (MatchFalse)"
+    },
     "timeline": {
       "topicId": "0.0.9738448",
       "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
@@ -60,5 +81,5 @@
       ]
     }
   },
-  "recordedAt": "2026-07-25T18:24:44.796Z"
+  "recordedAt": "2026-07-25T21:29:35.136Z"
 }

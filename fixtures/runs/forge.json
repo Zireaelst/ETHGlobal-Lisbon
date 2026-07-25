@@ -1,0 +1,85 @@
+{
+  "report": {
+    "fraudMode": "forge",
+    "signedIntentHash": "0x876d4f07d6fabd8b72e6736f6aefdc6f847cc51ce8bd77dcb65c7d90b201a618",
+    "bodyIntentHash": "0x876d4f07d6fabd8b72e6736f6aefdc6f847cc51ce8bd77dcb65c7d90b201a618",
+    "match": true,
+    "clientSigOk": true,
+    "bindingSigOk": true,
+    "computeProvider": "0g-sealed-inference",
+    "ogVerified": true,
+    "reasoningProvider": "policy",
+    "decisions": {
+      "hire": {
+        "provider": "policy",
+        "rationale": "highest verified-delivery count (106) with 71 rejected attempts",
+        "latencyMs": 0,
+        "agentId": "8429"
+      },
+      "price": {
+        "provider": "policy",
+        "rationale": "1000000 USDC is within the 5000000 ceiling",
+        "latencyMs": 1,
+        "approve": true
+      },
+      "result": {
+        "provider": "policy",
+        "rationale": "the commitment did not match — this is not the job that was ordered",
+        "latencyMs": 0,
+        "accept": false
+      }
+    },
+    "output": "ORDER-ID: 0x876d4f07d6fabd8b72e6736f6aefdc6f847cc51ce8bd77dcb65c7d90b201a618\n\nRevenue recognition risk assessment based on the provided data:\n\n1. **Total Revenue**: The total revenue reported is €12,400,000 EUR.\n2. **Deferred Revenue**: There is €3,100,000 EUR of deferred revenue, which indicates that some portion of the revenue has not yet been recognized as income according to accounting standards (likely IFRS or US GAAP).\n3. **Number of Contracts**: There are 41 contracts associated with this revenue.\n\n**Risk Assessment**:\n- **High Risk of Revenue Recognition Delays**: With significant deferred revenue ($3,100,000 EUR), there is a high risk that revenue recognition may be delayed due to various factors such as contract terms, performance obligations, or regulatory requirements.\n- **Need for Detailed Review**: A detailed review of each contract's status and any related agreements should be conducted to understand why revenue is being deferred. This includes checking if all performance obligations have been met, if there are any disputes, or if there are specific conditions that need to be fulfilled before recognizing revenue.\n- **Impact on Financial Statements**: Deferred revenue impacts the balance sheet by increasing liabilities while reducing net income until the revenue is recognized. This can lead to fluctuations in financial statements and potentially mislead stakeholders about the company’s true profitability.\n- **Compliance and Reporting**: Ensure compliance with relevant accounting standards and regulations regarding revenue recognition. Misclassification or improper recognition could result in legal penalties and loss of investor confidence.\n\n**Recommendations**:\n- Conduct thorough audits of each contract to identify reasons for deferral.\n- Communicate transparently with stakeholders about the deferred revenue situation and its impact on future financial reports.\n- Implement robust internal controls to prevent similar issues in future periods.\n\nThis assessment highlights potential risks and areas requiring immediate attention to ensure accurate and timely revenue recognition.",
+    "storage": {
+      "rootHash": "0xbf9ec9ba9168cec9ffc828c6172c6d0e2789e0fb01d38020ac6a0e3aaa002f4f",
+      "txHash": "0xae32ae8526725def24f823ae679e6b7d454396afdfaa10887893546177c8561c",
+      "bytes": 2158
+    },
+    "code": 4,
+    "codeName": "BadEnclaveSig",
+    "verified": false,
+    "totalMs": 29098,
+    "stageMs": {
+      "discovery": 305,
+      "agent_card": 5,
+      "intent_sign": 2,
+      "ecies_encrypt": 9,
+      "http_task_send1": 5,
+      "payment_authorize": 854,
+      "http_task_send2": 26689,
+      "http_result": 2,
+      "ecies_decrypt_result": 5,
+      "enclave_ecies_decrypt": 6,
+      "enclave_recompute": 0,
+      "enclave_client_sig_verify": 3,
+      "enclave_compute_0g": 10544,
+      "enclave_seal_sign": 2,
+      "enclave_storage_upload": 15502,
+      "hcs_open_topic": 1,
+      "alice_job_total": 27877,
+      "chain_verify_tx": 1220
+    },
+    "discoveredAgentId": "8429",
+    "txHash": "0x509fd4ec50543bc63df1bdc277c41773bdec92ac13038b8931264f24c01d6e62",
+    "blockNumber": 44623534,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x509fd4ec50543bc63df1bdc277c41773bdec92ac13038b8931264f24c01d6e62",
+    "payment": {
+      "rail": "x402",
+      "quoted": true,
+      "authorized": true,
+      "settled": false,
+      "skippedReason": "JobVerified yok (BadEnclaveSig)"
+    },
+    "timeline": {
+      "topicId": "0.0.9738448",
+      "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
+      "stages": [
+        "402_ISSUED",
+        "INTENT_COMMIT",
+        "ENCLAVE_INVOKED",
+        "OUTPUT_COMMIT"
+      ]
+    }
+  },
+  "recordedAt": "2026-07-25T21:35:59.642Z"
+}

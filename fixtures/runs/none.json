@@ -1,54 +1,76 @@
 {
   "report": {
     "fraudMode": "none",
-    "signedIntentHash": "0x51bc6a3794ee9ee47752c76b37a8a6d90830260983c19146fed018967a0027ba",
-    "bodyIntentHash": "0x51bc6a3794ee9ee47752c76b37a8a6d90830260983c19146fed018967a0027ba",
+    "signedIntentHash": "0x09be95720e592c5dc104af6d1762d8481ef5c7dc59306be3d992678a730da727",
+    "bodyIntentHash": "0x09be95720e592c5dc104af6d1762d8481ef5c7dc59306be3d992678a730da727",
     "match": true,
     "clientSigOk": true,
     "bindingSigOk": true,
     "computeProvider": "0g-sealed-inference",
     "ogVerified": true,
-    "reasoningProvider": "claude-local",
+    "reasoningProvider": "policy",
     "decisions": {
       "hire": {
-        "provider": "claude-local",
-        "agentId": "8429",
-        "rationale": "The other agent has zero track record, while this one has completed many verified jobs despite some failures.",
-        "latencyMs": 7945
+        "provider": "policy",
+        "rationale": "highest verified-delivery count (105) with 70 rejected attempts",
+        "latencyMs": 0,
+        "agentId": "8429"
+      },
+      "price": {
+        "provider": "policy",
+        "rationale": "1000000 USDC is within the 5000000 ceiling",
+        "latencyMs": 0,
+        "approve": true
       },
       "result": {
-        "provider": "claude-local",
-        "accept": false,
-        "rationale": "The report just restates generic textbook definitions of revenue recognition instead of actually analyzing the specific figures for real risk signals, so it isn't useful.",
-        "latencyMs": 8346
+        "provider": "policy",
+        "rationale": "the commitment matched, so the delivered work is the work that was ordered",
+        "latencyMs": 0,
+        "accept": true
       }
     },
-    "output": "ORDER-ID: 0x51bc6a3794ee9ee47752c76b37a8a6d90830260983c19146fed018967a0027ba\n\nRevenue recognition is a critical aspect of financial reporting that involves determining when and how much revenue should be recognized based on specific criteria outlined by accounting standards such as IFRS or US GAAP. In assessing revenue-recognition risk for Q3-2026, we need to consider several factors:\n\n### Revenue Recognition Criteria\n1. **Performance Obligation**: Revenue must be recognized only after the company has satisfied its performance obligations under the contract.\n2. **Transfer of Control**: Revenue can only be recognized once control over the goods or services has been transferred to the customer.\n3. **Variable Considerations**: If there are variable considerations (e.g., discounts, rebates), these must be estimated reliably before recognizing revenue.\n4. **Costs Reimbursable**: Any costs reimbursable by customers should not be included in revenue until they are recoverable.\n\n### Analysis Based on Provided Data\n- **Total Revenue**: €12,400,000 EUR\n- **Deferred Revenue**: €3,100,000 EUR\n- **Number of Contracts**: 41\n\n#### Deferred Revenue\nThe presence of deferred revenue indicates that some portion of the revenue will be recognized in future periods rather than immediately. This could suggest potential risks if:\n- The timing of revenue recognition does not align with the actual cash flows generated from those contracts.\n- There is uncertainty regarding whether all deferred revenue will ultimately be realized due to changes in customer behavior or other factors affecting contract performance.\n\n#### Variable Considerations\nIf there are any variable considerations within the contracts (e.g., discounts, rebates), it's crucial to ensure reliable estimation methods are used. Misestimating these variables could lead to either premature recognition of revenue or understatement of expenses, both of which would impact reported earnings.\n\n#### Contractual Terms\nGiven the number of contracts (41), it’s important to review each contract individually to understand their terms fully. Differences in contract types, payment schedules, and performance obligations across contracts might introduce variability in revenue recognition practices.\n\n### Recommendations\n1. **Review Contract Terms**: Ensure that all contracts are reviewed thoroughly to confirm compliance with revenue recognition principles.\n2. **Estimate Variable Considerations Reliably**: Use robust methodologies to estimate variable considerations accurately.\n3. **Monitor Deferred Revenue**: Regularly assess the likelihood of deferred revenue being realized and adjust estimates accordingly.\n4. **Internal Controls**: Strengthen internal controls related to revenue recognition processes to mitigate risks associated with misstatements.\n\nBy addressing these areas, management can better manage revenue recognition risks and maintain the integrity of financial statements.",
+    "output": "ORDER-ID: 0x09be95720e592c5dc104af6d1762d8481ef5c7dc59306be3d992678a730da727\n\nRevenue recognition risk assessment based on the provided data:\n\nThe quarterly figures indicate that Q3-2026 revenue is reported at €12,400,000 EUR, with €3,100,000 EUR of revenue being deferred. This suggests that there may be some uncertainty or potential delays in recognizing certain revenues due to the deferral process.\n\nGiven that there are 41 contracts involved, it's important to consider how these contracts are structured and whether they involve significant upfront payments or long-term commitments. If many of these contracts have significant upfront payments or require substantial performance obligations before revenue can be recognized, then there could be higher revenue recognition risks associated with these deferred amounts.\n\nAdditionally, the presence of deferred revenue implies that not all revenue from these contracts has been recognized yet. This could lead to fluctuations in reported earnings if future periods see changes in the timing of when revenue is recognized under these contracts.\n\nIn summary, while the overall revenue figure appears robust, the deferred revenue component introduces an element of risk related to the timing and certainty of revenue recognition. It would be prudent to closely monitor any updates or changes in contract terms that might affect the recognition schedule of these deferred revenues.",
+    "storage": {
+      "rootHash": "0xe7fa176ac67666aed24b6d6076cf6e9ad65761acb4d89ed17a9a78a0e4891ef6",
+      "txHash": "0x18e385130cc27e90727f7ca8b6f8f6119e836c042f5f6eeaafd2d5119bd10d27",
+      "bytes": 1464
+    },
     "code": 0,
     "codeName": "OK",
     "verified": true,
-    "totalMs": 31372,
+    "totalMs": 37285,
     "stageMs": {
-      "discovery": 8236,
-      "agent_card": 7,
-      "intent_sign": 10,
-      "ecies_encrypt": 41,
-      "http_task_send1": 12971,
-      "http_result": 2,
+      "discovery": 556,
+      "agent_card": 6,
+      "intent_sign": 7,
+      "ecies_encrypt": 34,
+      "http_task_send1": 5,
+      "payment_authorize": 10935,
+      "http_task_send2": 23884,
+      "http_result": 3,
       "ecies_decrypt_result": 6,
-      "enclave_ecies_decrypt": 6,
+      "enclave_ecies_decrypt": 13,
       "enclave_recompute": 1,
-      "enclave_client_sig_verify": 3,
-      "enclave_compute_0g": 12924,
-      "enclave_seal_sign": 6,
-      "hcs_open_topic": 22,
-      "alice_job_total": 29623,
-      "chain_verify_tx": 1727
+      "enclave_client_sig_verify": 5,
+      "enclave_compute_0g": 10417,
+      "enclave_seal_sign": 3,
+      "enclave_storage_upload": 12942,
+      "hcs_open_topic": 4,
+      "alice_job_total": 35437,
+      "chain_verify_tx": 1843
     },
     "discoveredAgentId": "8429",
-    "txHash": "0x8aa2e6ce2a964150a015ad2260a51a6c348796aaa1c5be5030a45fb718b258c9",
-    "blockNumber": 44618153,
-    "basescanUrl": "https://sepolia.basescan.org/tx/0x8aa2e6ce2a964150a015ad2260a51a6c348796aaa1c5be5030a45fb718b258c9",
+    "txHash": "0x906544ee8c37b8929113e1ea353447e175b7024435ce57840ff658069134ac23",
+    "blockNumber": 44623266,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x906544ee8c37b8929113e1ea353447e175b7024435ce57840ff658069134ac23",
+    "payment": {
+      "rail": "hedera-x402",
+      "quoted": true,
+      "authorized": true,
+      "settled": true,
+      "txRef": "0.0.7162784@1785014780.687152968",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7162784-1785014780-687152968"
+    },
     "timeline": {
       "topicId": "0.0.9738448",
       "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
@@ -56,9 +78,10 @@
         "402_ISSUED",
         "INTENT_COMMIT",
         "ENCLAVE_INVOKED",
-        "OUTPUT_COMMIT"
+        "OUTPUT_COMMIT",
+        "SETTLED"
       ]
     }
   },
-  "recordedAt": "2026-07-25T18:36:38.831Z"
+  "recordedAt": "2026-07-25T21:27:05.341Z"
 }

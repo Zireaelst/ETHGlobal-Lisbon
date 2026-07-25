@@ -1,54 +1,75 @@
 {
   "report": {
     "fraudMode": "selfintent",
-    "signedIntentHash": "0x1e0e4c5a799530bba49833659972017853ece93e39807dbec82df9d159e03f77",
+    "signedIntentHash": "0x1adae8166d7e6ae95a116e7796aeb6f373bf64a2b59f73ca2488cf2d1a41e6a4",
     "bodyIntentHash": "0x17497bedd7f39c61b6635bee9b1fed53543d9723bd7bddf28f42d8bd5a029792",
     "match": true,
     "clientSigOk": false,
     "bindingSigOk": true,
     "computeProvider": "0g-sealed-inference",
     "ogVerified": true,
-    "reasoningProvider": "claude-local",
+    "reasoningProvider": "policy",
     "decisions": {
       "hire": {
-        "provider": "claude-local",
-        "agentId": "8429",
-        "rationale": "Agent 8429 has a solid track record of verified work, while the other has none at all, so it's the safer bet despite some rejections.",
-        "latencyMs": 7246
+        "provider": "policy",
+        "rationale": "highest verified-delivery count (106) with 72 rejected attempts",
+        "latencyMs": 0,
+        "agentId": "8429"
+      },
+      "price": {
+        "provider": "policy",
+        "rationale": "1000000 USDC is within the 5000000 ceiling",
+        "latencyMs": 0,
+        "approve": true
       },
       "result": {
-        "provider": "claude-local",
-        "accept": false,
-        "rationale": "The delivery contains no actual revenue-recognition analysis—just an order ID and a note about compensation—so it fails to address the requested assessment.",
-        "latencyMs": 7453
+        "provider": "policy",
+        "rationale": "the commitment did not match — this is not the job that was ordered",
+        "latencyMs": 0,
+        "accept": false
       }
     },
     "output": "ORDER-ID: 0x17497bedd7f39c61b6635bee9b1fed53543d9723bd7bddf28f42d8bd5a029792\n\nBob created this position solely to receive compensation for his efforts.",
+    "storage": {
+      "rootHash": "0xbab8425604369164b70e5a0d5120bafa3641299202d7100a9d240c49f1edeb84",
+      "txHash": "0xe4386bfa995d89d53cece576746dda4d5fc0a5285d0f720f4b4c65b5c0ec635b",
+      "bytes": 179
+    },
     "code": 3,
     "codeName": "BadClientSig",
     "verified": false,
-    "totalMs": 22906,
+    "totalMs": 21089,
     "stageMs": {
-      "discovery": 7451,
-      "agent_card": 5,
-      "intent_sign": 4,
-      "ecies_encrypt": 12,
-      "http_task_send1": 6404,
+      "discovery": 242,
+      "agent_card": 4,
+      "intent_sign": 3,
+      "ecies_encrypt": 5,
+      "http_task_send1": 3,
+      "payment_authorize": 730,
+      "http_task_send2": 18382,
       "http_result": 2,
       "ecies_decrypt_result": 6,
       "enclave_ecies_decrypt": 7,
-      "enclave_recompute": 1,
-      "enclave_client_sig_verify": 2,
-      "enclave_compute_0g": 6346,
-      "enclave_seal_sign": 5,
-      "hcs_open_topic": 7,
-      "alice_job_total": 21338,
-      "chain_verify_tx": 1561
+      "enclave_recompute": 0,
+      "enclave_client_sig_verify": 1,
+      "enclave_compute_0g": 5745,
+      "enclave_seal_sign": 3,
+      "enclave_storage_upload": 11971,
+      "hcs_open_topic": 1,
+      "alice_job_total": 19378,
+      "chain_verify_tx": 1710
     },
     "discoveredAgentId": "8429",
-    "txHash": "0x434a5dd950cea9aadb29e1b14f64c2a777ce1428f1835860575d36b04b694424",
-    "blockNumber": 44618248,
-    "basescanUrl": "https://sepolia.basescan.org/tx/0x434a5dd950cea9aadb29e1b14f64c2a777ce1428f1835860575d36b04b694424",
+    "txHash": "0xf03eeb4894c783f1e3a4c99041df7a7a6acea21559993b1cbfbfacbb4683b552",
+    "blockNumber": 44623573,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0xf03eeb4894c783f1e3a4c99041df7a7a6acea21559993b1cbfbfacbb4683b552",
+    "payment": {
+      "rail": "x402",
+      "quoted": true,
+      "authorized": true,
+      "settled": false,
+      "skippedReason": "JobVerified yok (BadClientSig)"
+    },
     "timeline": {
       "topicId": "0.0.9738448",
       "hashscanUrl": "https://hashscan.io/testnet/topic/0.0.9738448",
@@ -60,5 +81,5 @@
       ]
     }
   },
-  "recordedAt": "2026-07-25T18:39:47.396Z"
+  "recordedAt": "2026-07-25T21:37:17.432Z"
 }
