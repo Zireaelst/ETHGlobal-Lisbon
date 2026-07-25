@@ -6,6 +6,7 @@ import ArchitectureSection from "@/components/ArchitectureSection";
 import TracksSection from "@/components/TracksSection";
 import FraudDemoTeaser from "@/components/FraudDemoTeaser";
 import CtaFooter from "@/components/CtaFooter";
+import { SectionDivider } from "@/components/SectionDivider";
 import { ThemeProvider } from "@/lib/theme";
 
 export default function Home() {
@@ -14,9 +15,13 @@ export default function Home() {
       <SiteHeader />
       <CinematicHero />
       <ThesisSection />
+      <SectionDivider />
       <HowItWorksSection />
+      <SectionDivider />
       <ArchitectureSection />
+      <SectionDivider />
       <TracksSection />
+      <SectionDivider />
       <FraudDemoTeaser />
       <CtaFooter />
     </ThemeProvider>

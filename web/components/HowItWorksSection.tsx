@@ -1,6 +1,6 @@
 import { KeySquare, Radar, ShieldCheck } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
-import { Badge } from "@/components/ui/badge";
+import { SectionEyebrow } from "@/components/SectionEyebrow";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 const STEPS = [
@@ -31,7 +31,7 @@ export default function HowItWorksSection() {
   return (
     <section id="how-it-works" className="section px-8 py-32 sm:px-16 md:py-40">
       <Reveal>
-        <Badge className="w-fit text-cool">How it works</Badge>
+        <SectionEyebrow tint="cool">How it works</SectionEyebrow>
       </Reveal>
 
       <ol className="mt-14 grid list-none grid-cols-1 gap-6 p-0 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,5 +1,5 @@
 import { Reveal } from "@/components/Reveal";
-import { Badge } from "@/components/ui/badge";
+import { SectionEyebrow } from "@/components/SectionEyebrow";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 
@@ -28,7 +28,7 @@ export default function TracksSection() {
   return (
     <section id="tracks" className="section px-8 py-32 sm:px-16 md:py-40">
       <Reveal>
-        <Badge className="w-fit text-cool">Tracks</Badge>
+        <SectionEyebrow tint="cool">Tracks</SectionEyebrow>
       </Reveal>
 
       <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">

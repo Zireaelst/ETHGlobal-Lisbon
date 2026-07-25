@@ -3,7 +3,7 @@
 import { ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 import { Reveal } from "@/components/Reveal";
-import { Badge } from "@/components/ui/badge";
+import { SectionEyebrow } from "@/components/SectionEyebrow";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 
 const NODES = [
@@ -17,7 +17,7 @@ export default function ArchitectureSection() {
   return (
     <section id="architecture" className="section px-8 py-32 sm:px-16 md:py-40">
       <Reveal>
-        <Badge className="w-fit text-warm">Architecture</Badge>
+        <SectionEyebrow tint="warm">Architecture</SectionEyebrow>
       </Reveal>
 
       <Reveal

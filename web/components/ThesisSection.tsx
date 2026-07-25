@@ -1,25 +1,16 @@
 import { Reveal } from "@/components/Reveal";
-import { Badge } from "@/components/ui/badge";
+import { SectionEyebrow } from "@/components/SectionEyebrow";
 import { TextReveal } from "@/components/ui/text-reveal";
 
 export default function ThesisSection() {
   return (
     <section
       id="thesis"
-      className="section relative flex justify-center overflow-hidden px-8 py-32 sm:px-16 md:py-48"
+      className="section flex justify-center px-8 py-40 sm:px-16 md:py-56"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 h-[480px] w-[720px] -translate-x-1/2 -translate-y-1/3 rounded-full opacity-[0.12] blur-[100px]"
-        style={{
-          background:
-            "radial-gradient(closest-side, var(--chap-warm), transparent 70%)",
-        }}
-      />
-
-      <div className="relative flex max-w-3xl flex-col gap-6">
+      <div className="flex max-w-3xl flex-col gap-7">
         <Reveal>
-          <Badge className="w-fit text-warm">The problem</Badge>
+          <SectionEyebrow tint="warm">The problem</SectionEyebrow>
         </Reveal>
 
         <TextReveal
