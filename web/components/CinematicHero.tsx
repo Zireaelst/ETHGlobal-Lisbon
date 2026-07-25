@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import styles from "./CinematicHero.module.css";
+import { useTheme } from "@/lib/theme";
 
 type Rgb = [number, number, number];
 
@@ -28,16 +29,14 @@ export interface CinematicHeroProps {
   softness?: number;
   /** bloom glow strength */
   bloomIntensity?: number;
-  /** which theme the scene opens in */
-  startTheme?: "open" | "sealed";
 }
 
 export default function CinematicHero({
   scrollDepth = 340,
   softness = 14,
   bloomIntensity = 1,
-  startTheme = "sealed",
 }: CinematicHeroProps) {
+  const { theme } = useTheme();
   const wrap = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const layerA = useRef<HTMLDivElement>(null);
@@ -62,9 +61,6 @@ export default function CinematicHero({
   const railFill = useRef<HTMLDivElement>(null);
   const hint = useRef<HTMLDivElement>(null);
   const hintLine = useRef<HTMLSpanElement>(null);
-  const knob = useRef<HTMLSpanElement>(null);
-  const labOpen = useRef<HTMLSpanElement>(null);
-  const labSealed = useRef<HTMLSpanElement>(null);
   const emph = useRef<HTMLElement>(null);
   const rule = useRef<HTMLDivElement>(null);
 
@@ -84,15 +80,6 @@ export default function CinematicHero({
     const a = anim.current;
     const depth = scrollDepth ?? 340;
     if (wrap.current) wrap.current.style.height = depth + "vh";
-
-    let saved: string | null = null;
-    try {
-      saved = localStorage.getItem("hero-theme");
-    } catch {
-      // ignore
-    }
-    const startDark = saved === null ? startTheme !== "open" : saved === "sealed";
-    a.theme = a.themeTarget = startDark ? 1 : 0;
 
     if (grain.current) {
       grain.current.style.backgroundImage =
@@ -244,14 +231,6 @@ export default function CinematicHero({
         hintLine.current.style.background = "linear-gradient(180deg, " + rgba([48, 44, 37], [232, 227, 216], T, 0.45, 0.5) + ", rgba(0,0,0,0))";
       }
 
-      if (knob.current) {
-        knob.current.style.transform = "translateX(" + (T * 74).toFixed(2) + "px)";
-        knob.current.style.boxShadow = "0 0 " + (6 + 10 * T).toFixed(1) + "px " + rgba([190, 150, 70], [96, 148, 255], T, 0.5, 0.75);
-        knob.current.style.background = rgba([60, 52, 38], [242, 239, 232], T, 1, 1);
-      }
-      if (labOpen.current) labOpen.current.style.opacity = mix(1, 0.42, T).toFixed(3);
-      if (labSealed.current) labSealed.current.style.opacity = mix(0.42, 1, T).toFixed(3);
-
       cap(cap0, 1 - band(p, 0.1, 0.26));
       cap(cap1, clamp(band(p, 0.24, 0.4) - band(p, 0.56, 0.7)));
       cap(cap2, band(p, 0.66, 0.84));
@@ -278,20 +257,14 @@ export default function CinematicHero({
       cancelAnimationFrame(a.raf);
       window.removeEventListener("pointermove", onMove);
     };
-    // scrollDepth/softness/bloomIntensity/startTheme are read once on mount, matching the
+    // scrollDepth/softness/bloomIntensity are read once on mount, matching the
     // original scroll-driven scene which never re-initializes on prop change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const toggleTheme = () => {
-    const a = anim.current;
-    a.themeTarget = a.themeTarget > 0.5 ? 0 : 1;
-    try {
-      localStorage.setItem("hero-theme", a.themeTarget > 0.5 ? "sealed" : "open");
-    } catch {
-      // ignore
-    }
-  };
+  useEffect(() => {
+    anim.current.themeTarget = theme === "sealed" ? 1 : 0;
+  }, [theme]);
 
   return (
     <div ref={wrap} style={{ position: "relative", width: "100%", height: "340vh", background: "#05060a" }}>
@@ -323,23 +296,6 @@ export default function CinematicHero({
         <div ref={scrim} style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(100deg, rgba(5,6,10,.94) 0%, rgba(5,6,10,.86) 24%, rgba(5,6,10,.52) 46%, rgba(5,6,10,.12) 64%, rgba(5,6,10,0) 78%)", willChange: "background" }} />
         <div ref={vig} style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(120% 90% at 50% 50%, rgba(0,0,0,0) 38%, rgba(0,0,0,.55) 100%)", willChange: "background" }} />
         <div ref={grain} style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.05, mixBlendMode: "overlay" }} />
-
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 32, padding: "clamp(22px, 3.2vh, 34px) clamp(32px, 7vw, 132px)" }}>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 21, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--ink, #f2efe8)" }}>Sealed</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "clamp(20px, 3vw, 44px)", fontFamily: "var(--font-body)", fontWeight: 300, fontSize: 13, letterSpacing: ".1em", color: "var(--ink-soft, rgba(232,227,216,.6))" }}>
-            <a href="#" className={styles.navLink}>Thesis</a>
-            <a href="#" className={styles.navLink}>Architecture</a>
-            <a href="#" className={styles.navLink}>Verify</a>
-            <div onClick={toggleTheme} role="button" tabIndex={0} style={{ display: "flex", alignItems: "center", gap: 14, marginLeft: "clamp(8px, 1.6vw, 22px)", cursor: "pointer", userSelect: "none" }}>
-              <span ref={labOpen} style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: ".3em", textTransform: "uppercase", color: "var(--ink, #f2efe8)" }}>Open</span>
-              <span style={{ position: "relative", display: "block", width: 82, height: 10 }}>
-                <span style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 1, background: "var(--line, rgba(232,227,216,.28))" }} />
-                <span ref={knob} style={{ position: "absolute", top: 1, left: 0, width: 8, height: 8, borderRadius: "50%", background: "var(--ink, #f2efe8)", willChange: "transform, box-shadow" }} />
-              </span>
-              <span ref={labSealed} style={{ fontFamily: "var(--font-mono)", fontSize: 9.5, letterSpacing: ".3em", textTransform: "uppercase", color: "var(--ink, #f2efe8)" }}>Sealed</span>
-            </div>
-          </div>
-        </div>
 
         <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", alignItems: "center", padding: "0 clamp(32px, 7vw, 132px)" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 30, maxWidth: 620 }}>
