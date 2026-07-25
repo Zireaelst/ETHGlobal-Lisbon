@@ -21,13 +21,23 @@ import {
   encryptFor,
   intentToWire,
   parseOrThrow,
+  pickBestAgent,
   signIntent,
+  type DiscoveredAgent,
 } from '@ca/shared';
 import { Wallet } from 'ethers';
 
 export interface AliceJobOptions {
-  /** Bob'un temel URL'i (P2-C'de The Graph'ten gelecek). */
-  bobUrl: string;
+  /**
+   * Bob'un temel URL'i. VERİLMEZSE `discover` üzerinden The Graph'ten bulunur.
+   * İkisinden biri zorunlu.
+   */
+  bobUrl?: string;
+  /**
+   * Keşif: skill ile ara, subgraph'ın verdiği endpoint ve ECIES pubkey'i kullan.
+   * Alice'in Bob'un adresini bilmemesi The Graph'ın load-bearing olduğunun kanıtı.
+   */
+  discover?: { subgraphUrl: string; skill: string };
   brief: string;
   data: string;
   constraints: Constraints;
@@ -47,6 +57,8 @@ export interface AliceJobOptions {
 }
 
 export interface AliceJobReport {
+  /** Keşif kullanıldıysa subgraph'tan gelen kayıt. */
+  discovered?: DiscoveredAgent;
   card: AgentCard;
   intent: Intent;
   signature: string;
@@ -65,14 +77,42 @@ export async function fetchAgentCard(bobUrl: string, fetchImpl: typeof fetch = f
   return parseOrThrow(AgentCardSchema, await res.json(), 'AgentCard');
 }
 
-/** Uçtan uca bir iş: kart → intent → şifreli gönderim → şifreli sonuç. */
+/** Uçtan uca bir iş: (keşif →) kart → intent → şifreli gönderim → şifreli sonuç. */
 export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobReport> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const log = options.log ?? ((line: string) => console.log(line));
-  const base = options.bobUrl.replace(/\/$/, '');
+
+  // --- keşif: adresi bilmiyorsak The Graph'ten bul ---
+  let discovered: DiscoveredAgent | undefined;
+  let base: string;
+  if (options.bobUrl) {
+    base = options.bobUrl.replace(/\/$/, '');
+  } else if (options.discover) {
+    discovered = await pickBestAgent(options.discover.subgraphUrl, options.discover.skill);
+    if (!discovered.endpoint) throw new Error(`keşfedilen agent ${discovered.agentId} endpoint taşımıyor`);
+    // Kayıtlı endpoint iş ucudur (`.../task`); temel adres onun bir üstü.
+    base = discovered.endpoint.replace(/\/task\/?$/, '').replace(/\/$/, '');
+    log(
+      `[alice] The Graph'ten keşfedildi: agentId=${discovered.agentId} ` +
+        `skills=${discovered.skills.join(',')} verifiedDeliveries=${discovered.verifiedDeliveries}`,
+    );
+  } else {
+    throw new Error('bobUrl ya da discover verilmeli');
+  }
 
   const card = await fetchAgentCard(base, fetchImpl);
-  log(`[alice] Bob bulundu: agentId=${card.agentId} skills=${card.skills.join(',')}`);
+  log(`[alice] agent card alındı: agentId=${card.agentId} skills=${card.skills.join(',')}`);
+
+  // Keşif ile kartın anlaşmadığı bir durumda SESSİZCE devam etmek, yanlış alıcıya
+  // şifrelemek demektir. Uyuşmazlığı hata olarak veriyoruz.
+  if (discovered) {
+    if (card.agentId !== discovered.agentId) {
+      throw new Error(`keşif agentId ${discovered.agentId} ≠ kart agentId ${card.agentId}`);
+    }
+    if (discovered.eciesPubKey && card.eciesPubKey !== discovered.eciesPubKey) {
+      throw new Error('keşfedilen eciesPubKey ile karttaki anahtar farklı — hangisinin güncel olduğu belirsiz');
+    }
+  }
 
   const nonce = options.nonce ?? BigInt(Date.now());
   const price = BigInt(card.price.amount);
@@ -111,7 +151,10 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
   // yapabileceği şey. Böylece "tek karakter değişti" senaryosu gerçekçi olur.
   if (options.tamper) envelope = options.tamper(envelope);
 
-  const sentCipher = await encryptFor(card.eciesPubKey, envelope);
+  // Keşif kullanıldıysa ZİNCİRDEN indekslenen anahtarla şifrele: kaynak The Graph,
+  // Bob'un kendi beyanı değil. (Yukarıda ikisinin eşit olduğu zaten doğrulandı.)
+  const encryptTo = discovered?.eciesPubKey ?? card.eciesPubKey;
+  const sentCipher = await encryptFor(encryptTo, envelope);
 
   const postRes = await fetchImpl(`${base}/task`, {
     method: 'POST',
@@ -137,7 +180,7 @@ export async function runAliceJob(options: AliceJobOptions): Promise<AliceJobRep
   const matched = result.match && result.recomputedIntentHash === intentHash;
   log(`[alice] sonuç çözüldü: match=${result.match} clientSig=${result.clientSigOk ? 'ok' : 'HATALI'}`);
 
-  return { card, intent, signature, sentCipher, postStatus: postRes.status, result, matched };
+  return { discovered, card, intent, signature, sentCipher, postStatus: postRes.status, result, matched };
 }
 
 /** Doğrudan çalıştırılırsa .env'den kurulup tek iş koşar. */
@@ -162,8 +205,16 @@ export async function main(): Promise<void> {
     );
   }
 
+  // VARSAYILAN YOL KEŞİFTİR. `--bob` yalnızca yerel hata ayıklama içindir; Alice'in
+  // Bob'un adresini bilmesi gerekmiyor (BUILD-PLAN P2-C).
+  const explicitBob = arg('bob') ?? process.env.BOB_URL;
+  const skill = arg('skill') ?? 'market-analysis';
+
   const report = await runAliceJob({
-    bobUrl: arg('bob') ?? process.env.BOB_URL ?? 'http://127.0.0.1:8801',
+    bobUrl: explicitBob,
+    discover: explicitBob
+      ? undefined
+      : { subgraphUrl: requireEnv('SUBGRAPH_QUERY_URL', 'pnpm gate:P2-B doldurur'), skill },
     brief: briefArg,
     data: dataFile ? readFileSync(dataFile, 'utf8') : 'Q3-2026 revenue 12,400,000 EUR; deferred 3,100,000 EUR.',
     constraints: { model: 'qwen2.5-omni-7b', maxTokens: 2048, temperature: 0.2 },
@@ -173,6 +224,12 @@ export async function main(): Promise<void> {
   });
 
   console.log('\n--- sonuç ---');
+  if (report.discovered) {
+    console.log(
+      `keşif: The Graph → agentId ${report.discovered.agentId} ` +
+        `(verifiedDeliveries ${report.discovered.verifiedDeliveries})`,
+    );
+  }
   console.log(report.result.output);
   console.log(`match: ${report.matched}`);
 }

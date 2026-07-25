@@ -1,10 +1,6 @@
 {
-  "capturedAt": "2026-07-25T04:06:26.789Z",
-  "subgraphUrl": "https://api.studio.thegraph.com/query/1756943/confidential-agents/v0.0.1",
-  "indexedBlock": 44592049,
-  "chainHead": 44592049,
-  "lagBlocks": 0,
-  "bobFromSubgraph": {
+  "capturedAt": "2026-07-25T04:05:59.223Z",
+  "discoveredAgent": {
     "agentId": "8429",
     "owner": "0x4f5cd20a4a3fbc9957f8d2a8d27d658b51fda326",
     "skills": [
@@ -17,12 +13,9 @@
     "rejectedAttempts": 0,
     "registeredBlock": "44584172"
   },
-  "indexedAgentIds": [
-    "8427",
+  "decoyRegisterTx": "0xcf84d6c5a6b6a8c31bc37e677f472199eae36b4f69fbffa5a2b40c5e04b5cdc3",
+  "rankedIds": [
     "8429",
-    "8430",
-    "8431",
     "8432"
-  ],
-  "agentCount": 4
+  ]
 }
