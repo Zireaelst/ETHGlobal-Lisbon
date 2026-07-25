@@ -16,6 +16,7 @@
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { Wallet, keccak256, toUtf8Bytes } from 'ethers';
 
 import {
   AgentCardSchema,
@@ -25,13 +26,19 @@ import {
   type AgentCard,
   type Constraints,
   type EchoResult,
-  buildIntentHash,
   decryptWith,
   eciesPublicKeyOf,
   encryptFor,
   parseOrThrow,
   recoverIntentSigner,
 } from '@ca/shared';
+import { recoverBindingSigner, runBinding } from '@ca/bob-binding';
+import {
+  applyPostBindingFraud,
+  applyPreBindingFraud,
+  isFraudMode,
+  type FraudMode,
+} from './fraud.js';
 
 export interface BobAgentOptions {
   /** Bob'un ECIES private key'i (BOB_ECIES_PRIV). */
@@ -44,8 +51,18 @@ export interface BobAgentOptions {
   price: { amount: string; asset: string; decimals: number };
   /** EIP-712 domain'inin verifyingContract'ı — Alice'in imzasını doğrulamak için. */
   verifyingContract: string;
+  /**
+   * Binding (FAZ 1'de yerel, P3'te enclave seal) imza anahtarı.
+   *
+   * Bu anahtar bob-agent'ta DEĞİL, enclave'de yaşamalı — FAZ 1'de enclave bir
+   * fonksiyon çağrısı olduğu için buradan geçiriliyor. P3-B'de Tapp'e taşınacak
+   * ve bob-agent onu bir daha görmeyecek.
+   */
+  bindingKey: string;
   chainId?: number;
   port?: number;
+  /** Başlangıç hile modu. Çalışırken `setFraudMode` ile değişebilir. */
+  fraudMode?: FraudMode;
   /** Kartın `endpoint` alanı; verilmezse dinlenen adresten türetilir. */
   publicUrl?: string;
   log?: (line: string) => void;
@@ -73,6 +90,11 @@ export interface BobAgent {
   card(): AgentCard;
   /** Test/demo için: işlenmiş işlerin düz metin özeti (ağa çıkmaz). */
   readonly processed: EchoResult[];
+  /** Hile modunu ÇALIŞIRKEN değiştir — restart YOK (BUILD-PLAN P1-D kriteri). */
+  setFraudMode(mode: FraudMode): void;
+  fraudMode(): FraudMode;
+  /** Enclave'in (FAZ 1: binding fonksiyonunun) kayıtlı imzalayıcı adresi. */
+  bindingSigner(): string;
 }
 
 class HttpError extends Error {
@@ -113,6 +135,10 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
   const results = new Map<string, StoredResult>();
   const processed: EchoResult[] = [];
   let boundPort = options.port ?? 0;
+  // Hile modu MUTABLE: demo sırasında restart, seal key'i kaybettirir (v3 §06),
+  // o yüzden mod çalışırken değişebilmeli.
+  let fraudMode: FraudMode = options.fraudMode ?? 'none';
+  const expectedBindingSigner = new Wallet(options.bindingKey).address;
 
   const url = () => options.publicUrl ?? `http://127.0.0.1:${boundPort}`;
 
@@ -176,20 +202,10 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
       nonce: envelope.nonce,
     });
 
-    // İŞİN ÖZÜ: taahhüdü Alice'in söylediğine göre değil, GELEN İÇERİKTEN yeniden hesapla.
-    const recomputed = buildIntentHash({
-      brief: envelope.brief,
-      data: envelope.data,
-      constraints: envelope.constraints as Constraints,
-      price: BigInt(envelope.intent.price),
-      nonce: BigInt(envelope.nonce),
-    });
-    const match = recomputed === envelope.intent.intentHash;
-
     // Alice'in imzası gerçekten Alice'ten mi? Nihai kararı P3-A'da kontrat verir;
     // burada erken uyarı olarak bakıyoruz.
     let recoveredClient = '0x0000000000000000000000000000000000000000';
-    let clientSigOk = false;
+    let clientSigValid = false;
     try {
       recoveredClient = recoverIntentSigner(
         {
@@ -203,34 +219,63 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
         options.verifyingContract,
         options.chainId,
       );
-      clientSigOk = recoveredClient.toLowerCase() === envelope.intent.client.toLowerCase();
+      clientSigValid = recoveredClient.toLowerCase() === envelope.intent.client.toLowerCase();
     } catch {
-      clientSigOk = false;
+      clientSigValid = false;
     }
+
+    // --- hile katmanı: enclave'e GİRMEDEN önce ---
+    const mode = fraudMode;
+    const pre = applyPreBindingFraud(
+      mode,
+      {
+        claimedIntentHash: envelope.intent.intentHash,
+        brief: envelope.brief,
+        data: envelope.data,
+        constraints: envelope.constraints as Constraints,
+        price: BigInt(envelope.intent.price),
+        nonce: BigInt(envelope.nonce),
+      },
+      { claimedIntentHash: envelope.intent.intentHash, clientSignatureValid: clientSigValid },
+    );
+
+    // --- DÜRÜST binding (enclave) — FRAUD_MODE buraya GİRMEZ ---
+    const bound = await runBinding(pre.request, options.bindingKey);
+
+    // --- hile katmanı: enclave'den DÖNDÜKTEN sonra ---
+    const finalBinding = applyPostBindingFraud(mode, bound);
+
+    const bindingSigner = recoverBindingSigner(finalBinding.bodyHex, finalBinding.signature);
+    const bindingSigOk = bindingSigner.toLowerCase() === expectedBindingSigner.toLowerCase();
 
     const result: EchoResult = {
       v: 1,
       stage: 'echo',
-      intentHash: envelope.intent.intentHash,
-      recomputedIntentHash: recomputed,
-      match,
-      clientSigOk,
+      intentHash: pre.ctx.claimedIntentHash,
+      recomputedIntentHash: finalBinding.recomputedIntentHash,
+      match: finalBinding.match,
+      clientSigOk: pre.ctx.clientSignatureValid,
       recoveredClient,
-      output: match
-        ? `[FAZ 1 echo] Brief alındı (${envelope.brief.length} karakter), veri ${envelope.data.length} karakter. ` +
-          `Gerçek analiz P3-B'de 0G Sealed Inference'tan gelecek.`
-        : '[FAZ 1 echo] intentHash uyuşmadı — iş yapılmadı.',
+      output: finalBinding.output,
+      bodyHex: finalBinding.bodyHex,
+      bindingSig: finalBinding.signature,
+      bindingSigner,
+      expectedBindingSigner,
+      bindingSigOk,
     };
 
     processed.push(result);
+    // Sonuç, Alice'in İMZALADIĞI taahhüde göre saklanır — Bob başka bir işe cevap
+    // verse bile Alice kendi intentHash'iyle sorabilsin diye.
     results.set(envelope.intent.intentHash, {
       cipher: await encryptFor(envelope.replyPubKey, result),
       receivedAt: Date.now(),
     });
 
     log(
-      `[bob] /task intentHash=${envelope.intent.intentHash.slice(0, 12)}… ` +
-        `match=${match} clientSig=${clientSigOk ? 'ok' : 'HATALI'}`,
+      `[bob] /task intentHash=${envelope.intent.intentHash.slice(0, 12)}… mode=${mode} ` +
+        `match=${finalBinding.match} clientSig=${pre.ctx.clientSignatureValid ? 'ok' : 'HATALI'} ` +
+        `bindingSig=${bindingSigOk ? 'ok' : 'HATALI'}`,
     );
     return { intentHash: envelope.intent.intentHash };
   }
@@ -253,6 +298,28 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
           // Yanıt yalnızca taahhüdü taşır — `match` şifreli sonucun İÇİNDE,
           // gözlemci işin sonucunu düz metin olarak göremesin diye.
           sendJson(res, 202, { accepted: true, intentHash: accepted.intentHash });
+          return;
+        }
+        // Demo dApp'in fraud butonu buraya vuracak (P5-A). Restart YOK.
+        if (req.method === 'POST' && path === '/admin/fraud-mode') {
+          const body = await readBody(req);
+          let requested: unknown;
+          try {
+            requested = (JSON.parse(body) as { mode?: unknown }).mode;
+          } catch {
+            throw new HttpError(400, 'gövde geçerli JSON değil');
+          }
+          if (!isFraudMode(requested)) {
+            throw new HttpError(400, `bilinmeyen mod: ${String(requested)}`);
+          }
+          const previous = fraudMode;
+          fraudMode = requested;
+          log(`[bob] FRAUD_MODE ${previous} -> ${fraudMode} (restart yok)`);
+          sendJson(res, 200, { previous, mode: fraudMode });
+          return;
+        }
+        if (req.method === 'GET' && path === '/admin/fraud-mode') {
+          sendJson(res, 200, { mode: fraudMode });
           return;
         }
         if (req.method === 'GET' && path.startsWith('/result/')) {
@@ -281,6 +348,12 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
     processed,
     card,
     url,
+    setFraudMode: (mode: FraudMode) => {
+      log(`[bob] FRAUD_MODE ${fraudMode} -> ${mode} (restart yok)`);
+      fraudMode = mode;
+    },
+    fraudMode: () => fraudMode,
+    bindingSigner: () => expectedBindingSigner,
     listen: () =>
       new Promise<number>((resolve) => {
         server.listen(options.port ?? 0, '127.0.0.1', () => {
@@ -295,7 +368,6 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
 
 /** Doğrudan çalıştırılırsa .env'den kurulup ayağa kalkar. */
 export async function main(): Promise<void> {
-  const { Wallet } = await import('ethers');
   const { loadConfig, optionalEnv, requireEnv } = await import('@ca/shared');
   const cfg = loadConfig();
   const verifyingContract = optionalEnv('VERIFIER_ADDRESS') ?? PLACEHOLDER_VERIFIER;
@@ -312,6 +384,10 @@ export async function main(): Promise<void> {
     skills: ['market-analysis'],
     price: { amount: '1000000', asset: 'USDC', decimals: 6 },
     verifyingContract,
+    // FAZ 1: binding anahtarı Bob'un cüzdanından TÜRETİLİYOR. P3-C'de bunun yerini
+    // enclave'in ürettiği seal key alacak ve `setEnclaveSigner` ile on-chain kaydedilecek.
+    bindingKey: keccak256(toUtf8Bytes(`phase1-binding-key/${cfg.PRIVATE_KEY_BOB}`)),
+    fraudMode: isFraudMode(cfg.FRAUD_MODE) ? cfg.FRAUD_MODE : 'none',
     port: Number(process.env.BOB_PORT ?? 8801),
   });
   await agent.listen();

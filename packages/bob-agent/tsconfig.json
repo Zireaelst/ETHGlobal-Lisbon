@@ -4,6 +4,18 @@
     "rootDir": "./src",
     "outDir": "./dist"
   },
-  "include": ["src/**/*.ts"],
-  "references": [{ "path": "../shared" }, { "path": "../payment" }]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../shared"
+    },
+    {
+      "path": "../payment"
+    },
+    {
+      "path": "../bob-binding"
+    }
+  ]
 }

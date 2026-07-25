@@ -11,7 +11,7 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Wallet } from 'ethers';
+import { Wallet, keccak256, toUtf8Bytes } from 'ethers';
 
 import { createBobAgent, type BobAgent } from '../../packages/bob-agent/src/index.js';
 import { runAliceJob } from '../../packages/alice-agent/src/index.js';
@@ -42,6 +42,8 @@ const aliceEcies = optionalEnv('ALICE_ECIES_PRIV') ?? createEciesIdentity().priv
 const bobEcies = optionalEnv('BOB_ECIES_PRIV') ?? createEciesIdentity().privateKey;
 const aliceWallet = Wallet.createRandom();
 const bobWallet = Wallet.createRandom();
+/** FAZ 1 binding anahtarı — enclave seal key DEĞİL (P3-C değiştirecek). */
+const BINDING_KEY = keccak256(toUtf8Bytes('confidential-agents/P1-C/binding'));
 
 let bob: BobAgent | undefined;
 let proxy: RecordingProxy | undefined;
@@ -56,6 +58,7 @@ gate.check('Bob ayağa kalkıyor ve agent-card şemadan geçiyor', async () => {
     skills: ['market-analysis'],
     price: { amount: '1000000', asset: 'USDC', decimals: 6 },
     verifyingContract: PLACEHOLDER_VERIFIER,
+    bindingKey: BINDING_KEY,
     log: () => {}, // kapı çıktısını kirletme
     onDecrypted: (e) => decryptedByBob.push({ brief: e.brief, data: e.data, nonce: e.nonce }),
   });

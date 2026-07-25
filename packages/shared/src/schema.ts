@@ -144,6 +144,18 @@ export const EchoResultSchema = z.object({
   clientSigOk: z.boolean(),
   recoveredClient: AddressSchema,
   output: z.string(),
+
+  // --- binding imzası (P1-D) ---
+  // DİKKAT: bu, doğrulanmış Tapp seal imzası DEĞİL. FAZ 1'de binding yerel bir
+  // fonksiyon ve anahtar attested enclave'den gelmiyor. P3-B/P3-C gerçeğiyle değiştirecek.
+  /** İmzalanan ham gövde: abi.encode(bytes32,bytes32,bool,bytes32). */
+  bodyHex: z.string().regex(/^0x[0-9a-fA-F]*$/, 'hex olmalı'),
+  bindingSig: SignatureSchema,
+  /** Gövde imzasından kurtarılan adres. */
+  bindingSigner: AddressSchema,
+  /** Kayıtlı binding anahtarı — kontrattaki enclaveSignerOf'un FAZ 1 karşılığı. */
+  expectedBindingSigner: AddressSchema,
+  bindingSigOk: z.boolean(),
 });
 export type EchoResult = z.infer<typeof EchoResultSchema>;
 
