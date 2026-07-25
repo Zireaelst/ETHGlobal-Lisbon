@@ -2,15 +2,15 @@
   "request": {
     "endpoint": "https://compute-network-6.integratenetwork.work/v1/proxy",
     "model": "qwen/qwen2.5-omni-7b",
-    "prompt": "You are an expert analyst. Produce the deliverable described in the brief.\n\nBRIEF:\nWrite a short generic market summary. (Bob substituted this brief.)\n\nDATA:\nBob has no access to the real dataset."
+    "prompt": "ORDER-ID: 0x5eb61a5dba2d2194bd514090fe87fb06525e0616fbab8dd83ba8f118d739f428\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0x5eb61a5dba2d2194bd514090fe87fb06525e0616fbab8dd83ba8f118d739f428\n\nThen answer the brief below.\n\nBRIEF:\nWrite a short generic market summary. (Bob substituted this brief.)\n\nDATA:\nBob has no access to the real dataset."
   },
-  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"I'm sorry, but I cannot produce a market summary without access to relevant data and information about the specific market or industry being discussed. Could you please provide me with more details or context so that I can better understand what kind of market summary is needed?\",\"role\":\"assistant\"}}],\"created\":1784976984,\"id\":\"chatcmpl-18c490f2-0548-4cd4-be9f-12d48e09bd0a\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":53,\"completion_tokens_details\":{\"text_tokens\":53},\"prompt_tokens\":51,\"prompt_tokens_details\":{\"text_tokens\":51},\"total_tokens\":104}}",
-  "output": "I'm sorry, but I cannot produce a market summary without access to relevant data and information about the specific market or industry being discussed. Could you please provide me with more details or context so that I can better understand what kind of market summary is needed?",
-  "latencyMs": 1380,
-  "chatID": "18c490f2-0548-4cd4-be9f-12d48e09bd0a",
+  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0x5eb61a5dba2d2194bd514090fe87fb06525e0616fbab8dd83ba8f118d739f428\\n\\nMarket Summary:\\n\\nThe global financial markets experienced a mixed performance last week. Major indices fluctuated due to various factors including geopolitical tensions and economic data releases. The tech sector showed resilience despite concerns over interest rate hikes, while energy stocks were impacted by geopolitical events in the Middle East. Investors remain cautious as they await further economic indicators and central bank\",\"role\":\"assistant\"}}],\"created\":1784980521,\"id\":\"chatcmpl-3a811ad5-62db-44d8-a502-69b86045f17a\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":129,\"completion_tokens_details\":{\"text_tokens\":129},\"prompt_tokens\":177,\"prompt_tokens_details\":{\"text_tokens\":177},\"total_tokens\":306}}",
+  "output": "ORDER-ID: 0x5eb61a5dba2d2194bd514090fe87fb06525e0616fbab8dd83ba8f118d739f428\n\nMarket Summary:\n\nThe global financial markets experienced a mixed performance last week. Major indices fluctuated due to various factors including geopolitical tensions and economic data releases. The tech sector showed resilience despite concerns over interest rate hikes, while energy stocks were impacted by geopolitical events in the Middle East. Investors remain cautious as they await further economic indicators and central bank",
+  "latencyMs": 2372,
+  "chatID": "3a811ad5-62db-44d8-a502-69b86045f17a",
   "signature": {
-    "text": "c0628ebbc83b8d9e16c8ba79d10bad15897ce46d509b64ace04934525824735b:9eafcbc5134d85a6478743f45a92b7a9deffd45667fc7fd0a8f9294d8000fdd6:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
-    "signature": "0xe50c4e1c698487533a8cc08ef8659ff64d0324c28d8a7ab7760a8d787f4a92051c0f11077eecb6dfdaa1b1b09d66b3885f4190ee4391f802c321f9ce39ad68311b",
+    "text": "68d719a9acfdada40794ce0cd14c78659f667105c4cee36a8d13c86ab614754c:9b8e2471358a30dada4eaffbd862231f1b7b7fa46f80ae4570e5428eea941c9b:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signature": "0x03df97854ae2052bd86c6b37be1c35a0e4f821fbd154ac2489b9c788b6b08e62342220943ed624caad0ba6f6b9d5722b3c612dc7770b7c988d4f552f2d0d4e861b",
     "signing_address": "0x83df4b8eba7c0b3b740019b8c9a77fff77d508cf",
     "signing_algo": "ecdsa",
     "provider_type": "centralized",
@@ -19,7 +19,7 @@
   },
   "verification": {
     "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
-    "responseSha256": "9eafcbc5134d85a6478743f45a92b7a9deffd45667fc7fd0a8f9294d8000fdd6"
+    "responseSha256": "9b8e2471358a30dada4eaffbd862231f1b7b7fa46f80ae4570e5428eea941c9b"
   },
   "requestKey": "1f7aba48d8b90240ab3b4b869c352cba4950271db1052d56c753790ad33b502f"
 }

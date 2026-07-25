@@ -10,6 +10,7 @@
 //
 // Bu kapı CANLI 0G çağrısı yapar (bütçeden ~6 çağrı; P0-D'ye göre ~0.0024 OG).
 
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ethers } from 'ethers';
 
@@ -141,6 +142,77 @@ gate.check('Dürüst iş: match=true, 0G imzası ENCLAVE İÇİNDE doğrulandı,
       `match=true · ogVerified=true · imzacı ${signer.slice(0, 10)}…`,
       `intentHash ${intentHash.slice(0, 14)}…`,
       `outputHash ${result.outputHash.slice(0, 14)}… · ogSigner ${result.ogSigner?.slice(0, 10) ?? '-'}…`,
+    ].join('\n'),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 1b. LEVEL 0 BAĞLAMA — taahhüt 0G TEE'sinin İÇİNDEN geçiyor
+//
+// Kendi attested makinemiz yok (P0-C/P3-C, TDX erişimi yok). Bu yüzden bağlamanın
+// bir ucunu 0G'nin GERÇEK enclave'inin içinden geçiriyoruz: intentHash prompt'a
+// konuyor, model çıktısında birebir tekrarlıyor, TEE de o çıktıyı kapsayan gövdeyi
+// imzalıyor. Bob bu zinciri kendi makinesinde üretemez.
+// ---------------------------------------------------------------------------
+gate.check('Çıktı Alice\'in intentHash\'ini BİREBİR taşıyor (Level 0 bağlama)', async () => {
+  const { intentHash, request } = await buildEnvelope();
+  const started = Date.now();
+  const result = await runBinding(request, enclaveKeys, { compute: await liveBackend() });
+  latencies.push(Date.now() - started);
+
+  if (!result.intentEchoed) {
+    return fail('çıktı intentHash\'i taşımıyor — Level 0 bağlaması kurulmadı');
+  }
+  if (!result.ogVerified || !result.ogSig) {
+    return fail('taahhüt taşınıyor ama TEE imzası doğrulanmadı — zincirin ilk halkası eksik');
+  }
+
+  // İmzayı atanın, kontratta ONAYLI TEE olduğunu bağımsız teyit et: enclave'in
+  // "ogVerified" raporuna değil, kaydedilmiş beklenen imzacıya karşı bakıyoruz.
+  const expectedTee = (
+    JSON.parse(
+      readFileSync(resolve(OG_DIR, 'signer.json'), 'utf8'),
+    ) as { expectedSigner: string }
+  ).expectedSigner;
+  if (result.ogSigner?.toLowerCase() !== expectedTee.toLowerCase()) {
+    return fail(`imzacı ${result.ogSigner} ≠ onaylı TEE ${expectedTee}`);
+  }
+
+  return pass(
+    [
+      `intentHash ${intentHash.slice(0, 18)}… çıktının İÇİNDE`,
+      `imzacı ${result.ogSigner.slice(0, 12)}… = kontratta onaylı TEE`,
+      'zincir: 0G TEE imzası → yanıt gövdesi → çıktı → intentHash → Alice\'in imzası',
+    ].join('\n'),
+  );
+});
+
+gate.check('Kontrol "DOĞRU hash var mı" diye soruyor — yabancı hash geçmiyor', async () => {
+  const { intentHash, request } = await buildEnvelope();
+  const result = await runBinding(request, enclaveKeys, { compute: await liveBackend() });
+
+  // `output` dış katmana DÖNMÜYOR (gizlilik sınırı) — Alice'in yaptığını yapıp
+  // sonucu onun anahtarıyla çözüyoruz.
+  const decrypted = (await decryptWith(requireEnv('ALICE_ECIES_PRIV'), result.resultCipher)) as {
+    output: string;
+  };
+
+  if (!decrypted.output.includes(intentHash)) {
+    return fail('çözülen çıktı gerçek intentHash\'i taşımıyor');
+  }
+
+  // Kontrol "herhangi bir hash var mı" olsaydı yabancı bir hash de geçerdi.
+  const foreign = ethers.keccak256(ethers.toUtf8Bytes('başka bir sipariş'));
+  if (foreign === intentHash) return fail('test kurgusu hatalı: yabancı hash gerçek hash\'e eşit');
+  if (decrypted.output.includes(foreign)) {
+    return fail('yabancı hash de çıktıda — bağlama ayırt etmiyor');
+  }
+
+  return pass(
+    [
+      `gerçek  ${intentHash.slice(0, 16)}… → çıktıda VAR (intentEchoed=${result.intentEchoed})`,
+      `yabancı ${foreign.slice(0, 16)}… → çıktıda YOK`,
+      'çıktı Alice\'in anahtarıyla çözüldü — dış katman bunu göremiyor',
     ].join('\n'),
   );
 });

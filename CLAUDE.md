@@ -60,6 +60,38 @@ Verifier.sol (Base Sepolia): verify Tapp seal-key sig + Alice EIP-712 intent + m
 inference"); the intent-**binding** runs in **Bob's own attested Tapp**. The binding does NOT require the
 model to be co-located — Bob's Tapp only does hashing + orchestration (light, fits any CPU TEE).
 
+### 2.1 WHAT WE ACTUALLY SHIPPED — Level 0+ (no TDX host was available)
+
+Level 1 needs a TDX machine for Bob's Tapp. 0G does not host Tapp execution for us and we have none,
+so the recompute runs as ordinary (unattested) code. Rather than fake an attestation, we moved **one
+end of the binding inside 0G's real enclave** — the §12 Level 0 fallback, implemented and measured:
+
+```
+Alice signs intentHash  →  it is placed at the TOP of the prompt
+                        →  model copies it verbatim into its answer
+                        →  0G TEE signs sha256(response body) which CONTAINS that answer
+⇒ a genuine 0G enclave has attested: "a response carrying THIS intentHash was produced in here"
+```
+
+Bob cannot forge that chain on his own machine — the first link comes from 0G hardware.
+Measured 5/5 verbatim (`scripts/og-probe-echo.ts`), gated in `gate:P3-B`, surfaced as `intentEchoed`.
+
+The echo is checked by `runBinding` against the raw output, **not** by the compute backend — a backend
+could claim it inserted the commitment. Verification is exact-match on the full 64-hex value; one
+shifted character breaks it, and "close enough" is not a category.
+
+**Not verifiable on-chain, by design:** the TEE signs the digest of the response body, so checking the
+echo requires the body itself. `Verifier.sol` therefore still verifies `match`; the echo is the
+independently-verifiable strengthening for anyone holding the response (Alice, and the demo's
+verification panel). No contract change, no redeploy.
+
+**What a TDX host would have added** (say this in the presentation — it is the honest delta):
+with our own attested enclave, the *recompute itself* would be inside the seal, so the attestation
+would read `codeDigest + inputHash + outputHash` (cf. Oasis ROFL) and a third party could trust
+`match` without trusting us. Today `match` is computed by unattested code; the client can verify it
+independently, a stranger cannot. That one sentence is the whole gap — nothing else in the pipeline
+changes.
+
 **Clean separation** (answer to "which chain is the source of truth?"):
 **Base = the verdict · Hedera = the timeline · The Graph = the read layer · 0G = the compute.** No layer duplicates another.
 
@@ -319,6 +351,13 @@ one README per sponsor naming exact SDKs, endpoints, contract addresses.
 - **Not** "we built the TEE" — 0G did; we bind it to intent.
 - **Not** "the 0G signature covers the answer text" — it covers the answer's **fingerprint** (see §3.1).
   Same guarantee against tampering, different sentence. Use the accurate one.
+- **Not** "the enclave verified that the job matches the order." The enclave attests that a response
+  carrying this `intentHash` was produced inside it. Whether that hash really is the hash of *this*
+  brief+data is checked by **unattested** code — the model copies the value, it does not validate it.
+  Say: *"0G attests the compute and carries the intent through it; the match check is client-verifiable,
+  not yet third-party-verifiable."* (§2.1)
+- **Not** "two TEEs." One: 0G's. Bob's binding runs on an ordinary host because no TDX was available.
+  `attestation: 'none'` and `imageHash: null` stay honest until P0-C/P3-C land.
 - **Not** "decentralized compute" for the provider we pinned: `0xa48f…7836` reports
   `ProviderType: centralized`, `ProviderIdentity: aliyun`. The TEE seal is real (dstack/Intel TDX); the
   operator is a single cloud. If asked, say so plainly.

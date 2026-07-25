@@ -233,6 +233,19 @@ export const EchoResultSchema = z.object({
   ogVerified: z.boolean(),
   ogSig: z.string().optional(),
   ogSigner: AddressSchema.optional(),
+
+  /**
+   * LEVEL 0 BAĞLAMA — çıktı, Alice'in imzaladığı `intentHash`'i BİREBİR taşıyor mu.
+   *
+   * True ise şu zincir kurulmuş demektir:
+   *     0G TEE imzası → yanıt gövdesi → çıktı → intentHash → Alice'in EIP-712 imzası
+   * Bob bu zinciri kendi makinesinde üretemez; ilk halka 0G donanımından gelir.
+   *
+   * KAPSAMADIĞI: taahhüdün gerçekten o brief+data'ya ait olduğu. Model tekrar
+   * ediyor, doğrulamıyor. Kendi attested makinemiz olsaydı bu kontrol de mühürün
+   * içine girerdi (CLAUDE.md §11).
+   */
+  intentEchoed: z.boolean(),
 });
 export type EchoResult = z.infer<typeof EchoResultSchema>;
 

@@ -77,15 +77,31 @@ function resolveExpectedSigner(svc: Service): string {
   return svc.teeSignerAddress;
 }
 
-/** Brief + veri + kısıtları modele verilecek tek isteme çevir. */
+/**
+ * Brief + veri + kısıtları modele verilecek tek isteme çevir.
+ *
+ * LEVEL 0 BAĞLAMA: `commitment` verilirse talimat prompt'un EN BAŞINA konur.
+ * Sona koymak iki riski birden doğuruyor — uzun cevaplarda `max_tokens` kesebilir
+ * ve model uzun üretim sonunda talimatı gözden kaçırabilir. Başta 5/5 tuttu
+ * (scripts/og-probe-echo.ts).
+ *
+ * Talimat "karakteri karakterine kopyala" diyor: 64 haneli hex'te tek karakter
+ * kayması bağlamayı çökertir, "yaklaşık doğru" işe yaramaz.
+ */
 function buildPrompt(request: ComputeRequest): string {
-  return [
-    'You are an expert analyst. Produce the deliverable described in the brief.',
-    '',
-    `BRIEF:\n${request.brief}`,
-    '',
-    `DATA:\n${request.data}`,
-  ].join('\n');
+  const head = request.commitment
+    ? [
+        `ORDER-ID: ${request.commitment}`,
+        '',
+        'Begin your reply with exactly this line, copied character for character:',
+        `ORDER-ID: ${request.commitment}`,
+        '',
+        'Then answer the brief below.',
+        '',
+      ]
+    : ['You are an expert analyst. Produce the deliverable described in the brief.', ''];
+
+  return [...head, `BRIEF:\n${request.brief}`, '', `DATA:\n${request.data}`].join('\n');
 }
 
 export function createZeroGComputeBackend(options: ZeroGBackendOptions): ComputeBackend {
@@ -231,7 +247,16 @@ export function createZeroGComputeBackend(options: ZeroGBackendOptions): Compute
         }
       }
 
-      return { output, ogSig, ogSigner, ogVerified, provider: '0g-sealed-inference', chatId, latencyMs };
+      return {
+        output,
+        ogSig,
+        ogSigner,
+        ogVerified,
+        provider: '0g-sealed-inference',
+        commitmentRequested: Boolean(request.commitment),
+        chatId,
+        latencyMs,
+      };
     },
   };
 }

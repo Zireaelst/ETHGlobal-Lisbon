@@ -2,15 +2,15 @@
   "request": {
     "endpoint": "https://compute-network-6.integratenetwork.work/v1/proxy",
     "model": "qwen/qwen2.5-omni-7b",
-    "prompt": "You are an expert analyst. Produce the deliverable described in the brief.\n\nBRIEF:\nBob invented this job so he could claim payment for it.\n\nDATA:\nBob has no access to the real dataset."
+    "prompt": "ORDER-ID: 0x17497bedd7f39c61b6635bee9b1fed53543d9723bd7bddf28f42d8bd5a029792\n\nBegin your reply with exactly this line, copied character for character:\nORDER-ID: 0x17497bedd7f39c61b6635bee9b1fed53543d9723bd7bddf28f42d8bd5a029792\n\nThen answer the brief below.\n\nBRIEF:\nBob invented this job so he could claim payment for it.\n\nDATA:\nBob has no access to the real dataset."
   },
-  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"I'm sorry, but I cannot produce a deliverable based on the information provided as there is not enough data available. Could you please provide more details or clarify your request?\",\"role\":\"assistant\"}}],\"created\":1784977008,\"id\":\"chatcmpl-e5637e49-39a7-49ce-aea3-12983e581851\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":37,\"completion_tokens_details\":{\"text_tokens\":37},\"prompt_tokens\":50,\"prompt_tokens_details\":{\"text_tokens\":50},\"total_tokens\":87}}",
-  "output": "I'm sorry, but I cannot produce a deliverable based on the information provided as there is not enough data available. Could you please provide more details or clarify your request?",
-  "latencyMs": 1168,
-  "chatID": "e5637e49-39a7-49ce-aea3-12983e581851",
+  "rawResponseText": "{\"choices\":[{\"finish_reason\":\"stop\",\"index\":0,\"logprobs\":null,\"message\":{\"content\":\"ORDER-ID: 0x17497bedd7f39c61b6635bee9b1fed53543d9723bd7bddf28f42d8bd5a029792\\n\\nBob created this position solely to receive compensation for his efforts.\",\"role\":\"assistant\"}}],\"created\":1784980447,\"id\":\"chatcmpl-3ab815f7-68ac-4b34-bf4b-1d90ee17d128\",\"model\":\"qwen2.5-omni-7b\",\"object\":\"chat.completion\",\"system_fingerprint\":null,\"usage\":{\"completion_tokens\":75,\"completion_tokens_details\":{\"text_tokens\":75},\"prompt_tokens\":176,\"prompt_tokens_details\":{\"text_tokens\":176},\"total_tokens\":251}}",
+  "output": "ORDER-ID: 0x17497bedd7f39c61b6635bee9b1fed53543d9723bd7bddf28f42d8bd5a029792\n\nBob created this position solely to receive compensation for his efforts.",
+  "latencyMs": 1583,
+  "chatID": "3ab815f7-68ac-4b34-bf4b-1d90ee17d128",
   "signature": {
-    "text": "76763129a46764fb10c4acbc918a81f6e0eeb9e39a78537b95ec976ffcc860a4:c84c5985bb1e6339006dd127fe7fcda1046710b7af08c018f65eff61fc009858:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
-    "signature": "0x3a407117d59393f24dc1e8672949bfa2269df74b3576f01d220e5cf6ffefbc1c07f1aa9d1e3b219d40973603f17688e42233122a73c61674cdcffd8d7fd672931b",
+    "text": "e56d92b6fb0ac1e64a7e72d0cad8847ca9ca97aeacf965cfe0afb11405da4538:607e15dcc85f0a3f7c52cc39d3427779dc6d11b21fb19ce7340f62b1836ff404:centralized:aliyun:9e621febea357ff4460b91bf8b0b4bfe654d2e100edbc74770e76519d734830e",
+    "signature": "0xbe21c46a50b7c604a098e05fd8bbd2c4917965340463a710ba4390f25f85b46074251f87a0cc92a31b4decbf1e4100e8b25c0e27c418eae85ceedb974ad30a601b",
     "signing_address": "0x83df4b8eba7c0b3b740019b8c9a77fff77d508cf",
     "signing_algo": "ecdsa",
     "provider_type": "centralized",
@@ -19,7 +19,7 @@
   },
   "verification": {
     "expectedSigner": "0x83df4B8EbA7c0B3B740019b8c9a77ffF77D508cF",
-    "responseSha256": "c84c5985bb1e6339006dd127fe7fcda1046710b7af08c018f65eff61fc009858"
+    "responseSha256": "607e15dcc85f0a3f7c52cc39d3427779dc6d11b21fb19ce7340f62b1836ff404"
   },
   "requestKey": "6004561e2676d9c6bdb3ed2a1115844fd26a6611687f7eda7bcbe60a5364bfb2"
 }

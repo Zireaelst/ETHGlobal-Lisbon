@@ -17,6 +17,22 @@ export interface ComputeRequest {
   brief: string;
   data: string;
   constraints: Constraints;
+  /**
+   * İstemcinin sipariş taahhüdü (`intentHash`) — LEVEL 0 BAĞLAMA.
+   *
+   * Verilirse prompt'un başına konur ve modelden çıktısında AYNEN tekrarlaması
+   * istenir. Böylece 0G TEE'sinin imzaladığı gövde bu değeri de kapsar:
+   *     TEE imzası → yanıt gövdesi → çıktı → intentHash → Alice'in EIP-712 imzası
+   * Bob bu zinciri kendi makinesinde üretemez; ilk halka 0G donanımından gelir.
+   *
+   * NEDEN CLAIMED (iddia edilen) hash: kontrat ve Alice ikisi de bu değere
+   * bakıyor. Yeniden hesaplanan hash zaten gövdedeki `match` bayrağıyla
+   * raporlanıyor, tekrar taşımanın bilgi katkısı yok.
+   *
+   * SINIR: bu, "hash gerçekten şu brief+data'ya ait" demek DEĞİL. Model tekrar
+   * ediyor, doğrulamıyor. O kontrol hâlâ attested olmayan kodumuzda.
+   */
+  commitment?: string;
 }
 
 /** Çıktıyı kimin ürettiği — kullanıcı arayüzüne kadar taşınan dürüstlük etiketi. */
@@ -41,6 +57,12 @@ export interface ComputeResult {
   /** İmza ENCLAVE İÇİNDE doğrulandı mı. Doğrulanamadıysa false; sessizce true yazılmaz. */
   ogVerified: boolean;
   provider: ComputeProvider;
+  /**
+   * `commitment` prompt'a konuldu mu — yani bu çıktının Level 0 bağlaması var mı.
+   * Çıktının taahhüdü GERÇEKTEN taşıyıp taşımadığını backend değil, enclave
+   * (`runBinding`) kendisi kontrol eder; backend'in dürüstlüğüne bağlı kalmasın.
+   */
+  commitmentRequested?: boolean;
   /** 0G ledger'ındaki istek kimliği (`processResponse` için). */
   chatId?: string;
   /** P0-G latency bütçesi için ölçüm. */

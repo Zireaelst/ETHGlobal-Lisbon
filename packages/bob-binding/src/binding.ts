@@ -87,6 +87,8 @@ export interface BindingResponse {
   ogVerified: boolean;
   computeProvider: ComputeProvider;
   computeLatencyMs: number;
+  /** Çıktı Alice'in `intentHash`'ini birebir taşıyor mu (Level 0 bağlama). */
+  intentEchoed: boolean;
   /** İmzalanan ham gövde: abi.encode(bytes32,bytes32,bool,bytes32). */
   bodyHex: string;
   /** Seal imzası — `v` wrapper gibi atılmış (CLAUDE.md §3.1B). */
@@ -217,7 +219,17 @@ export async function runBinding(
     brief: envelope.brief,
     data: envelope.data,
     constraints: envelope.constraints as Constraints,
+    // LEVEL 0 BAĞLAMA: taahhüdü modele taşıt. Kendi attested makinemiz olmadığı
+    // için bağlamanın bir ucunu 0G'nin GERÇEK enclave'inin içinden geçiriyoruz.
+    commitment: claimedIntentHash,
   });
+
+  // Taahhüt gerçekten çıktıda mı? Bu kontrolü BACKEND'E BIRAKMIYORUZ — backend
+  // "koydum" diyebilir. Enclave ham çıktıya kendisi bakıyor.
+  //
+  // Birebir arıyoruz: 64 haneli hex'te tek karakter kayması bağlamayı çökertir,
+  // "yaklaşık geçiyor" diye bir şey yok.
+  const intentEchoed = computed.output.includes(claimedIntentHash);
 
   const output = match
     ? computed.output
@@ -256,6 +268,7 @@ export async function runBinding(
     ogVerified: computed.ogVerified,
     ogSig: computed.ogSig,
     ogSigner: computed.ogSigner,
+    intentEchoed,
   };
 
   // 7. Sonucu ALICE'İN anahtarına şifrele. Paketin İÇİNDEKİ replyPubKey kullanılır —
@@ -273,6 +286,7 @@ export async function runBinding(
     ogVerified: computed.ogVerified,
     computeProvider: computed.provider,
     computeLatencyMs: computed.latencyMs,
+    intentEchoed,
     bodyHex,
     seal,
     signer: wallet.address,
