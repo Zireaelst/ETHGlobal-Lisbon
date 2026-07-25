@@ -4,9 +4,11 @@
   "version": "0.0.0",
   "packageManager": "pnpm@10.12.1",
   "scripts": {
+    "//build": "`build` is the tsc -b solution build over the Node packages. A Next.js project does not belong in that graph, so the web app is a separate step and `build:all` is the one that covers everything.",
     "build": "tsc -b",
+    "build:all": "pnpm build && pnpm --filter @ca/web build",
     "clean": "tsc -b --clean",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && pnpm --filter @ca/web typecheck",
     "gate:P0-A": "tsx tests/gates/P0-A.ts",
     "gate:P0-B": "tsx tests/gates/P0-B.ts",
     "gate:P0-C": "tsx tests/gates/P0-C.ts",

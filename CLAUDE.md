@@ -257,34 +257,53 @@ SUBGRAPH_STUDIO_DEPLOY_KEY=
 
 ## 7. Repo structure
 
+**pnpm workspace monorepo.** `pnpm-workspace.yaml` declares `packages/*` and `subgraph`, so
+**anything that needs its own package.json and dependency graph lives under `packages/`** — that is
+the only reason `web` is there rather than at the root. `scripts/` and `tests/` carry a package.json
+too, but purely as an `"type": "module"` marker (the root stays CJS so `scripts/recover.js` keeps
+working); they are deliberately NOT workspace members.
+
 ```
-/agents
-  alice-agent.ts          # discovers, signs intent, encrypts, pays, verifies
-  bob-agent.ts            # public HTTP server: 402, forwards work to the Tapp
-/tapp                     # Bob's binding agent — runs INSIDE the 0G agent-wrapper Tapp
-  Dockerfile              # the measured image (its hash = imageHash)
-  chat.ts                 # /chat: decrypt → recompute keccak256 → match → call 0G SI → verify ogSig → return body
-/shared
-  discovery.ts            # The Graph query (skill + verified-delivery rank)
-  messaging.ts            # ECIES encrypt/decrypt (eth-crypto)
-  intent.ts               # EIP-712 intentHash build + sign
-  identity.ts             # ERC-8004 register/read (+ optional HCS-14 UAID)
-  compute.ts              # 0G Sealed Inference broker calls + processResponse
-  storage.ts              # 0G Storage encrypted upload/download (bonus)
-  payment/
-    index.ts              # PaymentBackend interface
-    base-stealth.ts       # x402 + ERC-5564 stealth on Base Sepolia (privacy run)
-    hedera-x402.ts        # @x402/hedera + blocky402 (agentic run) + HCS timeline
-/contracts
-  Verifier.sol            # dual-sig verification (see §3.5)
-  script/                 # deploy + setEnclaveSigner
-/subgraph                 # agent0lab fork: ERC-8004 index + JobVerified → verified-delivery count
-/web
-  demo.tsx                # split-screen "spy" demo + fraud button + independent-verify panel
-/scripts
-  recover.js              # recover the live enclave seal-key signer (§3.2)
-  spike-*.ts              # P0 spikes
+packages/
+  shared/           # @ca/shared — the library every agent imports
+    src/intent.ts       # EIP-712 intentHash build + sign
+    src/ecies.ts        # ECIES encrypt/decrypt (eth-crypto)
+    src/identity.ts     # ERC-8004 register/read
+    src/discovery.ts    # The Graph query (skill + verified-delivery rank)
+    src/compute-0g.ts   # 0G Sealed Inference broker + processResponse
+    src/compute-select.ts # 0G vs fixture backend switch
+    src/ogsig.ts        # verify the 0G TEE signature (§3.1 A)
+    src/sealsig.ts      # seal-key preimage + brute-v recover (§3.1 B)
+    src/canonical.ts    # byte-stable JSON — the wrapper signs raw bytes
+    src/storage.ts      # 0G Storage encrypted upload/download (bonus)
+    src/timeline.ts     # HCS commitments
+  payment/          # @ca/payment — PaymentBackend, one file per backend
+    src/base-stealth.ts # x402 + ERC-5564 stealth on Base Sepolia (privacy run)
+    src/hedera-x402.ts  # @x402/hedera + blocky402 (agentic run)
+    src/hcs-timeline.ts # HCS timeline for the Hedera run
+    src/signer/         # delegated signing — the key never enters agent context
+  bob-binding/      # @ca/bob-binding — the binding agent (was /tapp)
+    src/chat.ts         # /chat: decrypt → recompute keccak256 → match → 0G SI → verify ogSig
+    src/binding.ts      # runBinding: checks the intentHash echo against the RAW output
+    Dockerfile          # NOTE: no TDX host, so this image is not measured (§2.1)
+  bob-agent/        # @ca/bob-agent — public HTTP server: 402, forwards work to the binding
+    src/fraud.ts        # the flag that makes Bob answer a different job (§8 P3)
+  alice-agent/      # @ca/alice-agent — discovers, signs intent, encrypts, pays, verifies
+  web/              # @ca/web — the demo dApp (Next.js, sources under src/)
+    src/app/            # App Router: landing page + /dashboard
+    src/components/     # hero, architecture, verification, fraud path, tracks
+    public/hero/        # hero stills — at the package root, NOT src/, or Next won't serve them
+contracts/          # Foundry — Verifier.sol + IntentLib.sol (§3.5), and their tests
+subgraph/           # @ca/subgraph — ERC-8004 index + JobVerified → verified-delivery count
+scripts/            # deploy + probes + measurement (recover.js, og-probe-echo.ts, measure-e2e.ts)
+tests/gates/        # one file per phase gate; run via `pnpm gate:P3-B` etc.
+fixtures/           # recorded responses, so gates run without burning faucet funds
 ```
+
+**Build.** The root `tsc -b` solution build covers the Node packages only — a Next.js project does not
+belong in a `tsc -b` graph, so `packages/web` is not among the root `tsconfig.json` references and
+`pnpm build` does not touch it. Use **`pnpm build:all`** to build everything, or
+`pnpm --filter @ca/web <script>` to work on the web app alone.
 
 ---
 
