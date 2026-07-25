@@ -1,0 +1,86 @@
+{
+  "capturedAt": "2026-07-25T05:42:25.075Z",
+  "honestRuns": [
+    {
+      "fraudMode": "none",
+      "signedIntentHash": "0x49636e5dbe6f312e17b3fd2caf5ebca5ebcb01fae674f068daba31d402cac4dd",
+      "bodyIntentHash": "0x49636e5dbe6f312e17b3fd2caf5ebca5ebcb01fae674f068daba31d402cac4dd",
+      "match": true,
+      "clientSigOk": true,
+      "bindingSigOk": true,
+      "computeProvider": "none",
+      "ogVerified": false,
+      "output": "[compute: none] Brief 66 karakter, veri 69 karakter alındı; model \"qwen2.5-omni-7b\" ile gerçek çıkarım YAPILMADI. 0G Sealed Inference bağlanınca bu metnin yerini gerçek analiz ve TEE imzası alacak.",
+      "code": 0,
+      "codeName": "OK",
+      "verified": true,
+      "totalMs": 5886,
+      "discoveredAgentId": "8429",
+      "txHash": "0xf519a22c0bd57ee8ea7fa94775668956f075f6341f8e5b11f8c4194cdf652aaf",
+      "blockNumber": 44594930,
+      "basescanUrl": "https://sepolia.basescan.org/tx/0xf519a22c0bd57ee8ea7fa94775668956f075f6341f8e5b11f8c4194cdf652aaf"
+    },
+    {
+      "fraudMode": "none",
+      "signedIntentHash": "0x33b6295bb508844720ab2a87833bdc7dc17821c5a6031b469c8755f13e44cdb6",
+      "bodyIntentHash": "0x33b6295bb508844720ab2a87833bdc7dc17821c5a6031b469c8755f13e44cdb6",
+      "match": true,
+      "clientSigOk": true,
+      "bindingSigOk": true,
+      "computeProvider": "none",
+      "ogVerified": false,
+      "output": "[compute: none] Brief 66 karakter, veri 69 karakter alındı; model \"qwen2.5-omni-7b\" ile gerçek çıkarım YAPILMADI. 0G Sealed Inference bağlanınca bu metnin yerini gerçek analiz ve TEE imzası alacak.",
+      "code": 0,
+      "codeName": "OK",
+      "verified": true,
+      "totalMs": 1322,
+      "discoveredAgentId": "8429",
+      "txHash": "0x659a43cac9a734ad0891e588ea32e3ac04fd00eb9aaa12267a6d8119ee2e4db1",
+      "blockNumber": 44594933,
+      "basescanUrl": "https://sepolia.basescan.org/tx/0x659a43cac9a734ad0891e588ea32e3ac04fd00eb9aaa12267a6d8119ee2e4db1"
+    },
+    {
+      "fraudMode": "none",
+      "signedIntentHash": "0xd31c5e2f509093277097e4cbcb0d6748ac586a574cd9cf2115938d116fa1e00f",
+      "bodyIntentHash": "0xd31c5e2f509093277097e4cbcb0d6748ac586a574cd9cf2115938d116fa1e00f",
+      "match": true,
+      "clientSigOk": true,
+      "bindingSigOk": true,
+      "computeProvider": "none",
+      "ogVerified": false,
+      "output": "[compute: none] Brief 66 karakter, veri 69 karakter alındı; model \"qwen2.5-omni-7b\" ile gerçek çıkarım YAPILMADI. 0G Sealed Inference bağlanınca bu metnin yerini gerçek analiz ve TEE imzası alacak.",
+      "code": 0,
+      "codeName": "OK",
+      "verified": true,
+      "totalMs": 5654,
+      "discoveredAgentId": "8429",
+      "txHash": "0x42583878014212e540ada94f44b83d4e30675d3799efa5e9b9f6d1173882e1d5",
+      "blockNumber": 44594934,
+      "basescanUrl": "https://sepolia.basescan.org/tx/0x42583878014212e540ada94f44b83d4e30675d3799efa5e9b9f6d1173882e1d5"
+    }
+  ],
+  "jobVerifiedEvent": {
+    "intentHash": "0x49636e5dbe6f312e17b3fd2caf5ebca5ebcb01fae674f068daba31d402cac4dd",
+    "agentId": "8429",
+    "price": "1000000",
+    "tx": "0xf519a22c0bd57ee8ea7fa94775668956f075f6341f8e5b11f8c4194cdf652aaf"
+  },
+  "fraudRuns": {
+    "substitute": {
+      "code": 5,
+      "name": "MatchFalse",
+      "tx": "0xcfc8e6bff72362ac00f7d5e73787ba43498db73fe3f106abcc9877b9b371950a"
+    },
+    "forge": {
+      "code": 4,
+      "name": "BadEnclaveSig",
+      "tx": "0x89cd8d465960c2ebe29b9d71fd2689efc99ce4e1b93bf20397983041bf0ca797"
+    },
+    "selfintent": {
+      "code": 3,
+      "name": "BadClientSig",
+      "tx": "0x5973d7e69753b93cde289368fd63e3c8984360aa05d0177776f6b99346df6004"
+    }
+  },
+  "verifier": "0x3B116D648B710f551e37223c4c4d39879AFEEb96"
+}
