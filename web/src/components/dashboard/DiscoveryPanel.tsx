@@ -22,22 +22,35 @@ import { type DiscoverySnapshot } from "@/lib/run-types";
  *
  * The old one was a flat 15s `setInterval` that never varied — so a rate-limited panel kept
  * asking at exactly the rate that got it rate-limited, and a tab left open in the background
- * went on querying all day for nobody. Both are fixed here rather than by asking the operator
- * to close tabs.
+ * went on querying all day for nobody. One tab open for 12 hours was the whole daily quota.
+ *
+ * The idle cadence is now measured in minutes because polling is no longer how a change is
+ * noticed: `refreshKey` reads immediately when a run finishes, which is the only event that can
+ * move these counters. What is left is a slow heartbeat for changes made elsewhere.
  */
-const BASE_MS = 30_000;
-const MAX_MS = 5 * 60_000;
+const BASE_MS = 120_000;
+const MAX_MS = 10 * 60_000;
 
-export function DiscoveryPanel({ initial }: { initial: DiscoverySnapshot | null }) {
+export function DiscoveryPanel({
+  initial,
+  refreshKey = 0,
+}: {
+  initial: DiscoverySnapshot | null;
+  /** Bumped by the dashboard when a run completes; any change triggers an immediate read. */
+  refreshKey?: number;
+}) {
   const [data, setData] = useState<DiscoverySnapshot | null>(initial);
   const [error, setError] = useState<string | null>(null);
   const [stale, setStale] = useState<{ ageMs: number; reason: string } | null>(null);
 
-  // Re-poll so a rejection produced by the fraud panel shows up in the ranking while the judge
-  // is still looking at it. The subgraph lags the chain by a few blocks; that lag is displayed
-  // rather than hidden, which is why `indexedBlock` is on screen.
+  // A rejection produced by the fraud panel has to show up in the ranking while the judge is
+  // still looking at it. That now happens on the EVENT (`refreshKey`) rather than by polling on
+  // the chance of it; the interval below is only a slow heartbeat for changes made elsewhere.
+  // The subgraph lags the chain by a few blocks — that lag is displayed rather than hidden,
+  // which is why `indexedBlock` is on screen, and why a run reads twice (see below).
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let followUp: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
     let delay = BASE_MS;
 
@@ -106,13 +119,27 @@ export function DiscoveryPanel({ initial }: { initial: DiscoverySnapshot | null 
     };
     document.addEventListener("visibilitychange", onVisible);
 
-    schedule();
+    if (refreshKey > 0) {
+      // A run just finished. Read now — and once more a few seconds later, because the index
+      // trails the chain and the first read can easily land before the event we just caused is
+      // in it. Two queries per run is nothing next to the interval this replaced.
+      void run();
+      followUp = setTimeout(() => void run(), 8_000);
+    } else {
+      // First mount: the server already fetched this data for the initial paint. Reading again
+      // straight away would spend a query to learn what is on screen.
+      schedule();
+    }
+
     return () => {
       cancelled = true;
+      clearTimeout(followUp);
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+    // Re-armed on each run: the teardown cancels the pending heartbeat and the new pass reads
+    // immediately, which is exactly the behaviour wanted when a job has just been ruled on.
+  }, [refreshKey]);
 
   return (
     <Panel

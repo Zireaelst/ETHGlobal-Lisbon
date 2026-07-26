@@ -123,10 +123,15 @@ export class SubgraphError extends Error {
  * assumption that one viewer means one query — with the panel polling and the page re-rendering
  * per load, three open tabs were three times the upstream traffic for identical data.
  *
- * Short on purpose. Long enough that a room full of judges is one query, short enough that a
- * rejection produced by the fraud panel appears while they are still looking at it.
+ * This is also the only hard CEILING on spend: at most one upstream query per window, no matter
+ * how many people have the page open. Cost therefore tracks how long the dashboard is open, not
+ * how many are watching it — which is the property that keeps a demo inside a daily quota.
+ *
+ * 30s does not blunt the live claim, because freshness after a run no longer comes from this
+ * window: the panel reads on the event (see DiscoveryPanel's `refreshKey`), and the fraud run
+ * it follows takes ~20s anyway.
  */
-const CACHE_MS = 10_000;
+const CACHE_MS = 30_000;
 
 let cached: { at: number; skill: string; first: number; snapshot: DiscoverySnapshot } | null = null;
 /** In-flight request, shared so a burst of callers produces ONE upstream query, not N. */

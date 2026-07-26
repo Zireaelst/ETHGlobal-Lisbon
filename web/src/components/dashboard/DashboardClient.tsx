@@ -31,11 +31,22 @@ export function DashboardClient({
 }) {
   const [run, setRun] = useState<RunView | null>(null);
 
+  // A finished run is the ONE moment the ranking below can have changed — a JobVerified or a
+  // JobRejected is the only thing that moves those counters. So the discovery panel is told to
+  // read again here, on the event, rather than polling on the chance of it. That is both cheaper
+  // and faster: cheaper because the idle cadence can now be minutes, faster because the
+  // rejection appears when it happens instead of up to a poll-interval later.
+  const [refreshKey, setRefreshKey] = useState(0);
+  const handleRun = (view: RunView | null) => {
+    setRun(view);
+    if (view) setRefreshKey((n) => n + 1);
+  };
+
   return (
     <div className="space-y-5">
-      <DiscoveryPanel initial={discovery} />
+      <DiscoveryPanel initial={discovery} refreshKey={refreshKey} />
       <SpyPanel run={run} />
-      <FraudPanel run={run} onRun={setRun} runnerEnabled={runnerEnabled} />
+      <FraudPanel run={run} onRun={handleRun} runnerEnabled={runnerEnabled} />
       <TimelinePanel run={run} />
       <VerifyPanel run={run} />
       <EvidencePanel evidence={evidence} />
