@@ -5,6 +5,11 @@
 // behind, the dashboard says so (`blockNumber` is surfaced) rather than papering over it, which
 // is the whole point of showing a live index rather than a screenshot of one.
 //
+// One answer is shared for a few seconds (see CACHE_MS). That is not a retreat from "live": the
+// data is still queried, and the panel still shows how far behind the index is. It is a fix for
+// a real failure — the Studio query endpoint rate-limits, and one-query-per-viewer meant a
+// couple of open tabs could push the panel into HTTP 429 and keep it there.
+//
 // This runs on the server for one reason only: to keep SUBGRAPH_QUERY_URL out of the client
 // bundle. Nothing here is secret — a judge is welcome to run the same queries by hand, and the
 // submission README hands them the endpoint.
@@ -95,21 +100,66 @@ export function subgraphUrl(): string {
   return url;
 }
 
-export async function fetchDiscovery(skill = "market-analysis", first = 10): Promise<DiscoverySnapshot> {
-  const url = subgraphUrl();
+/** Carries the upstream status so callers can tell "rate limited" from "broken". */
+export class SubgraphError extends Error {
+  constructor(
+    message: string,
+    readonly status: number | null,
+  ) {
+    super(message);
+    this.name = "SubgraphError";
+  }
+  get rateLimited(): boolean {
+    return this.status === 429;
+  }
+}
+
+/**
+ * How long one upstream answer is shared by everyone asking for it.
+ *
+ * This is COALESCING, not the seeded JSON the gate forbids, and the difference is worth being
+ * precise about: every value still comes from a live query against the same index Alice reads,
+ * and `indexedBlock` still shows how far behind the chain it is. What the window removes is the
+ * assumption that one viewer means one query — with the panel polling and the page re-rendering
+ * per load, three open tabs were three times the upstream traffic for identical data.
+ *
+ * Short on purpose. Long enough that a room full of judges is one query, short enough that a
+ * rejection produced by the fraud panel appears while they are still looking at it.
+ */
+const CACHE_MS = 10_000;
+
+let cached: { at: number; skill: string; first: number; snapshot: DiscoverySnapshot } | null = null;
+/** In-flight request, shared so a burst of callers produces ONE upstream query, not N. */
+let inFlight: { key: string; promise: Promise<DiscoverySnapshot> } | null = null;
+
+/** The last good answer, and how old it is — for callers that would rather show stale than nothing. */
+export function lastGoodDiscovery(): { snapshot: DiscoverySnapshot; ageMs: number } | null {
+  return cached ? { snapshot: cached.snapshot, ageMs: Date.now() - cached.at } : null;
+}
+
+async function query(url: string, skill: string, first: number): Promise<DiscoverySnapshot> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query: QUERY, variables: { skill: [skill], first } }),
-    // The point of this panel is that it is live. Caching it would quietly turn it into the
-    // seeded JSON the gate forbids.
+    // Still no-store at the HTTP layer: the sharing happens above, in a window we control and
+    // can reason about, rather than in a cache whose freshness we would have to take on faith.
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`subgraph HTTP ${res.status}`);
+  if (!res.ok) {
+    throw new SubgraphError(
+      res.status === 429
+        ? "subgraph HTTP 429 — the query endpoint is rate limiting us"
+        : `subgraph HTTP ${res.status}`,
+      res.status,
+    );
+  }
 
   const body = (await res.json()) as { data?: RawResponse; errors?: Array<{ message: string }> };
-  if (body.errors?.length) throw new Error(`subgraph error: ${body.errors.map((e) => e.message).join("; ")}`);
-  if (!body.data) throw new Error("subgraph returned no data");
+  if (body.errors?.length) {
+    throw new SubgraphError(`subgraph error: ${body.errors.map((e) => e.message).join("; ")}`, null);
+  }
+  if (!body.data) throw new SubgraphError("subgraph returned no data", null);
 
   const { agents, jobs, registry, _meta } = body.data;
   return {
@@ -120,4 +170,28 @@ export async function fetchDiscovery(skill = "market-analysis", first = 10): Pro
     hasIndexingErrors: _meta.hasIndexingErrors,
     subgraphUrl: url,
   };
+}
+
+export async function fetchDiscovery(skill = "market-analysis", first = 10): Promise<DiscoverySnapshot> {
+  const url = subgraphUrl();
+  const key = `${skill}:${first}`;
+
+  if (cached && cached.skill === skill && cached.first === first && Date.now() - cached.at < CACHE_MS) {
+    return cached.snapshot;
+  }
+  // A second caller arriving mid-flight waits for the first one's answer instead of opening its
+  // own connection. This is what turns a page load plus three polling tabs into one query.
+  if (inFlight && inFlight.key === key) return inFlight.promise;
+
+  const promise = query(url, skill, first)
+    .then((snapshot) => {
+      cached = { at: Date.now(), skill, first, snapshot };
+      return snapshot;
+    })
+    .finally(() => {
+      if (inFlight?.key === key) inFlight = null;
+    });
+
+  inFlight = { key, promise };
+  return promise;
 }

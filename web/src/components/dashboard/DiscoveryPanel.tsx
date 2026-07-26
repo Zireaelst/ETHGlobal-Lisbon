@@ -17,29 +17,101 @@ import { type DiscoverySnapshot } from "@/lib/run-types";
  * The honest boundary is on screen, not just in the README: this is expensive to inflate, not
  * impossible, and it is not Sybil-proof (CLAUDE.md §11).
  */
+/**
+ * Polling schedule.
+ *
+ * The old one was a flat 15s `setInterval` that never varied — so a rate-limited panel kept
+ * asking at exactly the rate that got it rate-limited, and a tab left open in the background
+ * went on querying all day for nobody. Both are fixed here rather than by asking the operator
+ * to close tabs.
+ */
+const BASE_MS = 30_000;
+const MAX_MS = 5 * 60_000;
+
 export function DiscoveryPanel({ initial }: { initial: DiscoverySnapshot | null }) {
   const [data, setData] = useState<DiscoverySnapshot | null>(initial);
   const [error, setError] = useState<string | null>(null);
+  const [stale, setStale] = useState<{ ageMs: number; reason: string } | null>(null);
 
   // Re-poll so a rejection produced by the fraud panel shows up in the ranking while the judge
   // is still looking at it. The subgraph lags the chain by a few blocks; that lag is displayed
   // rather than hidden, which is why `indexedBlock` is on screen.
   useEffect(() => {
-    const load = async () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    let delay = BASE_MS;
+
+    const schedule = () => {
+      if (cancelled) return;
+      timer = setTimeout(run, delay);
+    };
+
+    const run = async () => {
+      if (cancelled) return;
+      // Nobody is looking. Skip the query and check again at the normal cadence — the panel
+      // refreshes the moment the tab comes back, so this costs the viewer nothing and takes
+      // every backgrounded tab out of the rate limit.
+      if (typeof document !== "undefined" && document.hidden) {
+        schedule();
+        return;
+      }
+
       try {
         const res = await fetch("/api/discovery", { cache: "no-store" });
-        const body = (await res.json()) as DiscoverySnapshot & { error?: string };
-        if (body.error) setError(body.error);
-        else {
+        const body = (await res.json()) as DiscoverySnapshot & {
+          error?: string;
+          staleMs?: number;
+          staleReason?: string;
+          rateLimited?: boolean;
+        };
+
+        if (res.status === 429 || body.rateLimited) {
+          // Back off geometrically. This is the case the flat interval could not get out of:
+          // the endpoint says "too many", so asking again in 15s is asking to be refused again.
+          delay = Math.min(delay * 2, MAX_MS);
+          setError(
+            `the subgraph is rate limiting us — slowing to ${Math.round(delay / 1000)}s between reads`,
+          );
+        } else if (body.error) {
+          delay = Math.min(delay * 2, MAX_MS);
+          setError(body.error);
+        } else {
+          delay = BASE_MS;
           setData(body);
           setError(null);
         }
+
+        // Held-over data is shown, and shown AS held over. Served with 200 alongside the reason,
+        // so this branch can coexist with either of the two above.
+        setStale(
+          body.staleMs !== undefined
+            ? { ageMs: body.staleMs, reason: body.staleReason ?? "the last read failed" }
+            : null,
+        );
       } catch (e) {
+        delay = Math.min(delay * 2, MAX_MS);
         setError(e instanceof Error ? e.message : String(e));
       }
+      schedule();
     };
-    const id = setInterval(load, 15_000);
-    return () => clearInterval(id);
+
+    // Coming back to the tab is the one moment a fresh read is actually worth spending: reset
+    // the backoff and read now, rather than making the viewer wait out a five-minute delay
+    // that only grew while they were away.
+    const onVisible = () => {
+      if (document.hidden || cancelled) return;
+      delay = BASE_MS;
+      clearTimeout(timer);
+      void run();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    schedule();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   return (
@@ -51,6 +123,14 @@ export function DiscoveryPanel({ initial }: { initial: DiscoverySnapshot | null 
         data ? (
           <>
             <Chip tone="cool">block {data.indexedBlock.toLocaleString()}</Chip>
+            {/* Live and held-over must not look the same. When the last read failed we keep
+                showing the previous answer rather than blanking the panel, and this chip is
+                what stops that from being a quiet lie. */}
+            {stale ? (
+              <Chip tone="neutral" title={stale.reason}>
+                held over · {Math.round(stale.ageMs / 1000)}s old
+              </Chip>
+            ) : null}
             {data.hasIndexingErrors ? <Chip tone="alert">indexing errors</Chip> : null}
           </>
         ) : null
