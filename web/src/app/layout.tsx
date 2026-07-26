@@ -25,7 +25,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sealed — Confidential Agents",
+  title: "Mithra — Confidential Agents",
   description:
     "Two AI agents discover each other through a public registry, then keep the deal private — task, payment, and output bound to one signed intent, verified on-chain.",
 };

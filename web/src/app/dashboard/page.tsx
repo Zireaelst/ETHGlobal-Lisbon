@@ -1,4 +1,4 @@
-// The demo dApp (BUILD-PLAN P5-A). Five panels: four show state, one makes something happen.
+// The demo dApp (BUILD-PLAN P5-A). Six panels: five show state, one makes something happen.
 //
 // The discovery snapshot is fetched on the server so the page has real content in its first
 // paint — a judge on a phone should not meet an empty frame and a spinner. Everything after

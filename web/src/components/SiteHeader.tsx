@@ -6,13 +6,24 @@ import { motion } from "motion/react";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
+/**
+ * Written absolute (`/#thesis`) rather than bare, because this header also sits on
+ * /dashboard and /spec — where a bare hash scrolls to nothing and the nav quietly stops
+ * working. The plain `id` is kept beside it, since the observer below needs the element id.
+ */
 const NAV_LINKS = [
-  { href: "#thesis", label: "Thesis" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#architecture", label: "Architecture" },
-  { href: "#verification", label: "Verification" },
-  { href: "#fraud", label: "Fraud path" },
-  { href: "#tracks", label: "Tracks" },
+  { id: "thesis", label: "Thesis" },
+  { id: "how-it-works", label: "How it works" },
+  { id: "architecture", label: "Architecture" },
+  { id: "verification", label: "Verification" },
+  { id: "fraud", label: "Fraud path" },
+  { id: "tracks", label: "Tracks" },
+];
+
+/** Whole pages rather than sections, so they never light up as "active". */
+const PAGE_LINKS = [
+  { href: "/spec", label: "Spec" },
+  { href: "/dashboard", label: "Live demo" },
 ];
 
 /**
@@ -24,13 +35,13 @@ function useActiveSection() {
   const [active, setActive] = useState<string | null>(null);
 
   useEffect(() => {
-    const ids = NAV_LINKS.map((l) => l.href.slice(1));
+    const ids = NAV_LINKS.map((l) => l.id);
     const observer = new IntersectionObserver(
       (entries) => {
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setActive(`#${visible[0].target.id}`);
+        if (visible[0]) setActive(visible[0].target.id);
       },
       // A band just under the header, so "active" means "at the top of the
       // viewport" rather than "anywhere on screen".
@@ -75,29 +86,46 @@ export default function SiteHeader() {
           : undefined
       }
     >
-      <div className="font-display text-xl uppercase tracking-[0.18em] text-foreground">
-        Sealed
-      </div>
+      {/* The wordmark goes home from every page — on /dashboard and /spec it was the one
+          thing that looked clickable and was not. */}
+      <a
+        href="/"
+        className="font-display text-xl uppercase tracking-[0.18em] text-foreground"
+      >
+        Mithra
+      </a>
 
       <nav className="flex items-center gap-6 font-body text-[13px] font-light tracking-[0.1em] text-muted-foreground lg:gap-8">
         {NAV_LINKS.map((link) => (
           <a
-            key={link.href}
-            href={link.href}
-            aria-current={active === link.href ? "true" : undefined}
+            key={link.id}
+            href={`/#${link.id}`}
+            aria-current={active === link.id ? "true" : undefined}
             className={cn(
               "relative hidden transition-colors duration-500 hover:text-foreground lg:inline",
-              active === link.href && "text-foreground",
+              active === link.id && "text-foreground",
             )}
           >
             {link.label}
-            {active === link.href && (
+            {active === link.id && (
               <motion.span
                 layoutId="nav-active"
                 className="absolute -bottom-1.5 left-0 right-0 h-px bg-gradient-to-r from-warm to-cool"
                 transition={{ type: "spring", stiffness: 340, damping: 32 }}
               />
             )}
+          </a>
+        ))}
+
+        {/* Kept visible below lg, unlike the section anchors: on a phone the two things a
+            visitor actually needs are the spec and the running demo. */}
+        {PAGE_LINKS.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            className="whitespace-nowrap transition-colors duration-500 hover:text-foreground"
+          >
+            {link.label}
           </a>
         ))}
 

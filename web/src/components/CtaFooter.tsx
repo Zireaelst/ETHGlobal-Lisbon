@@ -30,7 +30,7 @@ export default function CtaFooter() {
     <footer className="section px-8 py-24 sm:px-16 sm:py-32">
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 text-center">
         <Reveal>
-          <GlowButton href="#">
+          <GlowButton href="https://github.com/Zireaelst/ETHGlobal-Lisbon">
             <GitBranch className="h-4 w-4" strokeWidth={1.5} />
             Explore the repo
           </GlowButton>
@@ -61,7 +61,7 @@ export default function CtaFooter() {
 
         <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
           <span className="font-display text-sm uppercase tracking-[0.18em] text-foreground">
-            Sealed
+            Mithra
           </span>
           {/* Four networks, in the order one job touches them: the compute, the
               read layer, the timeline, the verdict. Base earns its place here

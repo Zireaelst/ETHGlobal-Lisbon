@@ -317,10 +317,10 @@ export default function CinematicHero({
             </p>
 
             <div style={{ display: "flex", alignItems: "center", gap: 20, marginTop: 6 }}>
-              <a href="#" className={styles.cta} style={{ display: "inline-flex", alignItems: "center", gap: 12, padding: "15px 30px", border: "1px solid var(--line, rgba(232,227,216,.28))", borderRadius: 999, fontFamily: "var(--font-body)", fontWeight: 300, fontSize: 14, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink, #f2efe8)", background: "var(--fill, rgba(255,255,255,.03))", backdropFilter: "blur(6px)" }}>
+              <a href="/dashboard" className={styles.cta} style={{ display: "inline-flex", alignItems: "center", gap: 12, padding: "15px 30px", border: "1px solid var(--line, rgba(232,227,216,.28))", borderRadius: 999, fontFamily: "var(--font-body)", fontWeight: 300, fontSize: 14, letterSpacing: ".1em", textTransform: "uppercase", color: "var(--ink, #f2efe8)", background: "var(--fill, rgba(255,255,255,.03))", backdropFilter: "blur(6px)" }}>
                 Explore the demo
               </a>
-              <a href="#" className={styles.watch} style={{ fontFamily: "var(--font-body)", fontWeight: 300, fontSize: 14, letterSpacing: ".08em", color: "var(--ink-soft, rgba(232,227,216,.52))" }}>
+              <a href="/spec" className={styles.watch} style={{ fontFamily: "var(--font-body)", fontWeight: 300, fontSize: 14, letterSpacing: ".08em", color: "var(--ink-soft, rgba(232,227,216,.52))" }}>
                 Read the spec
               </a>
             </div>

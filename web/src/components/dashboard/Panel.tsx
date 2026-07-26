@@ -3,7 +3,7 @@ import { SectionEyebrow } from "@/components/SectionEyebrow";
 import { cn } from "@/lib/utils";
 
 /**
- * The shared frame for all five panels. It exists so the dashboard reads as one instrument
+ * The shared frame for all six panels. It exists so the dashboard reads as one instrument
  * rather than five widgets, and so the one rule that matters is enforced in a single place:
  * the alert tint is reserved for a rejected verdict and nothing else, so red always means
  * "the chain said no" (see theme-tokens.ts).
