@@ -336,8 +336,8 @@ docs/                     one write-up per sponsor track
 
 | Name | GitHub | Telegram | X |
 |---|---|---|---|
-| Toygun Tez | [@Zireaelst](https://github.com/Zireaelst) | _TODO before submitting_ | _TODO before submitting_ |
-| _teammate_ | _TODO_ | _TODO_ | _TODO_ |
+| Toygun Tez | [@Zireaelst](https://github.com/Zireaelst) | @toygunst | https://x.com/ToygunTez |
+| Muhammed Yankıncı |  [@Muhammed5500](https://github.com/Muhammed5500)| @mammet5500 | https://x.com/Muhammedynknc55 |
 
 ## Developer setup
 
