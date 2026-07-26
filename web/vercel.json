@@ -1,10 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-
-  "//": "Set the project's Root Directory to `web` in Vercel; this file is read from there. Both commands step up to the repo root first: pnpm must install the whole workspace (web depends on @ca/demo and @ca/shared by `workspace:*`), and those packages are consumed as built `dist/` — they are serverExternalPackages, so Next never compiles them and `tsc -b` has to run before `next build`.",
   "installCommand": "cd .. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd .. && pnpm build && pnpm --filter @ca/web build",
-
-  "//env": "DEMO_RUNNER_ENABLED is deliberately absent. The live runner spawns the Claude CLI, binds Bob on a fixed port and writes recordings to disk — none of which a serverless function can do — so /api/run answers 503 with reason:runner-disabled here and the dashboard falls back to the recorded run. Live runs stay on the demo laptop."
+  "buildCommand": "cd .. && pnpm build && pnpm --filter @ca/web build"
 }

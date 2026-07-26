@@ -39,3 +39,8 @@ subgraph/build/
 
 # Vercel CLI project link (project + org ids, machine-local)
 web/.vercel/
+
+# Vercel CLI project link (project + org ids, machine-local)
+.vercel/
+.vercel
+.env*
