@@ -1,0 +1,886 @@
+<title>Mithra &mdash; Intent-Bound Verification</title>
+
+<style>
+  /* -------------------------------------------------------------
+     MITHRA &mdash; pitch deck
+     Palette: indigo-black ground, brass accent (seal wax / covenant).
+     Signal red is reserved for rejection. Green is reserved for verified.
+     ------------------------------------------------------------- */
+
+  /* the layout does the spacing - UA margins on h4/p were opening gaps
+     that no rule here asked for */
+  *, *::before, *::after { box-sizing: border-box; }
+  h1, h2, h3, h4, h5, h6, p, ul, ol, dl, dd, figure, blockquote, pre {
+    margin: 0; padding: 0;
+  }
+  ul { list-style: none; }
+
+  :root {
+    --ground:   #0B0F1A;
+    --raise:    #141A2B;
+    --raise-2:  #1B2338;
+    --line:     #26304A;
+    --line-soft:#1A2236;
+    --ink:      #E8EBF3;
+    --ink-mid:  #A2ABC3;
+    --ink-dim:  #6E7896;
+    --brass:    #C8963E;
+    --brass-lo: #8A6526;
+    --signal:   #E05659;
+    --verify:   #4FB286;
+    --chip-bg:  #FFFFFF;
+
+    --f-display: "Hoefler Text", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --f-body: "Avenir Next", "Avenir", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --f-data: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+
+    /* every size is capped by viewport HEIGHT as well as width, so a short
+       stage projector clips nothing */
+    --pad: clamp(22px, min(4.2vw, 6.4vh), 76px);
+    --gutter: clamp(14px, min(2.6vw, 3.6vh), 44px);
+    --h2: clamp(25px, min(4.4vw, 6.2vh), 62px);
+    --lede: clamp(13.5px, min(1.35vw, 2vh), 21px);
+    --pt: clamp(12.5px, min(1.15vw, 1.8vh), 18px);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --ground:   #ECEEF1;
+      --raise:    #FFFFFF;
+      --raise-2:  #E3E7ED;
+      --line:     #C4CBD8;
+      --line-soft:#D8DDE6;
+      --ink:      #101627;
+      --ink-mid:  #4A5470;
+      --ink-dim:  #7C859E;
+      --brass:    #8A6526;
+      --brass-lo: #C8963E;
+      --signal:   #B62F32;
+      --verify:   #2C7A56;
+      --chip-bg:  #FFFFFF;
+    }
+  }
+  :root[data-theme="light"] {
+    --ground:   #ECEEF1;
+    --raise:    #FFFFFF;
+    --raise-2:  #E3E7ED;
+    --line:     #C4CBD8;
+    --line-soft:#D8DDE6;
+    --ink:      #101627;
+    --ink-mid:  #4A5470;
+    --ink-dim:  #7C859E;
+    --brass:    #8A6526;
+    --brass-lo: #C8963E;
+    --signal:   #B62F32;
+    --verify:   #2C7A56;
+    --chip-bg:  #FFFFFF;
+  }
+  :root[data-theme="dark"] {
+    --ground:   #0B0F1A;
+    --raise:    #141A2B;
+    --raise-2:  #1B2338;
+    --line:     #26304A;
+    --line-soft:#1A2236;
+    --ink:      #E8EBF3;
+    --ink-mid:  #A2ABC3;
+    --ink-dim:  #6E7896;
+    --brass:    #C8963E;
+    --brass-lo: #8A6526;
+    --signal:   #E05659;
+    --verify:   #4FB286;
+    --chip-bg:  #FFFFFF;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  body { overflow: hidden; }
+
+  /* -- chrome: the rail. The hash token rides it. --------------- */
+
+  .rail {
+    position: fixed; inset: 0 0 auto 0; height: 52px; z-index: 40;
+    display: flex; align-items: center; gap: var(--gutter);
+    padding: 0 var(--pad);
+    pointer-events: none;
+  }
+  .rail-mark {
+    font-family: var(--f-data); font-size: 11px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-dim); white-space: nowrap;
+  }
+  .rail-mark b { color: var(--ink-mid); font-weight: 500; }
+  .rail-track {
+    position: relative; flex: 1; height: 1px; background: var(--line);
+    margin: 0 46px; /* the token is centred on the track ends — keep it clear of the labels */
+  }
+  .rail-track::after {
+    content: ""; position: absolute; inset: 0 auto 0 0;
+    width: var(--progress, 0%); background: var(--brass);
+    transition: width .5s cubic-bezier(.4,.9,.3,1);
+  }
+  .rail-token {
+    position: absolute; top: 50%; left: var(--progress, 0%);
+    transform: translate(-50%, -50%);
+    font-family: var(--f-data); font-size: 10.5px; letter-spacing: .04em;
+    color: var(--ground); background: var(--brass);
+    padding: 3px 7px; border-radius: 2px; white-space: nowrap;
+    transition: left .5s cubic-bezier(.4,.9,.3,1);
+  }
+  :root[data-theme="light"] .rail-token,
+  .rail-token { color: #0B0F1A; }
+
+  .rail-count {
+    font-family: var(--f-data); font-size: 11px; color: var(--ink-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .rail-count b { color: var(--ink); font-weight: 500; }
+
+  /* dot rail &mdash; hollow dots are the slides cut in the 3-minute version */
+  .dots {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; gap: 9px; z-index: 40;
+  }
+  .dots button {
+    width: 8px; height: 8px; padding: 0; border-radius: 50%;
+    background: var(--line); border: 1px solid var(--line);
+    cursor: pointer; transition: background .2s, transform .2s;
+  }
+  .dots button.cut { background: transparent; }
+  .dots button[aria-current="true"] { background: var(--brass); border-color: var(--brass); transform: scale(1.35); }
+  .dots button:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
+
+  /* -- slides --------------------------------------------------- */
+
+  .deck { position: relative; height: 100%; }
+  .slide {
+    position: absolute; inset: 0;
+    padding: clamp(62px, 8.4vh, 84px) var(--pad) clamp(46px, 6.4vh, 60px);
+    display: none; flex-direction: column;
+    opacity: 0;
+  }
+  .slide.is-active { display: flex; animation: enter .42s cubic-bezier(.2,.7,.3,1) forwards; }
+  @keyframes enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .eyebrow {
+    font-family: var(--f-data); font-size: 11px; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--brass); margin-bottom: 18px;
+  }
+  /* the serif defaults to old-style figures, which turns 0G into oG */
+  h2, h3, h4, h5, .who, .honest, .thesis-line, .wordmark {
+    font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1, "onum" 0;
+  }
+  .slide h2 {
+    font-family: var(--f-display); font-weight: 400;
+    font-size: var(--h2); line-height: 1.04;
+    letter-spacing: -.015em; text-wrap: balance; margin-bottom: 14px;
+  }
+  .slide h2 em { font-style: italic; color: var(--brass); }
+  .lede {
+    font-size: var(--lede); line-height: 1.45;
+    color: var(--ink-mid); max-width: 62ch; text-wrap: pretty;
+  }
+  .body-grid { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--gutter); min-height: 0; }
+
+  ul.points { list-style: none; display: flex; flex-direction: column; gap: clamp(8px, 1.4vh, 14px); }
+  /* a grid here would make <strong> and the text node separate grid items,
+     dumping the prose into the 14px marker column - keep the marker out of flow */
+  ul.points li {
+    position: relative; padding-left: 26px;
+    font-size: var(--pt); line-height: 1.42; color: var(--ink-mid);
+    max-width: 68ch;
+  }
+  ul.points li::before {
+    content: ""; position: absolute; left: 0; top: .5em;
+    width: 7px; height: 7px; background: var(--brass); border-radius: 1px;
+  }
+  ul.points li strong { color: var(--ink); font-weight: 600; }
+  code, .mono { font-family: var(--f-data); font-size: .88em; color: var(--brass); }
+
+  /* -- slide 1: the split --------------------------------------- */
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; flex: 1; min-height: 0; background: var(--line); border: 1px solid var(--line); }
+  .pane { background: var(--raise); padding: clamp(14px, min(2.2vw, 2.8vh), 34px); display: flex; flex-direction: column; gap: clamp(7px, 1.5vh, 14px); overflow: hidden; min-height: 0; }
+  .pane-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line-soft); padding-bottom: clamp(7px, 1.3vh, 12px); }
+  .pane-head h3 { font-family: var(--f-display); font-weight: 400; font-size: clamp(15px, min(1.6vw, 2.4vh), 25px); }
+  .pane-head span { font-family: var(--f-data); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-dim); }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field dt { font-family: var(--f-data); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
+  .field dd { font-size: clamp(11.5px, min(1.05vw, 1.62vh), 15.5px); line-height: 1.4; color: var(--ink); }
+  .field dd.hash { font-family: var(--f-data); color: var(--brass); word-break: break-all; font-size: clamp(11px, .95vw, 14px); }
+  .redact {
+    display: inline-block; background: var(--raise-2); color: transparent;
+    border-radius: 2px; user-select: none;
+    background-image: repeating-linear-gradient(90deg, var(--raise-2) 0 6px, var(--line-soft) 6px 7px);
+  }
+  .pane.observer { background: color-mix(in srgb, var(--raise) 70%, var(--ground)); }
+  .verdict-line { margin-top: auto; padding-top: clamp(8px, 1.4vh, 14px); border-top: 1px solid var(--line-soft); display: flex; align-items: center; gap: 10px; font-family: var(--f-data); font-size: clamp(11px, 1vw, 14px); color: var(--verify); }
+  .verdict-line::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--verify); }
+
+  .footnote { font-family: var(--f-data); font-size: 10.5px; color: var(--ink-dim); margin-top: 12px; letter-spacing: .02em; }
+
+  /* -- slide 2: three boxes, broken wires ----------------------- */
+
+  /* three boxes with a broken wire between each — 5 tracks, not 3 */
+  .solved { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 0; align-items: stretch; }
+  .solved-box { border: 1px solid var(--line); background: var(--raise); padding: clamp(14px, min(2.2vw, 2.8vh), 32px); display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+  .solved-box h4 { font-family: var(--f-display); font-weight: 400; font-size: clamp(20px, 2.1vw, 32px); }
+  .solved-box p { font-size: clamp(12.5px, 1.05vw, 16px); color: var(--ink-mid); line-height: 1.45; }
+  .solved-box .ok { font-family: var(--f-data); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--verify); }
+  .wire { display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+  .wire span {
+    font-family: var(--f-data); font-size: clamp(18px, 2vw, 30px); color: var(--signal);
+    position: relative; padding: 0 clamp(10px, 1.6vw, 26px);
+  }
+  .wire span::before, .wire span::after {
+    content: ""; position: absolute; top: 50%; width: clamp(12px, 1.6vw, 28px);
+    border-top: 2px dashed var(--signal); opacity: .6;
+  }
+  .wire span::before { right: 100%; }
+  .wire span::after { left: 100%; }
+  .verdict-strip {
+    border: 1px solid var(--signal); border-left-width: 3px;
+    background: color-mix(in srgb, var(--signal) 8%, var(--ground));
+    padding: clamp(11px, min(1.8vw, 2.2vh), 24px) clamp(16px, 2vw, 28px);
+    font-size: var(--lede); line-height: 1.45; color: var(--ink); max-width: 76ch;
+  }
+  .verdict-strip strong { color: var(--signal); }
+
+  /* -- slide 3: the crossover ----------------------------------- */
+
+  .crossover { display: flex; flex-direction: column; gap: 0; }
+  .cross-bar { display: grid; grid-template-columns: 1fr 1fr; height: clamp(56px, 6vw, 84px); border: 1px solid var(--line); }
+  .cross-half { display: flex; align-items: center; padding: 0 clamp(14px, 1.8vw, 26px); font-family: var(--f-data); font-size: clamp(11px, 1.05vw, 14px); letter-spacing: .1em; text-transform: uppercase; }
+  .cross-half.a { background: var(--raise); color: var(--ink-mid); }
+  .cross-half.b { background: color-mix(in srgb, var(--signal) 16%, var(--ground)); color: var(--signal); border-left: 1px solid var(--signal); }
+  .cross-note { font-family: var(--f-data); font-size: 11px; color: var(--ink-dim); letter-spacing: .1em; text-transform: uppercase; padding-top: 10px; display: grid; grid-template-columns: 1fr 1fr; }
+  .cross-note span:last-child { color: var(--signal); }
+
+  /* -- slide 4: the hero &mdash; one hash, four stations -------------- */
+
+  .journey { position: relative; padding: clamp(34px, min(6vw, 9vh), 90px) 0 clamp(20px, 3vh, 50px); }
+  .journey-line { position: relative; height: 2px; background: var(--line); }
+  .journey-line::after {
+    content: ""; position: absolute; inset: 0 auto 0 0; background: var(--brass);
+    width: 0;
+  }
+  .is-active .journey-line::after { animation: fill 2.6s .35s cubic-bezier(.5,0,.3,1) forwards; }
+  @keyframes fill { to { width: 100%; } }
+
+  /* nodes sit ON the line; every label hangs below it */
+  .stations { display: grid; grid-template-columns: repeat(4, 1fr); align-items: start; }
+  .station { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: clamp(5px, .9vh, 9px); }
+  .station .node { width: 15px; height: 15px; border-radius: 50%; background: var(--ground); border: 2px solid var(--line); margin-top: -8px; margin-bottom: clamp(6px, 1.4vh, 14px); transition: border-color .3s, background .3s; }
+  .station .cap { font-family: var(--f-data); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-dim); }
+  .station .who { font-family: var(--f-display); font-size: clamp(16px, 1.7vw, 26px); color: var(--ink); }
+  .station .sub { font-size: clamp(11px, .95vw, 14px); color: var(--ink-mid); max-width: 22ch; line-height: 1.4; }
+  .is-active .station .node { animation: light .01s forwards; }
+  .is-active .station:nth-child(1) .node { animation-delay: .45s; }
+  .is-active .station:nth-child(2) .node { animation-delay: 1.15s; }
+  .is-active .station:nth-child(3) .node { animation-delay: 1.9s; }
+  .is-active .station:nth-child(4) .node { animation-delay: 2.75s; }
+  @keyframes light { to { background: var(--brass); border-color: var(--brass); } }
+
+  .token-fly {
+    position: absolute; top: clamp(12px, 3.2vh, 40px); left: 0;
+    font-family: var(--f-data); font-size: clamp(11px, 1.05vw, 15px);
+    background: var(--brass); color: #0B0F1A; padding: 5px 10px; border-radius: 2px;
+    transform: translateX(-50%); white-space: nowrap; opacity: 0;
+  }
+  .is-active .token-fly { animation: fly 2.6s .35s cubic-bezier(.5,0,.3,1) forwards; }
+  @keyframes fly {
+    0%   { left: 12.5%; opacity: 0; }
+    8%   { opacity: 1; }
+    100% { left: 87.5%; opacity: 1; }
+  }
+  .journey-caption { text-align: center; font-family: var(--f-data); font-size: clamp(11px, 1vw, 14px); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); margin-top: clamp(24px, 3vw, 44px); }
+  .journey-caption b { color: var(--brass); font-weight: 500; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .is-active .journey-line::after { animation: none; width: 100%; }
+    .is-active .token-fly { animation: none; opacity: 1; left: 87.5%; }
+    .is-active .station .node { animation: none; background: var(--brass); border-color: var(--brass); }
+    .slide.is-active { animation: none; opacity: 1; }
+  }
+
+  /* -- slide 5: four lanes -------------------------------------- */
+
+  .thesis-line {
+    font-family: var(--f-display); font-size: clamp(16px, 1.85vw, 28px);
+    line-height: 1.4; color: var(--ink); text-align: center;
+    padding: clamp(12px, 1.4vw, 20px) 0; border-block: 1px solid var(--line);
+  }
+  .thesis-line b { color: var(--brass); font-weight: 400; font-style: italic; }
+  .lanes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: var(--line); border: 1px solid var(--line); }
+  .lane { background: var(--raise); padding: clamp(12px, min(1.7vw, 2.2vh), 26px); display: flex; flex-direction: column; gap: clamp(7px, 1.2vh, 11px); min-width: 0; }
+  .lane-logo { height: clamp(26px, 2.6vw, 38px); background: var(--chip-bg); box-shadow: inset 0 0 0 1px var(--line); border-radius: 3px; display: flex; align-items: center; justify-content: center; padding: 6px 10px; overflow: hidden; }
+  /* 0G ships a square mark on its own white field - scale it to match the wordmarks */
+  .lane-logo img.square { transform: scale(1.75); }
+  .lane-logo img { max-height: 100%; max-width: 100%; width: auto; object-fit: contain; }
+  :root[data-theme="light"] .lane-logo img, .lane-logo img { filter: none; }
+  .lane-role { font-family: var(--f-data); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--brass); }
+  .lane h4 { font-family: var(--f-display); font-weight: 400; font-size: clamp(15px, 1.5vw, 22px); line-height: 1.15; }
+  .lane p { font-size: clamp(11.5px, 1vw, 14.5px); line-height: 1.45; color: var(--ink-mid); }
+  .lane .id { font-family: var(--f-data); font-size: clamp(9.5px, .82vw, 11.5px); color: var(--ink-dim); word-break: break-all; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line-soft); }
+
+  /* -- slide 6: the hard part ----------------------------------- */
+
+  .two-col { display: grid; grid-template-columns: 1.15fr .85fr; gap: var(--gutter); align-items: start; }
+  /* grid items default to min-width:auto, which lets a <pre> force its column to
+     min-content and shred the neighbouring text one word per line */
+  .two-col > * { min-width: 0; }
+  pre.code {
+    background: var(--raise); border: 1px solid var(--line); border-left: 3px solid var(--brass);
+    padding: clamp(12px, min(1.6vw, 2vh), 22px); overflow-x: auto; min-width: 0; max-width: 100%;
+    font-family: var(--f-data); font-size: clamp(9.5px, min(.95vw, 1.42vh), 13.5px); line-height: 1.6; color: var(--ink);
+  }
+  pre.code .c { color: var(--ink-dim); }
+  pre.code .k { color: var(--brass); }
+  .metric-card { background: var(--raise); border: 1px solid var(--line); padding: clamp(13px, min(1.8vw, 2.3vh), 26px); display: flex; flex-direction: column; gap: clamp(9px, 1.8vh, 16px); min-width: 0; }
+  .metric-head { font-family: var(--f-data); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-dim); }
+  .budget { position: relative; height: clamp(22px, 3.6vh, 34px); background: var(--raise-2); border-radius: 2px; }
+  .budget-fill { position: absolute; inset: 0 auto 0 0; width: 35%; background: var(--brass); border-radius: 2px 0 0 2px; }
+  .budget-p95 { position: absolute; top: -5px; bottom: -5px; left: 37.8%; width: 2px; background: var(--ink); }
+  .budget-scale { display: flex; justify-content: space-between; font-family: var(--f-data); font-size: 10.5px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+  .metric-row { display: flex; gap: clamp(16px, 2vw, 34px); }
+  .metric { display: flex; flex-direction: column; gap: 3px; }
+  .metric .n { font-family: var(--f-data); font-size: clamp(17px, min(2.2vw, 3.3vh), 32px); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .metric .n small { font-size: .5em; color: var(--ink-dim); }
+  .metric .l { font-family: var(--f-data); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
+
+  /* -- slides 7 & 8: demo beats --------------------------------- */
+
+  .beats { display: flex; flex-direction: column; gap: 0; counter-reset: beat; border: 1px solid var(--line); }
+  .beat { display: grid; grid-template-columns: clamp(46px, 5vw, 70px) 1fr; align-items: center; gap: clamp(12px, 1.6vw, 24px); padding: clamp(8px, min(1.4vw, 1.7vh), 20px) clamp(14px, 1.8vw, 26px); border-bottom: 1px solid var(--line-soft); background: var(--raise); }
+  .beat:last-child { border-bottom: 0; }
+  .beat-n { font-family: var(--f-data); font-size: clamp(11px, 1vw, 14px); color: var(--brass); letter-spacing: .1em; }
+  .beat p { font-size: var(--pt); line-height: 1.4; color: var(--ink-mid); }
+  .beat p strong { color: var(--ink); font-weight: 600; }
+  .beat.hot { background: color-mix(in srgb, var(--signal) 10%, var(--ground)); border-left: 3px solid var(--signal); }
+  .beat.hot .beat-n { color: var(--signal); }
+  .beat.cool { border-left: 3px solid var(--verify); }
+  .beat.cool .beat-n { color: var(--verify); }
+
+  .switch-row { display: flex; align-items: center; gap: clamp(16px, 2vw, 30px); flex-wrap: wrap; }
+  .switch {
+    display: inline-flex; align-items: center; gap: 12px;
+    border: 1px solid var(--signal); background: color-mix(in srgb, var(--signal) 12%, var(--ground));
+    padding: 11px 18px; font-family: var(--f-data); font-size: clamp(11px, 1.05vw, 14px);
+    letter-spacing: .12em; text-transform: uppercase; color: var(--signal);
+  }
+  .switch::before { content: ""; width: 26px; height: 14px; border-radius: 7px; background: var(--signal); position: relative; box-shadow: inset -12px 0 0 0 color-mix(in srgb, var(--signal) 40%, var(--ground)); }
+
+  /* -- slide 9: the honest sentence ----------------------------- */
+
+  .honest {
+    font-family: var(--f-display); font-style: italic; font-weight: 400;
+    font-size: clamp(22px, 3.1vw, 46px); line-height: 1.22; letter-spacing: -.01em;
+    max-width: 26ch; text-wrap: balance;
+    border-left: 2px solid var(--brass); padding-left: clamp(18px, 2.2vw, 34px);
+  }
+  .honest b { color: var(--brass); font-weight: 400; }
+  .gap-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gutter); }
+  .gap-col h5 { font-family: var(--f-data); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; margin-bottom: 12px; }
+  .gap-col.have h5 { color: var(--verify); }
+  .gap-col.havent h5 { color: var(--signal); }
+  .gap-col p { font-size: clamp(13px, 1.15vw, 17px); line-height: 1.5; color: var(--ink-mid); }
+  .gap-col p + p { margin-top: 10px; }
+  .flag { font-family: var(--f-data); font-size: clamp(11px, 1vw, 14px); color: var(--ink-dim); }
+  .flag b { color: var(--ink); font-weight: 500; }
+
+  /* -- slide 10: the ladder ------------------------------------- */
+
+  .ladder { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--line); border: 1px solid var(--line); }
+  .rung { background: var(--raise); padding: clamp(14px, min(2.2vw, 2.8vh), 32px); display: flex; flex-direction: column; gap: clamp(8px, 1.3vh, 12px); }
+  .rung .state { font-family: var(--f-data); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; }
+  .rung.now .state { color: var(--verify); }
+  .rung.next .state { color: var(--brass); }
+  .rung.later .state { color: var(--ink-dim); }
+  .rung h4 { font-family: var(--f-display); font-weight: 400; font-size: clamp(18px, 1.9vw, 28px); line-height: 1.15; }
+  .rung p { font-size: clamp(12.5px, 1.05vw, 16px); line-height: 1.5; color: var(--ink-mid); }
+  .closing { display: flex; align-items: baseline; justify-content: space-between; gap: var(--gutter); flex-wrap: wrap; }
+  .closing .repo { font-family: var(--f-data); font-size: clamp(12px, 1.1vw, 16px); color: var(--brass); }
+
+  .wordmark { position: fixed; left: var(--pad); bottom: 14px; font-family: var(--f-display); font-size: 13px; letter-spacing: .06em; color: var(--ink-dim); z-index: 40; }
+  .wordmark b { color: var(--ink-mid); font-weight: 400; }
+
+  /* -- speaker notes drawer ------------------------------------- */
+
+  .notes-toggle {
+    position: fixed; right: var(--pad); bottom: 12px; z-index: 45;
+    font-family: var(--f-data); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-dim); background: transparent; border: 1px solid var(--line);
+    padding: 6px 11px; cursor: pointer; border-radius: 2px;
+  }
+  .notes-toggle:hover { color: var(--ink); border-color: var(--ink-dim); }
+  .notes-toggle:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+  .drawer {
+    position: fixed; inset: auto 0 0 0; z-index: 44;
+    background: var(--raise); border-top: 1px solid var(--brass);
+    padding: clamp(18px, 2.2vw, 30px) var(--pad) 54px;
+    max-height: 46vh; overflow-y: auto;
+    transform: translateY(101%); transition: transform .3s cubic-bezier(.3,.8,.3,1);
+  }
+  .drawer.open { transform: none; }
+  .drawer-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
+  .drawer-head span { font-family: var(--f-data); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-dim); }
+  .drawer-head span.time { color: var(--brass); }
+  .drawer-head span.cut { color: var(--signal); }
+  .drawer p { font-size: clamp(14px, 1.25vw, 18px); line-height: 1.55; max-width: 88ch; color: var(--ink); }
+  .drawer p.transition { margin-top: 12px; color: var(--ink-mid); font-style: italic; font-family: var(--f-display); }
+  .drawer p.transition::before { content: "&rarr; "; color: var(--brass); font-style: normal; }
+  .slide aside { display: none; }
+
+  .help {
+    position: fixed; inset: 0; z-index: 50; background: color-mix(in srgb, var(--ground) 94%, transparent);
+    display: none; align-items: center; justify-content: center; padding: var(--pad);
+  }
+  .help.open { display: flex; }
+  .help-inner { background: var(--raise); border: 1px solid var(--line); padding: clamp(24px, 3vw, 44px); max-width: 620px; display: flex; flex-direction: column; gap: 18px; }
+  .help-inner h3 { font-family: var(--f-display); font-weight: 400; font-size: 26px; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 10px 22px; font-size: 14px; color: var(--ink-mid); }
+  .keys kbd { font-family: var(--f-data); font-size: 11.5px; background: var(--raise-2); border: 1px solid var(--line); padding: 3px 8px; border-radius: 3px; color: var(--ink); }
+
+  @media (max-width: 860px) {
+    .split, .two-col, .gap-cols, .cross-bar { grid-template-columns: 1fr; }
+    .lanes, .ladder, .solved { grid-template-columns: 1fr; }
+    .wire span::before, .wire span::after { display: none; }
+    .stations { grid-template-columns: repeat(2, 1fr); }
+    body { overflow: auto; }
+    .slide { position: static; height: auto; min-height: 100vh; }
+  }
+</style>
+
+<div class="rail" aria-hidden="true">
+  <div class="rail-mark">intent<b>Hash</b></div>
+  <div class="rail-track"><div class="rail-token" id="railToken">0x7f3a&hellip;</div></div>
+  <div class="rail-count"><b id="slideNum">1</b> / 10</div>
+</div>
+
+<main class="deck" id="deck">
+
+  <!-- == 1 ====================================================== -->
+  <section class="slide" data-cut="keep" data-time="35s" aria-label="Slide 1">
+    <p class="eyebrow">One job &middot; two views</p>
+    <h2>Here is everything the chain saw.</h2>
+    <div class="body-grid">
+      <div class="split">
+        <div class="pane">
+          <div class="pane-head"><h3>What actually happened</h3><span>Alice &amp; Bob only</span></div>
+          <div class="field"><dt>Brief</dt><dd>Assess counterparty concentration in the attached Q3 exposure ledger. Flag any position above 4%.</dd></div>
+          <div class="field"><dt>Data</dt><dd>exposure-ledger-q3.csv &middot; 1.2 MB &middot; encrypted to Bob's key</dd></div>
+          <div class="field"><dt>Price &middot; payee</dt><dd>0.25 HBAR &rarr; Bob's account</dd></div>
+          <div class="field"><dt>Deliverable</dt><dd>Six-page analysis, produced inside a sealed enclave</dd></div>
+          <div class="verdict-line">Job verified &middot; Bob paid</div>
+        </div>
+        <div class="pane observer">
+          <div class="pane-head"><h3>What a chain observer got</h3><span>Everyone else</span></div>
+          <div class="field"><dt>Brief</dt><dd><span class="redact">Assess counterparty concentration in the attached ledger.</span></dd></div>
+          <div class="field"><dt>Data</dt><dd><span class="redact">exposure-ledger-q3.csv &middot; 1.2 MB</span></dd></div>
+          <div class="field"><dt>Price &middot; payee</dt><dd><span class="redact">0.25 HBAR &rarr; Bob</span></dd></div>
+          <div class="field"><dt>intentHash</dt><dd class="hash">0x7f3a9c&hellip;4e12</dd></div>
+          <div class="field"><dt>outputHash</dt><dd class="hash">0x2b81d0&hellip;a7f5</dd></div>
+          <div class="verdict-line">Job verified</div>
+        </div>
+      </div>
+      <p class="footnote">Hashes on this slide are illustrative. Every identifier on slide 5 is live on testnet.</p>
+    </div>
+    <aside>
+      <p>This is one job, twice. On the left, what actually happened &mdash; a client agent hired an analyst agent, sent a confidential brief, got a six-page analysis back, and paid for it. On the right is every single byte a chain observer got. Hashes. That's it. And yet at the end of this, a smart contract on Base publicly confirmed that the work delivered was <em>provably the work that was ordered</em>. Both of those things are true at the same time. That combination is what we built, and for the next four minutes I want to show you why nobody had it.</p>
+      <p class="transition">So why didn't this exist already? It's not because any one piece was missing.</p>
+    </aside>
+  </section>
+
+  <!-- == 2 ====================================================== -->
+  <section class="slide" data-cut="keep" data-time="45s" aria-label="Slide 2">
+    <p class="eyebrow">The problem</p>
+    <h2>Three solved problems. One missing wire.</h2>
+    <div class="body-grid">
+      <div class="solved">
+        <div class="solved-box">
+          <span class="ok">Solved</span>
+          <h4>Payment</h4>
+          <p>x402 works. Agents can pay each other, per request, without us.</p>
+        </div>
+        <div class="wire"><span>?</span></div>
+        <div class="solved-box">
+          <span class="ok">Solved</span>
+          <h4>Execution</h4>
+          <p>TEEs work. A machine can sign <em>"I ran this in here."</em></p>
+        </div>
+        <div class="wire"><span>?</span></div>
+        <div class="solved-box">
+          <span class="ok">Solved</span>
+          <h4>Reputation</h4>
+          <p>ERC-8004 works. Agents have identities you can look up.</p>
+        </div>
+      </div>
+      <p class="verdict-strip">A TEE signature says <em>a computation happened in here.</em> It says nothing about <strong>which computation you ordered.</strong> Run something cheaper, sign the output, and the signature still verifies. The attestation is real. The job is wrong.</p>
+    </div>
+    <aside>
+      <p>Here's the honest state of the agent economy. Payment is solved &mdash; x402 gives agents a way to pay per request. Execution is solved &mdash; TEEs let a machine sign "I ran this." Reputation is solved &mdash; ERC-8004 gives agents identities you can look up. Three good pieces. But look at the gaps. A TEE signature says <em>a computation happened in here</em>. It says nothing about <em>which</em> computation you ordered. So if I pay an agent for a market analysis and it runs something cheaper and hands me a signed output, the signature still verifies. The attestation is real. The job is wrong. That's the hole &mdash; and it bites the moment no human opens the PDF.</p>
+      <p class="transition">And that hole gets expensive exactly when agents get useful.</p>
+    </aside>
+  </section>
+
+  <!-- == 3 ====================================================== -->
+  <section class="slide" data-cut="drop" data-time="35s" aria-label="Slide 3">
+    <p class="eyebrow">Why now</p>
+    <h2>The premise of agent commerce is that <em>nobody opens the PDF.</em></h2>
+    <div class="body-grid">
+      <div class="crossover">
+        <div class="cross-bar">
+          <div class="cross-half a">Human in the loop &mdash; someone re-reads the deliverable</div>
+          <div class="cross-half b">Agent to agent &mdash; nobody checks the deliverable</div>
+        </div>
+        <div class="cross-note"><span>Substitution gets caught</span><span>Substitution is free money</span></div>
+      </div>
+      <ul class="points">
+        <li><strong>A human client re-reads the work. An agent client cannot.</strong> That reader was the whole quality control layer, and the roadmap deletes it.</li>
+        <li><strong>Substituted work is cheaper work.</strong> The incentive is structural, not hypothetical.</li>
+        <li><strong>Autonomous payment means autonomous fraud</strong> &mdash; at machine scale, machine speed.</li>
+        <li><strong>Reputation anchored to unverified delivery launders bad work into a good score.</strong></li>
+      </ul>
+    </div>
+    <aside>
+      <p>Today this doesn't bite, because a human opens the PDF. But the entire premise of agent commerce is that no human opens the PDF. The instant you remove that reader, task substitution becomes free money &mdash; do the cheap job, deliver the signed output, collect. And the reputation layer makes it worse, not better, because feedback anchored to <em>unverified</em> deliveries just launders bad work into a good score. So: we don't need another payment rail and we don't need another TEE. We need the wire between them.</p>
+      <p class="transition">The wire turned out to be one number.</p>
+    </aside>
+  </section>
+
+  <!-- == 4 ====================================================== -->
+  <section class="slide" data-cut="keep" data-time="50s" aria-label="Slide 4">
+    <p class="eyebrow">The idea</p>
+    <h2>One signed hash, carried all the way through.</h2>
+    <p class="lede"><span class="mono">intentHash = keccak256(brief, data, constraints, price, nonce)</span> &mdash; signed EIP-712 by Alice. It is now the identity of the job.</p>
+    <div class="body-grid">
+      <div class="journey">
+        <div class="token-fly">0x7f3a9c&hellip;4e12</div>
+        <div class="journey-line"></div>
+        <div class="stations">
+          <div class="station">
+            <span class="node"></span>
+            <span class="cap">01 &middot; Sign</span>
+            <span class="who">Alice</span>
+            <span class="sub">EIP-712 over everything that defines the job</span>
+          </div>
+          <div class="station">
+            <span class="node"></span>
+            <span class="cap">02 &middot; Pay</span>
+            <span class="who">x402</span>
+            <span class="sub">The same hash authorizes the payment</span>
+          </div>
+          <div class="station">
+            <span class="node"></span>
+            <span class="cap">03 &middot; Enclave</span>
+            <span class="who">0G Sealed Inference</span>
+            <span class="sub">Goes in with the prompt &mdash; comes back inside the TEE-signed body</span>
+          </div>
+          <div class="station">
+            <span class="node"></span>
+            <span class="cap">04 &middot; Verdict</span>
+            <span class="who">Verifier.sol</span>
+            <span class="sub">Recovered on-chain before anything is emitted</span>
+          </div>
+        </div>
+      </div>
+      <p class="journey-caption">0G attests the compute. <b>We attest the intent.</b></p>
+    </div>
+    <aside>
+      <p>Alice hashes everything that defines her job &mdash; the brief, the data, the constraints, the price, a nonce &mdash; and signs it. That hash is now the identity of the job. It authorizes the payment. It goes into the enclave at the top of the prompt. It comes back out <em>inside</em> the response that the TEE signs. And it's the value the contract recovers before it will emit a verdict. So the guarantee isn't "a TEE produced an output." It's "a TEE produced <em>this</em> output for <em>this</em> order, and here is the signature chain." We call it intent-bound verification. One hash is the whole trick &mdash; and it's the reason our verdict means something the other three layers can't say on their own.</p>
+      <p class="transition">Making one hash survive four networks is where the engineering lives.</p>
+    </aside>
+  </section>
+
+  <!-- == 5 ====================================================== -->
+  <section class="slide" data-cut="keep" data-time="55s" aria-label="Slide 5">
+    <p class="eyebrow">Architecture &middot; and every sponsor in it</p>
+    <h2>One job, four networks, zero overlap.</h2>
+    <div class="body-grid">
+      <p class="thesis-line"><b>Base</b> is the verdict &middot; <b>Hedera</b> is the money and the timeline &middot; <b>The Graph</b> is the read layer &middot; <b>0G</b> is the compute</p>
+      <div class="lanes">
+        <div class="lane">
+          <div class="lane-logo"><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAwIiBoZWlnaHQ9IjUwMCIgdmlld0JveD0iMCAwIDUwMCA1MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgo8cGF0aCBkPSJNMTAyLjE2MyAzMDEuOUM3Ni4yNjAxIDI2OS42ODkgNzguMDY0MiAyMjIuMDg1IDEwNy41NjggMTkyLjAxNEMxMzguOTk5IDE1OS45OTUgMTg5Ljk0OSAxNTkuOTk1IDIyMS4zOCAxOTIuMDE0QzI1Mi44MDMgMjI0LjA0MSAyNTIuODAzIDI3NS45NTcgMjIxLjM4IDMwNy45ODRDMTkwLjkwNSAzMzkuMDM2IDE0Mi4wNzEgMzM5Ljk3NCAxMTAuNDg4IDMxMC44MTFMMTgxLjU0NCAyMzguNDAxTDE5MC4wNzkgMjQ3LjA5OEwxNDYuNjkzIDI5MS4zMTNDMTYyLjkwMSAyOTguNTU2IDE4Mi41IDI5NS40MTEgMTk1Ljc2NyAyODEuODkzQzIxMy4wNTUgMjY0LjI3NyAyMTMuMDU1IDIzNS43MjEgMTk1Ljc2NyAyMTguMTEzQzE3OC40ODYgMjAwLjQ5NyAxNTAuNDYxIDIwMC40OTcgMTMzLjE3MyAyMTguMTEzQzExNy44MzUgMjMzLjc0MiAxMTYuMTEgMjU3Ljk5NSAxMjggMjc1LjU2NkwxMDIuMTYzIDMwMS45WiIgZmlsbD0iIzkyMDBFMSIvPgo8cGF0aCBkPSJNMzE1LjgwMiAyNjYuMzE0VjI1NC4wNTFINDE2QzQxMy45NjQgMjk2LjE0MSAzODAuNyAzMjkuODU4IDMzOS4zMjEgMzMxLjY0NUMyOTEuOTU4IDMzMy42OTcgMjUzLjAyMSAyOTMuMzg3IDI1NS43NTkgMjQ1LjE2MkMyNTguMTk0IDIwMi4yNDYgMjk0LjI0NyAxNjguMjA0IDMzNS44NTggMTY4LjIwNEMzNzcuNDY5IDE2OC4yMDQgNDExLjY3NCAyMDAuNDc0IDQxNS43MDMgMjQxLjc4OEgzNzkuMjU4QzM3NS40OTEgMjIwLjg1OCAzNTcuNDkzIDIwNSAzMzUuODU4IDIwNUMzMDguNjA4IDIwNSAyODcuMTI1IDIzMC4xNjggMjkyLjU4MSAyNTguOTQ2QzI5NS45NTcgMjc2LjczMSAzMDkuNzAyIDI5MC42OTIgMzI3LjE3MSAyOTQuMDg4QzM0OS40OTQgMjk4LjQyMiAzNjkuNTg2IDI4NS42MDUgMzc2Ljk4MyAyNjYuMzE0SDMxNS44MDJaIiBmaWxsPSIjOTIwMEUxIi8+Cjwvc3ZnPgo=" alt="0G" class="square"></div>
+          <span class="lane-role">The compute</span>
+          <h4>Runs it. Signs it.</h4>
+          <p>Sealed Inference, <span class="mono">TeeML</span>, model <span class="mono">qwen2.5-omni-7b</span>. Produces the deliverable inside the enclave and signs the response.</p>
+          <span class="id">provider 0xa48f&hellip;7836 &middot; Galileo 16602</span>
+        </div>
+        <div class="lane">
+          <div class="lane-logo"><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjM4IiBoZWlnaHQ9IjU2IiB2aWV3Qm94PSIwIDAgMjM4IDU2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTMuNSAxOS42NzQ3QzMuNSAyOC4zMDk4IDEwLjUyNjQgMzUuMzI3NSAxOS4xNTI5IDM1LjMyNzVDMjcuNzc5NCAzNS4zMjc1IDM0LjgwNTggMjguMzA5OCAzNC44MDU4IDE5LjY3NDdDMzQuODA1OCAxMS4wMzk1IDI3Ljc3OTQgNC4wMjE3NiAxOS4xNTI5IDQuMDIxNzZDMTAuNTI2NCA0LjAyMTc2IDMuNSAxMS4wMzk1IDMuNSAxOS42NzQ3Wk04LjcxNzYzIDE5LjY3NDdDOC43MTc2MyAxMy45MTc5IDEzLjM5NjEgOS4yMzk0IDE5LjE1MjkgOS4yMzk0QzI0LjkwOTcgOS4yMzk0IDI5LjU4ODIgMTMuOTE3OSAyOS41ODgyIDE5LjY3NDdDMjkuNTg4MiAyNS40MzE0IDI0LjkwOTcgMzAuMTA5OSAxOS4xNTI5IDMwLjEwOTlDMTMuMzk2MSAzMC4xMDk5IDguNzE3NjMgMjUuNDMxNCA4LjcxNzYzIDE5LjY3NDdaTTM0LjA0MDUgMzkuNzc5OUwyMy42MDUzIDUwLjIxNTJDMjMuMTAwOSA1MC43MjgzIDIyLjQzMTMgNTAuOTgwNCAyMS43NjE3IDUwLjk4MDRDMjEuMDkyMSA1MC45ODA0IDIwLjQzMTIgNTAuNzI4MyAxOS45MTgxIDUwLjIxNTJDMTguOTAwNyA0OS4xOTc4IDE4LjkwMDcgNDcuNTQ1NSAxOS45MTgxIDQ2LjUyODFMMzAuMzUzNCAzNi4wOTI4QzMxLjM3MDkgMzUuMDc1NCAzMy4wMjMxIDM1LjA3NTQgMzQuMDQwNSAzNi4wOTI4QzM1LjA1OCAzNy4xMTAyIDM1LjA1OCAzOC43NjI1IDM0LjA0MDUgMzkuNzc5OVpNMzQuMjg0IDYuNjMwNThDMzQuMjg0IDQuOTA4NzYgMzUuNjkyOCAzLjUgMzcuNDE0NiAzLjVDMzkuMTM2NCAzLjUgNDAuNTQ1MiA0LjkwODc2IDQwLjU0NTIgNi42MzA1OEM0MC41NDUyIDguMzUyNCAzOS4xMzY0IDkuNzYxMTYgMzcuNDE0NiA5Ljc2MTE2QzM1LjY5MjggOS43NjExNiAzNC4yODQgOC4zNTI0IDM0LjI4NCA2LjYzMDU4Wk02OC4xNTA5IDE3LjQzNVYzOC4xODIySDYyLjg1NTNWMTcuNDM1SDU2VjEyLjQyOTZINzUuMDc4N1YxNy40MzVINjguMTUwOVpNODIuODc3MSAyOS4zMzJWMzguMTgyMkg3Ny45MDc5VjEwLjk3ODdIODIuODc3MVYyMi4xMTRDODMuODIwMSAyMC42NjMyIDg1LjcwNjIgMTkuNjQ3NiA4OC4wNjM5IDE5LjY0NzZDOTIuNDUyNyAxOS42NDc2IDk1LjA2NDIgMjIuODM5NSA5NS4wNjQyIDI3LjU1NDdWMzguMTgyMkg5MC4wOTUxVjI4LjM4OUM5MC4wOTUxIDI1Ljc3NzQgODguOTcwNyAyNC4xODE1IDg2LjkwMzIgMjQuMTgxNUM4NC42MTgxIDI0LjE4MTUgODIuODc3MSAyNS44NSA4Mi44NzcxIDI5LjMzMlpNMTE3LjI2MiAzMi4yN0MxMTYuMTc0IDM1LjkzMzQgMTEyLjU4MyAzOC41ODEyIDEwNy45NzcgMzguNTgxMkMxMDIuNDI3IDM4LjU4MTIgOTguNDczNyAzNC41OTE0IDk4LjQ3MzcgMjkuMDc4MUM5OC40NzM3IDIzLjY3MzcgMTAyLjUgMTkuNjQ3NiAxMDguMDEzIDE5LjY0NzZDMTEzLjM0NSAxOS42NDc2IDExNy43MzQgMjMuNDU2MSAxMTcuNDggMzAuMjc1MUgxMDMuMzM0QzEwMy41NTIgMzIuNDE1MSAxMDUuMTQ4IDM0LjI2NDkgMTA4LjIzMSAzNC4yNjQ5QzEwOS45NzIgMzQuMjY0OSAxMTEuNDk1IDMzLjUwMzIgMTEyLjA3NiAzMi4yN0gxMTcuMjYyWk0xMDMuNTE1IDI3LjAxMDdIMTEyLjAzOUMxMTEuNDIzIDI0LjU4MDUgMTA5LjU3MyAyMy42NzM3IDEwNy44NjggMjMuNjczN0MxMDUuNTgzIDIzLjY3MzcgMTAzLjk4NyAyNS4wMTU3IDEwMy41MTUgMjcuMDEwN1pNMTU0LjYyMiAyMi43NjY5QzE1NS43ODIgMzMuMzU4MSAxNDkuNTggMzguNjE3NSAxNDEuOTI3IDM4LjYxNzVDMTM0LjA1NiAzOC42MTc1IDEyOC4zNjEgMzIuNzc3OCAxMjguMzYxIDI1LjMwNTlDMTI4LjM2MSAxNy44MzQgMTM0LjA1NiAxMS45OTQzIDE0MS44NTQgMTEuOTk0M0MxNDcuMjU5IDExLjk5NDMgMTUyLjI2NCAxNS4xODYyIDE1NC4wMDUgMjAuMDQ2NkgxNDcuOTg0QzE0Ni43MTUgMTguMTYwNSAxNDQuMzIxIDE3LjA3MjMgMTQxLjg1NCAxNy4wNzIzQzEzNi45MjEgMTcuMDcyMyAxMzMuNjU3IDIwLjY5OTQgMTMzLjY1NyAyNS4zMDU5QzEzMy42NTcgMjkuOTEyNCAxMzYuOTIxIDMzLjUzOTUgMTQxLjkyNyAzMy41Mzk1QzE0Ni4wOTggMzMuNTM5NSAxNDguNjAxIDMxLjI1NDQgMTQ5LjE4MSAyNy42OTk4SDE0MS4zMVYyMi43NjY5SDE1NC42MjJaTTE2My4yOTEgMjkuNTEzNFYzOC4xODIySDE1OC4zMjFWMjAuMDQ2NkgxNjMuMjkxVjIyLjk0ODNDMTYzLjkwNyAyMS4xNzEgMTY1Ljc1NyAxOS44Mjg5IDE2Ny43ODggMTkuODI4OUMxNjguMjk2IDE5LjgyODkgMTY4Ljg0IDE5Ljg2NTIgMTY5LjQ1NyAyMC4wNDY2VjI1LjA4ODNDMTY4LjY5NSAyNC44MzQ0IDE2OC4wMDYgMjQuNjg5MyAxNjcuMjA4IDI0LjY4OTNDMTY0Ljg1IDI0LjY4OTMgMTYzLjI5MSAyNi41MzkxIDE2My4yOTEgMjkuNTEzNFpNMTg0LjU4MiAzNi4xNTFDMTgzLjc4NCAzNy4zMTE3IDE4MS44NjIgMzguNTgxMiAxNzkuMzU5IDM4LjU4MTJDMTc0LjUzNSAzOC41ODEyIDE3MC44MzUgMzQuMjY0OSAxNzAuODM1IDI5LjExNDRDMTcwLjgzNSAyMy45NjM5IDE3NC41MzUgMTkuNjQ3NiAxNzkuMzU5IDE5LjY0NzZDMTgxLjg2MiAxOS42NDc2IDE4My43ODQgMjAuOTE3MSAxODQuNTgyIDIyLjA3NzhWMjAuMDQ2NkgxODkuNTUxVjM4LjE4MjJIMTg0LjU4MlYzNi4xNTFaTTE3NS44NDEgMjkuMTE0NEMxNzUuODQxIDMxLjk0MzYgMTc3LjY5IDM0LjA0NzMgMTgwLjQxMSAzNC4wNDczQzE4My4xMzEgMzQuMDQ3MyAxODQuOTgxIDMxLjk0MzYgMTg0Ljk4MSAyOS4xMTQ0QzE4NC45ODEgMjYuMjg1MiAxODMuMTMxIDI0LjE4MTUgMTgwLjQxMSAyNC4xODE1QzE3Ny42OSAyNC4xODE1IDE3NS44NDEgMjYuMjg1MiAxNzUuODQxIDI5LjExNDRaTTE5OS4zNDQgMzYuMTUxVjQ1Ljc2MjlIMTk0LjM3NVYyMC4wNDY2SDE5OS4zNDRWMjIuMDc3OEMyMDAuMTc5IDIwLjkxNzEgMjAyLjEwMSAxOS42NDc2IDIwNC42MDQgMTkuNjQ3NkMyMDkuNDI4IDE5LjY0NzYgMjEzLjEyNyAyMy45NjM5IDIxMy4xMjcgMjkuMTE0NEMyMTMuMTI3IDM0LjI2NDkgMjA5LjQyOCAzOC41ODEyIDIwNC42MDQgMzguNTgxMkMyMDIuMTAxIDM4LjU4MTIgMjAwLjE3OSAzNy4zMTE3IDE5OS4zNDQgMzYuMTUxWk0xOTguOTQ1IDI5LjExNDRDMTk4Ljk0NSAzMS45NDM2IDIwMC43OTUgMzQuMDQ3MyAyMDMuNTE2IDM0LjA0NzNDMjA2LjIzNiAzNC4wNDczIDIwOC4wODYgMzEuOTQzNiAyMDguMDg2IDI5LjExNDRDMjA4LjA4NiAyNi4yODUyIDIwNi4yMzYgMjQuMTgxNSAyMDMuNTE2IDI0LjE4MTVDMjAwLjc5NSAyNC4xODE1IDE5OC45NDUgMjYuMjg1MiAxOTguOTQ1IDI5LjExNDRaTTIyMS43MjQgMjkuMzMyVjM4LjE4MjJIMjE2Ljc1NVYxMC45Nzg3SDIyMS43MjRWMjIuMTE0QzIyMi42NjcgMjAuNjYzMiAyMjQuNTUzIDE5LjY0NzYgMjI2LjkxMSAxOS42NDc2QzIzMS4yOTkgMTkuNjQ3NiAyMzMuOTExIDIyLjgzOTUgMjMzLjkxMSAyNy41NTQ3VjM4LjE4MjJIMjI4Ljk0MlYyOC4zODlDMjI4Ljk0MiAyNS43Nzc0IDIyNy44MTcgMjQuMTgxNSAyMjUuNzUgMjQuMTgxNUMyMjMuNDY1IDI0LjE4MTUgMjIxLjcyNCAyNS44NSAyMjEuNzI0IDI5LjMzMloiIGZpbGw9IiMwQzBBMUQiLz4KPC9zdmc+Cg==" alt="The Graph"></div>
+          <span class="lane-role">The read layer</span>
+          <h4>Alice starts with no address.</h4>
+          <p>She queries the subgraph by skill and ranks candidates by deliveries a contract confirmed were genuinely the job ordered.</p>
+          <span class="id">confidential-agents v0.0.3 &middot; Studio</span>
+        </div>
+        <div class="lane">
+          <div class="lane-logo"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjgwIDMyMy44NCI+CiAgPHBhdGggZD0iTTQ0Ny4yMywzMjMuNThjLTI1LjIyLDAtNDkuNTQtOS4yMi02My44Ny0zMy41NGgtOC4zMnYyNi42MmgtNTcuMzRWMGg1Ny4zNHYxMTUuMmg4LjMyYzE0LjcyLTI1LjIyLDQyLjI0LTM0Ljk0LDY3LjA3LTM0Ljk0LDYxLjk1LDAsMTAzLjgxLDQ5LjU0LDEwMy44MSwxMTkuM3MtNDUuOTUsMTIzLjktMTA3LjAxLDEyMy45di4xM1pNNDM0LjgyLDI3Mi4yNmMzNS4zMywwLDYwLjU0LTI4LjkzLDYwLjU0LTcwLjI3cy0yNS43My03MC4yNy02MC41NC03MC4yNy01OS42NSwyNy41Mi01OS42NSw3MC4yNywyNS4yMiw3MC4yNyw1OS42NSw3MC4yN1pNNjYwLjIyLDMyMy41OGMtNDQuMDMsMC03OS44Ny0yNi42Mi03OS44Ny03MC4yN3MzOS40Mi02Ny45Nyw4Ny4xNy03Mi45Nmw2Ny40Ni02Ljkxdi0xMi44YzAtMTkuNzEtMTYuMTMtMzMuNTQtNDQuNTQtMzMuNTRzLTQyLjc1LDExLjktNDcuNzQsMjkuODJoLTU1LjA0YzUuNS00My42NSw0MS43My03Ni42NywxMDIuNzgtNzYuNjdzOTcuNzksMjguNDIsOTcuNzksODMuOTd2MTEyYzAsMTQuMjEsMS40MSwzMy45MiwyLjMsMzkuNDJ2LjloLTU1LjA0Yy0uNTEtNy44MS0uNTEtMTUuMS0uNTEtMjIuOTFoLTguMzJjLTE0LjIxLDIyLjkxLTM5LjA0LDI5LjgyLTY2LjU2LDI5LjgybC4xMy4xM1pNNjc1Ljg0LDI4MC40NWMzNy42MywwLDU5LjI2LTI4LjQyLDU5LjI2LTU3LjM0di0xMS41MmwtNTAuNTYsNi4wMmMtMzEuMjMsMy43MS00Ni4zNCwxMi44LTQ2LjM0LDMzLjAyczE1LjYyLDI5LjgyLDM3LjYzLDI5LjgyWk05MjYuMDgsMzIzLjU4Yy01Ny44NiwwLTk5LjItMjguOTMtMTA1LjYtNzQuMzdoNTYuNDVjNi40LDIwLjIyLDI3LjUyLDI4LjkzLDQ5LjU0LDI4LjkzczQwLjgzLTkuNiw0MC44My0yNi42Mi0xNy40MS0yMS42My00MS4zNC0yNS43M2wtMjQuMzItNC4xYy00NS45NS03LjgxLTc0LjM3LTI3LjE0LTc0LjM3LTY4LjM1czM5LjQyLTcyLjk2LDk0LjA4LTcyLjk2LDg4LjU4LDI0LjgzLDk4LjE4LDY3Ljk3aC01NS4wNGMtNi40LTE3LjAyLTIzLjQyLTIzLjgxLTQyLjc1LTIzLjgxcy0zOC41MywxMC4xMS0zOC41MywyNC4zMiwxMS45LDE5LjMzLDM2Ljc0LDIzLjQybDI0LjMyLDQuMWM0NC41NCw3LjMsNzguNDYsMjUuNzMsNzguNDYsNzAuMjdzLTQwLjQ1LDc3LjE4LTk2LjksNzcuMThsLjI2LS4yNlpNMTE2Ni41OSwzMjMuNThjLTcwLjY2LDAtMTE3LjUtNDguMjYtMTE3LjUtMTIyLjExczQ5LjU0LTEyMS4yMiwxMTguMDItMTIxLjIyLDExMi45LDUzLjI1LDExMi45LDEyMy41MnYxMC4xMWgtMTc0Ljg1YzIuODIsMzguMTQsMjkuNDQsNjAuNTQsNjEuNTcsNjAuNTRzNDIuNzUtOS4yMiw1MC41Ni0yNS4yMmg1OC43NWMtMTEuOSw0My4xNC01NC42Niw3NC4zNy0xMDkuMzEsNzQuMzdoLS4xM1pNMTIyMy45NCwxNzUuODdjLTQuNjEtMzAuNzItMjguOTMtNDguNjQtNTcuMzQtNDguNjRzLTU1LjA0LDE3LjQxLTYwLjU0LDQ4LjY0aDExOC4wMi0uMTNaIi8+CiAgPHBhdGggZD0iTTEzLjgyLDMxNi44Yy05LjIyLDAtMTMuODItNC42MS0xMy44Mi0xMy44MlYxMDAuOTljMC05LjIyLDQuNjEtMTMuODIsMTMuODItMTMuODJoMjAxLjk4YzkuMjIsMCwxMy44Miw0LjYxLDEzLjgyLDEzLjgydjIwMS45OGMwLDkuMjItNC42MSwxMy44Mi0xMy44MiwxMy44MkgxMy44MloiLz4KPC9zdmc+" alt="Base"></div>
+          <span class="lane-role">The verdict</span>
+          <h4>Two signatures or nothing.</h4>
+          <p>Verifier.sol recovers Bob's binding signature <em>and</em> Alice's EIP-712 intent, requires <span class="mono">match == true</span>, emits <span class="mono">JobVerified</span>.</p>
+          <span class="id">0x3B116D&hellip;Eb96 &middot; Base Sepolia</span>
+        </div>
+        <div class="lane">
+          <div class="lane-logo"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxMjAwIDMzMy42Ij4KICA8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMzAuMy4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogMi4xLjMgQnVpbGQgMTgyKSAgLS0+CiAgPGcgaWQ9IkxheWVyXzEtMiI+CiAgICA8ZyBpZD0iTG9nbyI+CiAgICAgIDxnIGlkPSJXb3JkbWFyayI+CiAgICAgICAgPHBvbHlnb24gcG9pbnRzPSI1MTMuMyAxNTcuMSA0MjQuOSAxNTcuMSA0MjQuOSA5My4zIDQwMi41IDkzLjMgNDAyLjUgMjQzLjEgNDI0LjkgMjQzLjEgNDI0LjkgMTc4LjEgNTEzLjMgMTc4LjEgNTEzLjMgMjQzLjEgNTM1LjcgMjQzLjEgNTM1LjcgOTMuMyA1MTMuMyA5My4zIDUxMy4zIDE1Ny4xIi8+CiAgICAgICAgPHBhdGggZD0iTTYxMy4yLDE1NC4yYzE0LjcsMCwyNSw3LjYsMjkuOCwyMS45aC02MGM0LjItMTMuOSwxNS4yLTIxLjksMzAuMy0yMS45TTYxMy4zLDEzNS43Yy0zMC40LDAtNTMuMywyMy42LTUzLjMsNTQuOS0uNiwyOS44LDIzLDU0LjQsNTIuOCw1NSwuOCwwLDEuNiwwLDIuNCwwLDM2LjEsMCw0OC44LTI0LjIsNTAuNC0zMi43bC4yLTEuM2gtMjAuOGwtLjMuNmMtLjMuNS03LjEsMTMuNy0yOS41LDEzLjdzLTMyLjItMTMtMzMuNy0zMS44aDg1LjJ2LTEuMWMwLTMzLjctMjItNTcuMi01My41LTU3LjIiLz4KICAgICAgICA8cGF0aCBkPSJNNzM4LjQsMjI1LjljLTE5LjgsMC0zMy42LTE0LjUtMzMuNi0zNS4yczEzLjgtMzUuMywzMy42LTM1LjMsMzMuMiwxNC41LDMzLjIsMzUuMy0xMy42LDM1LjItMzMuMiwzNS4yTTc3MS4yLDE1Mi40Yy01LjItNy4xLTE3LTE2LjctMzYuMy0xNi43LTMwLjUsMC01MS44LDIyLjYtNTEuOCw1NXMyMS4zLDU0LjksNTEuOCw1NC45YzE0LjIuNCwyNy44LTYuMSwzNi4zLTE3LjV2MTVoMjEuMlY4Ny45aC0yMS4ydjY0LjVoMFoiLz4KICAgICAgICA8cGF0aCBkPSJNODcwLjYsMTU0LjJjMTQuNiwwLDI1LDcuNiwyOS44LDIxLjloLTYwYzQuMi0xMy45LDE1LjItMjEuOSwzMC4zLTIxLjlNODcwLjgsMTM1LjdjLTMwLjQsMC01My4zLDIzLjYtNTMuMyw1NC45LS42LDI5LjgsMjMsNTQuNCw1Mi44LDU1LC44LDAsMS42LDAsMi40LDAsMzYuMSwwLDQ4LjgtMjQuMiw1MC40LTMyLjdsLjItMS4zaC0yMC44bC0uMy42Yy0uMy41LTcuMiwxMy43LTI5LjYsMTMuN3MtMzIuMi0xMy0zMy43LTMxLjhoODUuM3YtMS4xYzAtMzMuNy0yMi01Ny4yLTUzLjUtNTcuMiIvPgogICAgICAgIDxwYXRoIGQ9Ik05NjkuMiwxNTMuNXYtMTUuM2gtMjEuMnYxMDQuOWgyMS4ydi01OS4xYzAtMTguNCw5LjYtMjUuNSwzNC4zLTI1LjVoMjcuM3YtMjEuMWgtMjYuOWMtMjEsMC0zMC41LDkuMy0zNC42LDE2LjEiLz4KICAgICAgICA8cGF0aCBkPSJNMTEyNC44LDE5MC43YzAsMjAuNC0xMy41LDM1LjMtMzIuMSwzNS4zcy0zMy0xNC41LTMzLTM1LjMsMTMuNi0zNS4yLDMzLjEtMzUuMiwzMi4xLDE0LjgsMzIuMSwzNS4yTTExMjQuNSwxNTIuNGMtNC4xLTUuNy0xNC43LTE2LjctMzUuMi0xNi43cy01MS4yLDE4LjktNTEuMiw1NC45LDIxLDU1LDUxLjIsNTVjMTMuOS42LDI3LjItNS45LDM1LjItMTcuM3YxNC45aDIxLjJ2LTEwNWgtMjEuMnYxNC4yaDBaIi8+CiAgICAgICAgPHBvbHlnb24gcG9pbnRzPSIxMTY2LjIgMTQxLjMgMTE3MiAxNDEuMyAxMTcyIDE1NC40IDExNzQuMSAxNTQuNCAxMTc0LjEgMTQxLjMgMTE3OS45IDE0MS4zIDExNzkuOSAxMzkuMyAxMTY2LjIgMTM5LjMgMTE2Ni4yIDE0MS4zIi8+CiAgICAgICAgPHBvbHlnb24gcG9pbnRzPSIxMTk2LjcgMTM5LjMgMTE5MS43IDE1MS4zIDExODYuNyAxMzkuMyAxMTgzLjIgMTM5LjMgMTE4My4yIDE1NC40IDExODUuMyAxNTQuNCAxMTg1LjMgMTQxLjMgMTE5MC44IDE1NC41IDExOTIuMyAxNTQuNSAxMTk3LjggMTQxLjQgMTE5Ny44IDE1NC40IDEyMDAgMTU0LjQgMTIwMCAxMzkuMyAxMTk2LjcgMTM5LjMiLz4KICAgICAgPC9nPgogICAgICA8ZyBpZD0iSWNvbiI+CiAgICAgICAgPHJlY3QgeD0iMTE5LjkiIHk9IjE1NC44IiB3aWR0aD0iOTMuOSIgaGVpZ2h0PSIyNCIvPgogICAgICAgIDxwYXRoIGQ9Ik0xNjYuOCwwQzc0LjcsMCwwLDc0LjcsMCwxNjYuOHM3NC43LDE2Ni44LDE2Ni44LDE2Ni44LDE2Ni44LTc0LjcsMTY2LjgtMTY2LjhTMjU4LjksMCwxNjYuOCwwWk0yMzUuNywyNDEuN2gtMjJ2LTQ2LjloLTkzLjlzMCw0Ni45LDAsNDYuOWgtMjJWOTEuOWgyMnY0N2gwczkzLjksMCw5My45LDB2LTQ2LjloMjJ2MTQ5LjhoMFoiLz4KICAgICAgPC9nPgogICAgPC9nPgogIDwvZz4KPC9zdmc+" alt="Hedera"></div>
+          <span class="lane-role">The money &middot; the timeline</span>
+          <h4>Settles after the verdict.</h4>
+          <p>x402 payment gated on <span class="mono">JobVerified</span>, plus a consensus topic that timestamps every stage. Hashes only, never content.</p>
+          <span class="id">topic 0.0.9738448 &middot; testnet</span>
+        </div>
+      </div>
+    </div>
+    <aside>
+      <p>Four networks, and I want to be precise about why each one is here, because "we used the sponsors" is not an architecture. 0G runs the model in a sealed enclave and signs the output &mdash; that's the compute. The Graph is how Alice finds Bob at all; she starts with no address, queries by skill, and ranks candidates by deliveries a contract confirmed. Base holds the verdict: our Verifier recovers two independent signatures &mdash; Bob's binding signature and Alice's own EIP-712 intent &mdash; and refuses to emit unless the hashes match. And Hedera does two things: it carries the money, with settlement gated on the verdict, and its consensus service timestamps the whole off-chain timeline so the ordering isn't our word against anyone's. Nothing here duplicates anything else. Every identifier on this slide is live on testnet right now.</p>
+      <p class="transition">One of these four claims is harder than it looks. Let me show you the one we sweated.</p>
+    </aside>
+  </section>
+
+  <!-- == 6 ====================================================== -->
+  <section class="slide" data-cut="drop" data-time="50s" aria-label="Slide 6">
+    <p class="eyebrow">The hard part</p>
+    <h2>0G's enclave does not sign the answer. It signs the answer's <em>fingerprint.</em></h2>
+    <div class="body-grid">
+      <div class="two-col">
+        <div style="display:flex;flex-direction:column;gap:16px;">
+<pre class="code"><span class="c">// what the 0G TEE actually signs &mdash; measured, not assumed</span>
+"&lt;h1&gt;<span class="k">:sha256(RAW response body):</span>ProviderType:Identity:&lt;h3&gt;"
+
+<span class="c">// so we put Alice's hash where the body will contain it</span>
+prompt[0] = <span class="k">intentHash</span>            <span class="c">&rarr; model echoes it verbatim</span>
+body      = { &hellip;, "0x7f3a9c&hellip;4e12", &hellip; }  <span class="c">&rarr; TEE signs sha256(body)</span>
+<span class="c">&rArr; genuine 0G hardware attested: a response carrying</span>
+<span class="c">  THIS intent hash was produced inside the enclave.</span></pre>
+          <ul class="points">
+            <li><strong>Hash the raw bytes.</strong> A JSON round-trip reorders keys and breaks the signature silently the day the provider ships a refactor.</li>
+            <li><strong>The wrapper signs 64-byte R&#8214;S &mdash; <span class="mono">v</span> is discarded.</strong> We brute-force <span class="mono">v &isin; {27,28}</span> off-chain and pass it into the contract.</li>
+            <li><strong>Three schemes in one verdict:</strong> EIP-191 for 0G, raw keccak for the binding, EIP-712 for Alice.</li>
+          </ul>
+        </div>
+        <div class="metric-card">
+          <span class="metric-head">End-to-end latency &middot; 5 runs</span>
+          <div class="budget">
+            <div class="budget-fill"></div>
+            <div class="budget-p95"></div>
+          </div>
+          <div class="budget-scale"><span>0s</span><span>p50 21.0 &middot; p95 22.7</span><span>60s budget</span></div>
+          <div class="metric-row">
+            <div class="metric"><span class="n">5<small>/5</small></span><span class="l">Verbatim echo</span></div>
+            <div class="metric"><span class="n">21</span><span class="l">CI gate files</span></div>
+            <div class="metric"><span class="n">12.4<small>s</small></span><span class="l">0G inference</span></div>
+          </div>
+          <p style="font-size:13px;line-height:1.5;color:var(--ink-mid);">The echo is a gate, not a claim &mdash; it runs offline from recorded fixtures, so it is re-checked rather than merely labelled.</p>
+        </div>
+      </div>
+    </div>
+    <aside>
+      <p>Two things I'll flag for the technical judges. First: 0G's signature does <em>not</em> cover the answer text &mdash; it covers a tuple containing the sha256 of the raw response body. We found that by hashing every candidate against the digest until one matched, and it changes how you build on it: you hash raw bytes, because a JSON round-trip reorders keys and breaks the signature silently. Second, that's exactly what lets us bind: put the intent hash at the top of the prompt, the model echoes it, and now the enclave's signature covers a body containing Alice's hash. Five out of five verbatim, and it's a CI gate, not a claim. The whole thing runs in twenty-one seconds median against our sixty-second budget.</p>
+      <p class="transition">So let's run one.</p>
+    </aside>
+  </section>
+
+  <!-- == 7 ====================================================== -->
+  <section class="slide" data-cut="drop" data-time="45s" aria-label="Slide 7">
+    <p class="eyebrow">Demo &middot; part one</p>
+    <h2>The honest job. Four live testnets, twenty-one seconds.</h2>
+    <div class="body-grid">
+      <div class="beats">
+        <div class="beat"><span class="beat-n">01</span><p>Alice has <strong>no address.</strong> The subgraph returns Bob, ranked by verified deliveries.</p></div>
+        <div class="beat"><span class="beat-n">02</span><p>Her reasoning brain <strong>picks Bob and approves the price.</strong> Nothing about that decision is signed &mdash; it can only ever narrow the outcome.</p></div>
+        <div class="beat"><span class="beat-n">03</span><p>The encrypted brief goes out. The observer panel stays <strong>hashes only.</strong></p></div>
+        <div class="beat cool"><span class="beat-n">04</span><p><span class="mono">JobVerified</span> lands on Base Sepolia &mdash; <strong>click through to Basescan, live.</strong></p></div>
+        <div class="beat cool"><span class="beat-n">05</span><p>Settlement fires on Hedera <strong>only now.</strong> The timeline reads back from the public mirror node &mdash; not from our own clock.</p></div>
+      </div>
+      <p class="footnote">Run live if the venue wifi allows. A recorded capture at 1.5&times; is the fallback &mdash; never demo four testnets without one.</p>
+    </div>
+    <aside>
+      <p>Narrate only what is changing on screen &mdash; do not read this slide. The one sentence that has to land: <em>"Notice the payment hasn't moved yet &mdash; Hedera settles after the verdict, not before."</em></p>
+      <p class="transition">That's the happy path. Any project can demo the happy path. Watch what happens when Bob is dishonest.</p>
+    </aside>
+  </section>
+
+  <!-- == 8 ====================================================== -->
+  <section class="slide" data-cut="keep" data-time="50s" aria-label="Slide 8">
+    <p class="eyebrow">Demo &middot; part two &middot; the one to watch</p>
+    <h2>We shipped the attack, not just the defence.</h2>
+    <div class="body-grid">
+      <div class="switch-row">
+        <span class="switch">Make Bob cheat</span>
+        <p class="lede" style="flex:1;min-width:22ch;">Bob answers a <em>different</em> job &mdash; and delivers it with a perfectly valid TEE signature. Under any "attested compute" system, that passes.</p>
+      </div>
+      <div class="beats">
+        <div class="beat hot"><span class="beat-n">01</span><p>Bob substitutes the job &middot; tampers the input &middot; forges the body &middot; supplies his own intent. <strong>Four attacks, one switch.</strong></p></div>
+        <div class="beat hot"><span class="beat-n">02</span><p>The hashes don't match. <strong>The contract rejects him live on Base Sepolia.</strong></p></div>
+        <div class="beat hot"><span class="beat-n">03</span><p>The rejection is written to the Hedera topic. <strong>The attempt is permanent.</strong></p></div>
+        <div class="beat hot"><span class="beat-n">04</span><p>The settlement guard re-reads the <span class="mono">JobVerified</span> receipt before releasing anything. The signed authorisation is <strong>never submitted. No money moves.</strong></p></div>
+      </div>
+    </div>
+    <aside>
+      <p>This is the part I'd want to see if I were judging. There's a switch in our demo that makes Bob dishonest &mdash; he answers a different question than the one Alice ordered, and delivers it with a perfectly valid TEE signature. Under any "attested compute" system, that passes. Under ours, the hashes don't match, and the contract rejects it on Base Sepolia &mdash; live, right there. The rejection is committed to the Hedera topic, so the attempt is permanent. And the settlement guard re-reads the verdict receipt before releasing anything, so the signed payment authorisation is simply never submitted. Bob doesn't get paid. That's the product.</p>
+      <p class="transition">Now let me tell you the one thing we can't prove yet &mdash; because we'd rather you hear it from us.</p>
+    </aside>
+  </section>
+
+  <!-- == 9 ====================================================== -->
+  <section class="slide" data-cut="keep" data-time="45s" aria-label="Slide 9">
+    <p class="eyebrow">What we didn't fake</p>
+    <div class="body-grid">
+      <p class="honest">0G attests the compute and carries the intent through it. The match check is <b>client-verifiable</b> &mdash; not yet third-party-verifiable.</p>
+      <div class="gap-cols">
+        <div class="gap-col have">
+          <h5>What is real</h5>
+          <p>The first link in the chain comes from actual 0G hardware. Bob cannot forge it on his own machine.</p>
+          <p>Alice can verify the match herself, independently, from the response body.</p>
+        </div>
+        <div class="gap-col havent">
+          <h5>What is not</h5>
+          <p>The code that decides <span class="mono">match</span> runs on an ordinary host. We had no TDX machine and 0G does not host enclave execution for us.</p>
+          <p>A stranger cannot yet verify <span class="mono">match</span> without trusting us.</p>
+        </div>
+      </div>
+      <p class="flag">We could have shipped a screenshot of an attestation. Instead: <b>attestation: 'none'</b> and <b>imageHash: null</b> are in the code <b>and in the UI</b> until a TDX host changes it. The delta is one machine &mdash; nothing else in the pipeline moves.</p>
+    </div>
+    <aside>
+      <p>One gap, and we're naming it ourselves. The code that decides whether the hashes match runs on an ordinary server, not inside an enclave &mdash; we had no TDX machine this weekend. We could have shipped a screenshot of an attestation and most people would never check. Instead we moved one end of the binding into 0G's real enclave, so the first link in the chain comes from actual hardware. What that gives you: Alice can verify the match herself. What it doesn't: a stranger can't, yet. That's one machine away, and it changes nothing else in the pipeline. We built a verification product &mdash; it would be a strange thing to lie in.</p>
+      <p class="transition">And that's also the first thing we'd do next.</p>
+    </aside>
+  </section>
+
+  <!-- == 10 ===================================================== -->
+  <section class="slide" data-cut="drop" data-time="40s" aria-label="Slide 10">
+    <p class="eyebrow">What this becomes</p>
+    <h2>Intent-bound verification is a primitive, not a demo.</h2>
+    <div class="body-grid">
+      <div class="ladder">
+        <div class="rung now">
+          <span class="state">Shipped</span>
+          <h4>The hash survives the enclave</h4>
+          <p>Alice verifies the binding herself. Live on four testnets, with the fraud path in the box.</p>
+        </div>
+        <div class="rung next">
+          <span class="state">One machine away</span>
+          <h4>The binding inside our own seal</h4>
+          <p>Put the recompute in an attested enclave and <span class="mono">match</span> becomes third-party-verifiable. A procurement problem, not a research problem.</p>
+        </div>
+        <div class="rung later">
+          <span class="state">The general form</span>
+          <h4>Any x402 endpoint, intent-bound</h4>
+          <p>The intent hash becomes a portable receipt. Reputation anchored to work that was verified, not merely paid for.</p>
+        </div>
+      </div>
+      <div class="closing">
+        <p class="lede" style="max-width:52ch;">We built a demo dApp deliberately &mdash; <em>not</em> a marketplace. The primitive is the contribution.</p>
+        <span class="repo">github.com/&hellip;/mithra &middot; everything above is live on testnet</span>
+      </div>
+    </div>
+    <aside>
+      <p>Three steps. One: put the binding in our own enclave &mdash; that's a machine, not a research problem, and it closes the last gap. Two: the intent hash becomes a portable receipt, so reputation is anchored to deliveries that were actually verified rather than merely paid for. Three, and this is the real point: any x402 endpoint can be intent-bound. We picked confidential analysis because it makes the privacy visible, but the primitive is "the thing you paid for is the thing that ran" &mdash; and every agent marketplace being built right now is going to need it. We built the primitive and a demo to prove it, not a marketplace. Everything on these slides is live on testnet, the repo's on screen, and I'd love to go deeper in questions.</p>
+    </aside>
+  </section>
+
+</main>
+
+<div class="wordmark"><b>Mithra</b> &middot; intent-bound verification</div>
+
+<nav class="dots" id="dots" aria-label="Slides"></nav>
+
+<button class="notes-toggle" id="notesBtn" aria-expanded="false">Notes &middot; N</button>
+
+<div class="drawer" id="drawer" aria-live="polite">
+  <div class="drawer-head">
+    <span>Speaker notes</span>
+    <span class="time" id="drawerTime"></span>
+    <span class="cut" id="drawerCut"></span>
+  </div>
+  <div id="drawerBody"></div>
+</div>
+
+<div class="help" id="help">
+  <div class="help-inner">
+    <h3>Driving the deck</h3>
+    <div class="keys">
+      <kbd>&rarr;</kbd><span>Next slide</span>
+      <kbd>&larr;</kbd><span>Previous slide</span>
+      <kbd>N</kbd><span>Speaker notes</span>
+      <kbd>C</kbd><span>Three-minute cut &mdash; dims the four slides you drop</span>
+      <kbd>F</kbd><span>Fullscreen</span>
+      <kbd>?</kbd><span>This panel</span>
+    </div>
+    <p style="font-size:14px;color:var(--ink-mid);line-height:1.5;">Hollow dots at the bottom are the slides cut from the three-minute version: <b style="color:var(--ink)">3, 6, 7, 10</b>. The five-minute run is all ten.</p>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var dots = document.getElementById('dots');
+    var drawer = document.getElementById('drawer');
+    var drawerBody = document.getElementById('drawerBody');
+    var drawerTime = document.getElementById('drawerTime');
+    var drawerCut = document.getElementById('drawerCut');
+    var notesBtn = document.getElementById('notesBtn');
+    var help = document.getElementById('help');
+    var slideNum = document.getElementById('slideNum');
+    var railToken = document.getElementById('railToken');
+    var i = 0, cutMode = false;
+
+    var tokens = ['0x7f3a\u2026', 'the gap', 'the gap', 'sign', 'four rails', 'the seal', 'run it', 'reject', 'honest', 'next'];
+
+    slides.forEach(function (s, n) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-label', 'Slide ' + (n + 1));
+      if (s.dataset.cut === 'drop') b.classList.add('cut');
+      b.addEventListener('click', function () { go(n); });
+      dots.appendChild(b);
+    });
+    var dotEls = Array.prototype.slice.call(dots.children);
+
+    function go(n) {
+      i = Math.max(0, Math.min(slides.length - 1, n));
+      slides.forEach(function (s, k) { s.classList.toggle('is-active', k === i); });
+      dotEls.forEach(function (d, k) { d.setAttribute('aria-current', k === i ? 'true' : 'false'); });
+      var pct = slides.length > 1 ? (i / (slides.length - 1)) * 100 : 0;
+      document.documentElement.style.setProperty('--progress', pct + '%');
+      slideNum.textContent = String(i + 1);
+      railToken.textContent = tokens[i] || '0x7f3a\u2026';
+      var note = slides[i].querySelector('aside');
+      drawerBody.innerHTML = note ? note.innerHTML : '<p>&mdash;</p>';
+      drawerTime.textContent = slides[i].dataset.time || '';
+      drawerCut.textContent = slides[i].dataset.cut === 'drop' ? 'cut in the 3-minute version' : '';
+    }
+
+    function toggleNotes() {
+      var open = drawer.classList.toggle('open');
+      notesBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); go(i + 1); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(i - 1); }
+      else if (e.key === 'Home') { go(0); }
+      else if (e.key === 'End') { go(slides.length - 1); }
+      else if (e.key === 'n' || e.key === 'N') { toggleNotes(); }
+      else if (e.key === 'f' || e.key === 'F') {
+        if (document.fullscreenElement) { document.exitFullscreen(); }
+        else if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen(); }
+      }
+      else if (e.key === 'c' || e.key === 'C') {
+        cutMode = !cutMode;
+        slides.forEach(function (s) {
+          if (s.dataset.cut === 'drop') s.style.filter = cutMode ? 'grayscale(1) opacity(.45)' : '';
+        });
+      }
+      else if (e.key === '?' || e.key === '/') { help.classList.toggle('open'); }
+      else if (e.key === 'Escape') { help.classList.remove('open'); drawer.classList.remove('open'); notesBtn.setAttribute('aria-expanded', 'false'); }
+    });
+
+    notesBtn.addEventListener('click', toggleNotes);
+    help.addEventListener('click', function () { help.classList.remove('open'); });
+
+    go(0);
+  })();
+</script>
