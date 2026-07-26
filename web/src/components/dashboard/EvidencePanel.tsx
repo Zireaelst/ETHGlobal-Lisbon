@@ -2,6 +2,7 @@
 
 import { Panel, Chip } from "./Panel";
 import { Hash } from "./Hash";
+import { SponsorLogo } from "@/components/SponsorLogo";
 import { explorerName } from "@/lib/explorers";
 import type { NetworkEvidence } from "@/lib/server/networks";
 
@@ -25,9 +26,14 @@ export function EvidencePanel({ evidence }: { evidence: NetworkEvidence[] }) {
     >
       <div className="grid gap-4 lg:grid-cols-2">
         {evidence.map((net) => (
-          <article key={net.network} className="rounded-md border border-border p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-display text-lg text-foreground">{net.sponsor}</h3>
+          <article key={net.network} className="group rounded-md border border-border p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* The sponsor's own lockup stands in for the name it used to spell
+                  out; the mark carries the accessible label, so the heading is
+                  still read as "0G", "Hedera", and so on. */}
+              <h3 className="flex min-w-0 items-center">
+                <SponsorLogo id={net.network} className="h-5" />
+              </h3>
               <Chip tone="cool">{explorerName(net.network)}</Chip>
             </div>
 

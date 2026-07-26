@@ -1,31 +1,42 @@
 import { Reveal } from "@/components/Reveal";
 import { SectionEyebrow } from "@/components/SectionEyebrow";
+import { SponsorLogo, type SponsorId } from "@/components/SponsorLogo";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
 
-const TRACKS = [
+const TRACKS: {
+  id: SponsorId;
+  name: string;
+  role: string;
+  detail: string;
+  chips: string[];
+  tint: "warm" | "cool";
+}[] = [
   {
+    id: "0g",
     name: "0G",
     role: "The compute",
     detail:
       "The model runs inside a TeeML enclave, and the enclave signs its own output. We bind that output to Alice's intent — we did not build the TEE.",
     chips: ["@0gfoundation/0g-compute-ts-sdk", "Sealed Inference", "TeeML"],
-    tint: "warm" as const,
+    tint: "warm",
   },
   {
+    id: "thegraph",
     name: "The Graph",
     role: "The read layer",
     detail:
       "A fork of the agent0lab subgraph, deployed live to Subgraph Studio: it indexes the ERC-8004 registry for discovery and JobVerified for verified-delivery count.",
     chips: ["ERC-8004 registry", "JobVerified", "Subgraph Studio"],
-    tint: "cool" as const,
+    tint: "cool",
   },
   {
+    id: "hedera",
     name: "Hedera",
     role: "The timeline",
     detail:
       "x402 exact-scheme payment through the blocky402 testnet facilitator, settled only after verification. HCS records the off-chain timeline as commitments — autonomy, not privacy.",
     chips: ["@x402/hedera", "blocky402 testnet", "HCS"],
-    tint: "warm" as const,
+    tint: "warm",
   },
 ];
 
@@ -47,9 +58,11 @@ export default function TracksSection() {
           {TRACKS.map((track, i) => (
             <Reveal key={track.name} delay={i * 120}>
               <SpotlightCard tint={track.tint} className="flex h-full flex-col">
-                <div className="flex items-baseline justify-between gap-3">
-                  <h3 className="font-display text-2xl font-normal text-foreground">
-                    {track.name}
+                <div className="flex items-center justify-between gap-3">
+                  {/* The lockup is the heading — a screen reader still hears the
+                      sponsor's name, from the mark's own aria-label. */}
+                  <h3 className="flex min-w-0 items-center">
+                    <SponsorLogo id={track.id} className="h-6" />
                   </h3>
                   <span
                     className={

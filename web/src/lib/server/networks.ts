@@ -9,6 +9,7 @@ import "server-only";
 import "./env";
 import { computeAddress } from "ethers";
 import { erc8004AgentUrl, facilitatorSupportedUrl } from "@/lib/explorers";
+import type { SponsorId } from "@/components/SponsorLogo";
 import { readRecordedRun } from "./runner";
 
 /**
@@ -47,8 +48,8 @@ export interface NetworkFact {
 }
 
 export interface NetworkEvidence {
-  network: "base" | "hedera" | "0g" | "thegraph";
-  sponsor: string;
+  /** Also selects the sponsor's lockup — see SponsorLogo, which holds the name. */
+  network: SponsorId;
   /** What we actually did with it — one sentence, no marketing. */
   what: string;
   /** The exact SDK/endpoint, so the claim is checkable against the code. */
@@ -95,7 +96,6 @@ export function networkEvidence(): NetworkEvidence[] {
   return [
     {
       network: "0g",
-      sponsor: "0G",
       what:
         "The analysis Alice buys runs inside a 0G Sealed Inference enclave, so neither Bob nor the infrastructure sees her brief. The output comes back signed by the TEE, and the intent commitment is carried through the enclave inside the signed body.",
       how: "@0gfoundation/0g-compute-ts-sdk · createZGComputeNetworkBroker → getServiceMetadata (TeeML) → /chat/completions → processResponse",
@@ -124,7 +124,6 @@ export function networkEvidence(): NetworkEvidence[] {
     },
     {
       network: "thegraph",
-      sponsor: "The Graph",
       what:
         "Alice is never given Bob's address. She queries the subgraph by skill and ranks candidates by deliveries a contract confirmed — and the same index records the fraud attempts, so cheating is permanently visible where hiring decisions are made.",
       how: "graph-cli · a subgraph indexing the ERC-8004 registry plus our Verifier's JobVerified / JobRejected events",
@@ -142,7 +141,6 @@ export function networkEvidence(): NetworkEvidence[] {
     },
     {
       network: "hedera",
-      sponsor: "Hedera",
       what:
         "The job's whole lifecycle is timestamped by Hedera consensus — quote, intent, enclave, output, settlement — as commitments only. On the Hedera run the payment itself goes through x402 with the blocky402 facilitator, and settlement is refused unless the contract verified the job first.",
       how: "@hiero-ledger/sdk TopicMessageSubmitTransaction · @x402/hedera exact scheme · blocky402 testnet facilitator",
@@ -161,7 +159,6 @@ export function networkEvidence(): NetworkEvidence[] {
     },
     {
       network: "base",
-      sponsor: "Base",
       what:
         "Base holds the verdict. The Verifier recovers both signatures — the enclave's seal and Alice's EIP-712 intent — and refuses the job unless they agree and match is true. Payment settles only after JobVerified, and on the Base run the recipient is a fresh ERC-5564 stealth address, so the payout does not name Bob.",
       how: "Foundry · Verifier.sol + IntentLib.sol · x402 over USDC · @scopelift/stealth-address-sdk",

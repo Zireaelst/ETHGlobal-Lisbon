@@ -1,0 +1,43 @@
+/*
+ * A sponsor lockup behaves like the rest of the page's ink, not like a logo
+ * pasted onto it: it sits at the muted weight body copy uses, and lifts to full
+ * strength when the thing containing it is hovered. That is the same gesture the
+ * chips in TracksSection already make, so the cards read as one surface.
+ *
+ * The `.group:hover` half is what ties a logo to its card — SpotlightCard and the
+ * evidence cards carry Tailwind's `group` class, so hovering anywhere on the card
+ * lifts the mark too. Where there is no `.group` ancestor (the footer row) the
+ * selector simply never matches and the mark's own :hover carries it.
+ */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-soft);
+  transition: color 500ms ease;
+}
+
+.logo:hover,
+:global(.group):hover .logo {
+  color: var(--ink);
+}
+
+/*
+ * Only two of the four marks ship a colour of their own — 0G's purple and Base's
+ * blue square — so only those two have anything to take back on hover. Hedera's
+ * and The Graph's lockups are monochrome at source and stay in ink.
+ */
+.brand {
+  transition: fill 500ms ease;
+}
+
+.logo:hover .brand,
+:global(.group):hover .logo .brand {
+  fill: var(--brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo,
+  .brand {
+    transition: none;
+  }
+}

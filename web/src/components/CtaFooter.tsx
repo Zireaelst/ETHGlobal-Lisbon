@@ -1,6 +1,9 @@
 import { GitBranch } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
+import { SponsorLogo, type SponsorId } from "@/components/SponsorLogo";
 import { GlowButton } from "@/components/ui/glow-button";
+
+const SPONSORS: SponsorId[] = ["0g", "thegraph", "hedera", "base"];
 
 /**
  * The honest-boundaries text is a claim ledger, not fine print — so it is
@@ -60,9 +63,18 @@ export default function CtaFooter() {
           <span className="font-display text-sm uppercase tracking-[0.18em] text-foreground">
             Sealed
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            0G · The Graph · Hedera
-          </span>
+          {/* Four networks, in the order one job touches them: the compute, the
+              read layer, the timeline, the verdict. Base earns its place here
+              even though it is not one of the three tracks — it holds the
+              verdict, and a footer that named only the tracks would misdescribe
+              the run. */}
+          <ul className="flex list-none flex-wrap items-center justify-center gap-x-7 gap-y-4 p-0">
+            {SPONSORS.map((id) => (
+              <li key={id} className="flex items-center">
+                <SponsorLogo id={id} className="h-4 sm:h-[18px]" />
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </footer>
