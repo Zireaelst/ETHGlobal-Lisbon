@@ -337,7 +337,7 @@ docs/                     one write-up per sponsor track
 | Name | GitHub | Telegram | X |
 |---|---|---|---|
 | Toygun Tez | [@Zireaelst](https://github.com/Zireaelst) | @toygunst | https://x.com/ToygunTez |
-| Muhammed Yankıncı |  [@Muhammed5500](https://github.com/Muhammed5500)| @mammet5500 | https://x.com/Muhammedynknc55 |
+| Muhammed Yankıncı |  [@Muhammed5500](https://github.com/Muhammed5500)| @mammet55 | https://x.com/Muhammedynknc55 |
 
 ## Developer setup
 
