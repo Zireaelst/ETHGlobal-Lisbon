@@ -45,11 +45,24 @@ export function SpyPanel({ run }: { run: RunView | null }) {
               Only Alice and the enclave saw this
             </div>
             <div className="space-y-3.5">
+              {/* From the run, not from a copy kept here. These were hardcoded, which was
+                  correct only for as long as nobody changed the demo's brief — after that the
+                  panel would have gone on displaying the old one, confidently, in the column
+                  whose entire job is to state what really happened. Older recordings have no
+                  such field and say so rather than showing someone else's job. */}
               <Field label="The brief" mono={false}>
-                Assess revenue-recognition risk in the attached quarterly figures.
+                {report.brief ?? (
+                  <span className="text-muted-foreground">
+                    not carried by this recording — re-run to capture it
+                  </span>
+                )}
               </Field>
               <Field label="The data" mono={false}>
-                Q3-2026 revenue 12,400,000 EUR; deferred 3,100,000 EUR; 41 contracts.
+                {report.data ?? (
+                  <span className="text-muted-foreground">
+                    not carried by this recording — re-run to capture it
+                  </span>
+                )}
               </Field>
               <Field label="The delivered analysis" mono={false}>
                 <span className="line-clamp-3 whitespace-pre-wrap break-words">{report.output}</span>

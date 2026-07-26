@@ -15,7 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ethers } from 'ethers';
+import { concat, ethers, getBytes } from 'ethers';
 
 import { createBobAgent, type BobAgent } from '@ca/bob-agent';
 import type { FraudMode } from '@ca/bob-agent/dist/fraud.js';
@@ -28,6 +28,8 @@ import {
   selectStorageBackend,
   selectReasoningBackend,
   createStopwatch,
+  recoverSealCandidates,
+  sealDigest,
   type StageMs,
   type Constraints,
   type EchoResult,
@@ -88,6 +90,38 @@ export interface DemoReport {
    * the key in her own process; the gate reads it from her decrypted envelope.
    */
   storage?: { rootHash: string; txHash: string; bytes: number };
+  /**
+   * The job as Alice placed it — the confidential side of the split-screen panel.
+   *
+   * NEVER put these in the proof bundle: that file is meant to be handed to strangers, and the
+   * entire claim of the confidentiality panel is that the brief and the data went nowhere the
+   * enclave and Alice were not.
+   */
+  brief: string;
+  data: string;
+  /**
+   * Everything a THIRD PARTY needs to recover the binding signature with plain `ethers` and no
+   * code of ours. It carries no verdict: `expectedSigner` is what the contract has on file and
+   * `recoveredCandidates` is what the signature actually yields, so the reader draws the
+   * conclusion. Under `forge` the two disagree, which is the correct and visible outcome.
+   *
+   * Safe to serialise into the tracked fixtures: every field is already public on the wire or
+   * on chain. The body is the abi-encoded commitment tuple, not the deliverable.
+   */
+  binding?: {
+    agentId: string;
+    sealId: string;
+    timestamp: string;
+    r: string;
+    s: string;
+    v: number;
+    /** r‖s‖v, ready for `ethers.recoverAddress(sealDigest, seal)`. */
+    seal: string;
+    sealDigest: string;
+    bodyHex: string;
+    expectedSigner: string | null;
+    recoveredCandidates: Array<{ v: number; address: string }>;
+  };
   ogVerified: boolean;
   /**
    * WHO DECIDED — the counterpart to `computeProvider`, which says who COMPUTED.
@@ -416,6 +450,46 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
   };
   const args = [intent, job.signature, body.outputHash, body.match, body.ogSigHash, seal] as const;
 
+  // --- the material a STRANGER needs to recover the binding signature without us ---
+  //
+  // The proof bundle's whole promise is "nothing here asks you to trust us", and it was asking
+  // exactly that: it printed a recover-it-yourself command against fields the report never
+  // carried, so the command threw. Everything below is either already on the wire or derivable
+  // from it — the digest ships beside the body it comes from, so the derivation is checkable too.
+  //
+  // `v` is brute-forced because the wrapper discards it (CLAUDE.md §3.1 B). We serialise the
+  // candidate that yields the signer the CONTRACT has registered; when neither does — a forged
+  // seal — we serialise v=27 anyway, and the recovered address then visibly differs from
+  // `expectedSigner`. That difference IS the answer for a forged run, so producing it is the
+  // honest outcome rather than an error.
+  const sealFields = { agentId: seal.agentId, sealId: seal.sealId, timestamp: seal.timestamp };
+  // Keyed by the INTENT's agentId (bytes32), which is what `_verify` looks the signer up by —
+  // not by `seal.agentId`, which is the ASCII string folded into the preimage. They are two
+  // different encodings of the same agent and only one of them is a valid mapping key.
+  const registeredSigner: string | null = await verifier
+    .getFunction('enclaveSignerOf')(intent.agentId)
+    .then((a: unknown) => (a === ethers.ZeroAddress ? null : (a as string)))
+    .catch(() => null);
+  const candidates = recoverSealCandidates(sealFields, job.claimedBodyHex, seal.r, seal.s);
+  const matchingV = registeredSigner
+    ? (candidates.find((c) => c.address.toLowerCase() === registeredSigner.toLowerCase())?.v ?? null)
+    : null;
+  const binding = {
+    ...sealFields,
+    r: seal.r,
+    s: seal.s,
+    v: matchingV ?? 27,
+    /** r‖s‖v, ready for `ethers.recoverAddress(sealDigest, seal)`. */
+    seal: concat([getBytes(seal.r), getBytes(seal.s), new Uint8Array([matchingV ?? 27])]) as string,
+    sealDigest: sealDigest(sealFields, job.claimedBodyHex),
+    /** Included so the digest above can be recomputed rather than believed. */
+    bodyHex: job.claimedBodyHex,
+    /** What the Verifier has on file for this agent — the address a recovery must equal. */
+    expectedSigner: registeredSigner,
+    /** Whom the signature actually recovers to, for each parity. */
+    recoveredCandidates: candidates,
+  };
+
   // `getFunction` rather than `verifier.previewJob(...)`: ethers types dynamic contract members
   // as possibly-undefined, and this file is type-checked now that it is a package rather than a
   // loose script. Same call, minus a cast that would hide a genuine typo in the method name.
@@ -434,6 +508,14 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
     reasoningProvider: reasoning.provider,
     decisions: job.decisions,
     output: result.output,
+    // What Alice actually ordered. Carried so the dashboard can SHOW the private side of the
+    // job instead of hardcoding a copy of it — a copy that would keep rendering the old brief,
+    // confidently and wrongly, the first time this demo is run with a different one.
+    //
+    // Alice's own record may hold these; the proof bundle must not, and does not.
+    brief,
+    data,
+    binding,
     storage: result.storage
       ? { rootHash: result.storage.rootHash, txHash: result.storage.txHash, bytes: result.storage.bytes }
       : undefined,
@@ -480,7 +562,7 @@ export async function runDemo(options: DemoOptions = {}): Promise<DemoReport> {
 
   // --- 7. SETTLEMENT — BOB triggers it, and only AFTER JobVerified ---
   if (rail !== 'none') {
-    report.payment = await settleViaBob(bob.url(), job, report, log);
+    report.payment = await settleViaBob(bob.url(), job, report, log, rail);
   }
 
   // SETTLED is written only if settlement actually happened. On a fraud run this line never
@@ -523,8 +605,15 @@ async function settleViaBob(
   job: Awaited<ReturnType<typeof runAliceJob>>,
   report: DemoReport,
   log: (l: string) => void,
+  /**
+   * The rail the OPERATOR chose. Previously this path reported the generic `x402` and the real
+   * rail was recoverable only from a settlement URL — which a rejected run never has. The
+   * dashboard then guessed, and guessed "Base" for every fraud run on Hedera. The rail is known
+   * here, so it is reported here; a run that moved no money still moved it on a named rail.
+   */
+  chosenRail: 'hedera' | 'base' | 'none' = 'none',
 ): Promise<DemoReport['payment']> {
-  const rail = job.paymentRequired ? 'x402' : 'none';
+  const rail = job.paymentRequired ? chosenRail : 'none';
 
   // THE RULE: NO settle for an unverified job. The fraud run turns back here and the
   // authorisation in Bob's hands is NEVER submitted — "the payment never settled".
@@ -535,7 +624,9 @@ async function settleViaBob(
       quoted: true,
       authorized: job.paymentRequired,
       settled: false,
-      skippedReason: `JobVerified yok (${report.codeName})`,
+      // Surfaced verbatim in the dashboard, so it is written in the language the rest of the
+      // UI speaks. A judge reading "JobVerified yok" learns nothing from the sentence itself.
+      skippedReason: `no JobVerified for this job (${report.codeName})`,
     };
   }
 

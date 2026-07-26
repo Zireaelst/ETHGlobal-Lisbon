@@ -28,6 +28,57 @@ export async function GET(request: Request) {
   }
 
   const { report, recordedAt } = recorded;
+
+  // The seal material, or an honest absence. Until this shipped, the README below printed a
+  // recover-it-yourself command against `b.binding.*` while the bundle carried no `binding` key
+  // at all — so the one instruction whose whole purpose was "don't trust us" ended in a
+  // TypeError. A run recorded before the field existed still has none, and for those the
+  // command is omitted rather than printed and left to fail.
+  const binding = report.binding
+    ? {
+        // The signed fields verbatim, so the preimage can be rebuilt rather than believed:
+        //   keccak256("agentId|sealId|timestamp|hex(sha256(bodyHex))")
+        agentId: report.binding.agentId,
+        sealId: report.binding.sealId,
+        timestamp: report.binding.timestamp,
+        bodyHex: report.binding.bodyHex,
+        sealDigest: report.binding.sealDigest,
+        seal: report.binding.seal,
+        expectedSigner: report.binding.expectedSigner,
+        recoveredCandidates: report.binding.recoveredCandidates,
+        note:
+          "`v` is absent from the wire signature — the 0G agent-wrapper discards it — so it is " +
+          "brute-forced over {27,28}. `seal` is serialised with the parity that yields " +
+          "`expectedSigner`; when neither does, which is exactly what a forged seal looks like, " +
+          "it is serialised with 27 and the recovered address will not match. Both candidates are " +
+          "listed so you never have to take our word for which one we picked.",
+      }
+    : null;
+
+  const verifySealSteps = binding
+    ? [
+        "2. THE ENCLAVE'S SIGNATURE. `binding.seal` is a secp256k1 signature over the response",
+        "   body, produced by the code that recomputed the client's commitment. Recover it with",
+        "   plain ethers and compare against `binding.expectedSigner`:",
+        "",
+        "     npm i ethers",
+        '     node -e "const {ethers}=require(\'ethers\');const b=require(\'./bundle.json\');\\',
+        "       console.log(ethers.recoverAddress(b.binding.sealDigest, b.binding.seal))\"",
+        "",
+        "   Rebuild the digest yourself first if you want the whole chain:",
+        "",
+        '     node -e "const {ethers}=require(\'ethers\');const b=require(\'./bundle.json\').binding;\\',
+        "       const h=ethers.sha256(b.bodyHex).slice(2);\\",
+        "       console.log(ethers.keccak256(ethers.toUtf8Bytes(\\",
+        "         [b.agentId,b.sealId,b.timestamp,h].join('|'))) === b.sealDigest)\"",
+      ]
+    : [
+        "2. THE ENCLAVE'S SIGNATURE is not in this bundle. This run was recorded before the seal",
+        "   material was carried in the report, so there is nothing here to recover. Re-run the",
+        "   demo to produce a bundle that includes it — we would rather hand you a gap than a",
+        "   command that fails.",
+      ];
+
   const bundle = {
     README: [
       "Confidential Agents — independent verification bundle.",
@@ -39,13 +90,7 @@ export async function GET(request: Request) {
       "   emitted either JobVerified or JobRejected for this job. That event is the settlement",
       "   gate: payment is released only after JobVerified.",
       "",
-      "2. THE ENCLAVE'S SIGNATURE. `binding.seal` is a secp256k1 signature over the response",
-      "   body, produced by the code that recomputed the client's commitment. Recover it with",
-      "   plain ethers and compare against `binding.expectedSigner`:",
-      "",
-      "     npm i ethers",
-      "     node -e \"const {ethers}=require('ethers');const b=require('./bundle.json');\\",
-      "       console.log(ethers.recoverAddress(b.binding.sealDigest, b.binding.seal))\"",
+      ...verifySealSteps,
       "",
       "3. THE DELIVERABLE ITSELF, if `archive` is present. The work is stored on 0G Storage,",
       "   encrypted, and `archive.rootHash` is the address it is fetched by. You can download it",
@@ -79,6 +124,10 @@ export async function GET(request: Request) {
       bodyIntentHash: report.bodyIntentHash,
       match: report.match,
     },
+    // Deliberately absent from this file: `report.brief`, `report.data` and `report.output`.
+    // The confidentiality claim is that those went nowhere the enclave and the client were not,
+    // and a bundle meant for strangers is the last place to break it.
+    binding,
     chain: {
       network: "base-sepolia",
       chainId: 84532,

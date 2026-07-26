@@ -56,6 +56,27 @@ export interface RunReport {
     result?: ResultDecision;
   };
   output: string;
+  /** The job as Alice placed it. Never travels in the proof bundle — see /api/proof. */
+  brief?: string;
+  data?: string;
+  /**
+   * The material for recovering the binding signature independently. Optional because runs
+   * recorded before it existed do not have it, and the UI must say "this recording predates
+   * the field" rather than print a command that would throw.
+   */
+  binding?: {
+    agentId: string;
+    sealId: string;
+    timestamp: string;
+    r: string;
+    s: string;
+    v: number;
+    seal: string;
+    sealDigest: string;
+    bodyHex: string;
+    expectedSigner: string | null;
+    recoveredCandidates: Array<{ v: number; address: string }>;
+  };
   code: number;
   codeName: string;
   verified: boolean;

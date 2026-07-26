@@ -6,7 +6,7 @@ import { Hash } from "./Hash";
 import { type FraudMode, type PaymentRail, type RunView } from "@/lib/run-types";
 
 /**
- * THE panel. Four of the five show state; this one makes something happen.
+ * THE panel. Five of the six show state; this one makes something happen.
  *
  * It runs a real job against a real chain and shows the contract throwing it out. Everything
  * here is arranged around one claim being checkable live: that we prove not merely that a TEE
@@ -31,6 +31,15 @@ const MODES: Array<{ mode: FraudMode; label: string; blurb: string; expect: stri
     label: "Answer a different job",
     blurb:
       "Bob cannot decrypt Alice's brief — the key is in the enclave — so he encrypts a job he invented and sends that instead.",
+    expect: "MatchFalse",
+  },
+  {
+    // The other half of the binding's only claim. Without it the panel demonstrated task
+    // substitution and left "and input tampering" as an assertion nobody could watch fail.
+    mode: "tamper",
+    label: "Edit the data",
+    blurb:
+      "Bob keeps Alice's brief and alters the figures underneath it. The commitment covers the data too, so the recomputed hash stops matching — the same MatchFalse the contract returns for substitution, reached by touching one number instead of the whole job.",
     expect: "MatchFalse",
   },
   {
@@ -65,6 +74,21 @@ const RAILS: Array<{ rail: PaymentRail; label: string; buys: string }> = [
       "Recipient privacy: payment goes to a fresh ERC-5564 stealth address derived per job, so the payout does not name Bob and two jobs of his cannot be linked by their payouts.",
   },
 ];
+
+/**
+ * Which network carried the money, in one word.
+ *
+ * The rail string comes from whichever backend produced the receipt, so it arrives as
+ * `hedera-x402`, `base-stealth`, or the bare rail name from a run that settled nothing. The
+ * explorer URL is only a last resort, for recordings made before the rail was carried on the
+ * unsettled path — and when even that is missing the answer is "—", not a guess.
+ */
+function railName(rail: string | undefined, explorerUrl: string | undefined): string {
+  const s = `${rail ?? ""} ${explorerUrl ?? ""}`.toLowerCase();
+  if (s.includes("hedera") || s.includes("hashscan")) return "Hedera";
+  if (s.includes("base") || s.includes("basescan")) return "Base";
+  return "—";
+}
 
 export function FraudPanel({
   run,
@@ -262,10 +286,27 @@ export function FraudPanel({
             </p>
           ) : null}
 
+          {/* The fallback belongs to BOTH failure modes. This component's own rule is that a
+              broken run offers the recording as a labelled choice, but the offer used to live
+              only in the runner-is-off branch — so the case it was written for, keys present
+              and the run failing anyway (an empty faucet, a dead RPC), left the reader with an
+              error and no way forward. */}
           {error ? (
-            <p className="mt-3 rounded-md border border-alert/40 px-3 py-2 font-body text-xs font-light leading-relaxed text-alert">
-              {error}
-            </p>
+            <div className="mt-3 rounded-md border border-alert/40 px-3 py-2">
+              <p className="font-body text-xs font-light leading-relaxed text-alert">{error}</p>
+              {runnerEnabled ? (
+                <p className="mt-2 font-body text-xs font-light leading-relaxed text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={showRecorded}
+                    className="text-cool underline underline-offset-4"
+                  >
+                    Show the last real run
+                  </button>{" "}
+                  instead — a genuine past run of this same mode, clearly labelled as a recording.
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
 
@@ -300,11 +341,14 @@ export function FraudPanel({
                   {report.ogVerified ? " · TEE sig verified" : ""}
                 </Chip>
                 <Chip tone="neutral">{report.totalMs} ms</Chip>
-                {/* Read from the settlement link rather than from the button's state: this says
-                    which rail ACTUALLY carried the run, which is what a recorded run needs too. */}
+                {/* From the report's own `rail`, not from the settlement URL. Sniffing the URL
+                    for "hashscan" was fine for a settled run and wrong for every other one: a
+                    rejected job has no settlement link, so the fallback branch labelled every
+                    Hedera fraud run "Base". The rail is a fact about the run, not about whether
+                    it produced a link. */}
                 {report.payment ? (
                   <Chip tone={report.payment.settled ? "good" : "alert"}>
-                    {report.payment.explorerUrl?.includes("hashscan") ? "Hedera" : "Base"}
+                    {railName(report.payment.rail, report.payment.explorerUrl)}
                     {report.payment.settled ? " · settled" : " · not settled"}
                   </Chip>
                 ) : null}
@@ -406,7 +450,7 @@ export function FraudPanel({
                       two are easy to confuse. On the Hedera rail the Base link is not the payment
                       at all — it is the JobVerified that had to happen before the payment could. */}
                   <ProofLink href={report.payment.explorerUrl}>
-                    payment settled on {report.payment.explorerUrl.includes("hashscan") ? "Hedera" : "Base"} ↗
+                    payment settled on {railName(report.payment.rail, report.payment.explorerUrl)} ↗
                   </ProofLink>
                 </p>
               ) : report.payment && !report.payment.settled ? (

@@ -66,15 +66,47 @@ export function VerifyPanel({ run }: { run: RunView | null }) {
             </p>
           ) : null}
 
+          {/* Printed only when the bundle actually carries the fields it reads. This command
+              used to be shown unconditionally against a `binding` key the bundle never had, so
+              the one instruction on the page that exists to prove we are not asking for trust
+              was the one that threw. */}
           <div className="mt-6 rounded-md border border-border p-4">
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               recover the seal signature yourself
             </div>
-            <pre className="mt-3 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground">
+            {report.binding ? (
+              <>
+                <pre className="mt-3 overflow-x-auto font-mono text-[11px] leading-relaxed text-foreground">
 {`npm i ethers
 node -e "const {ethers}=require('ethers');const b=require('./bundle.json');
   console.log(ethers.recoverAddress(b.binding.sealDigest, b.binding.seal))"`}
-            </pre>
+                </pre>
+                <p className="mt-3 font-body text-xs font-light leading-relaxed text-muted-foreground">
+                  It should print{" "}
+                  <span className="font-mono text-foreground">
+                    {report.binding.expectedSigner ?? "the signer the contract has on file"}
+                  </span>
+                  {report.fraudMode === "forge" ? (
+                    <>
+                      {" "}
+                      — and on this run it will not, because the seal was forged. That mismatch is
+                      the finding, not a failure of the command.
+                    </>
+                  ) : (
+                    <>
+                      , the address the Verifier has registered for this agent. The bundle also
+                      carries the body, so you can rebuild the digest instead of trusting ours.
+                    </>
+                  )}
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 font-body text-xs font-light leading-relaxed text-muted-foreground">
+                This run was recorded before the seal material was carried in the report, so the
+                bundle has nothing to recover. Run a fresh job and the command appears here — we
+                would rather show you a gap than a command that fails.
+              </p>
+            )}
           </div>
 
           <div className="mt-6">
