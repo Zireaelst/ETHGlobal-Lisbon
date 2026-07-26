@@ -142,14 +142,63 @@ export function lastGoodDiscovery(): { snapshot: DiscoverySnapshot; ageMs: numbe
   return cached ? { snapshot: cached.snapshot, ageMs: Date.now() - cached.at } : null;
 }
 
+/**
+ * A real snapshot of the index, captured with `pnpm capture:discovery` and checked in.
+ *
+ * The in-memory cache above solves nothing on a serverless host: module state does not survive
+ * between invocations, so a cold lambda that meets a 429 on its FIRST query has no recent answer
+ * to hold over and the panel goes red — which is what the deployment was doing while the Studio
+ * endpoint's 3000-query window was exhausted.
+ *
+ * This is the same bargain as `fixtures/runs/*.json`: real data, never invented, and never shown
+ * without its capture time. It is the last resort, after a live query and after the live cache,
+ * and the caller is told exactly how old it is so the panel can say so.
+ */
+export function recordedDiscovery(): { snapshot: DiscoverySnapshot; capturedAt: string } | null {
+  try {
+    const { existsSync, readFileSync } = require("node:fs") as typeof import("node:fs");
+    const { dirname, resolve } = require("node:path") as typeof import("node:path");
+
+    // Walk up for the file rather than trusting the working directory. The three places this
+    // runs disagree about cwd — `next dev` starts in web/, the CLI at the repo root, and a
+    // deployed bundle has no workspace marker at all — which is the same trap `runner.ts`
+    // documents for the recorded runs.
+    let dir = process.cwd();
+    for (let i = 0; i < 6; i++) {
+      const candidate = resolve(dir, "fixtures/discovery/snapshot.json");
+      if (existsSync(candidate)) {
+        const parsed = JSON.parse(readFileSync(candidate, "utf8")) as {
+          snapshot: DiscoverySnapshot;
+          capturedAt: string;
+        };
+        return parsed.snapshot ? parsed : null;
+      }
+      const parent = dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function query(url: string, skill: string, first: number): Promise<DiscoverySnapshot> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query: QUERY, variables: { skill: [skill], first } }),
-    // Still no-store at the HTTP layer: the sharing happens above, in a window we control and
-    // can reason about, rather than in a cache whose freshness we would have to take on faith.
-    cache: "no-store",
+    // Next's Data Cache, not `no-store`.
+    //
+    // The module-level window above is the right idea and it collapses to nothing on a
+    // serverless host: instances do not share memory, so N concurrent lambdas meant N upstream
+    // queries no matter how tight that window was. This deployment then held the Studio
+    // endpoint's 3000-query budget at zero. `revalidate` is shared ACROSS instances, which makes
+    // the ceiling real: at most one upstream query per window for the whole deployment.
+    //
+    // It costs nothing in honesty. The staleness is the same window we already accepted, and
+    // `indexedBlock` still says how far behind the chain the answer is.
+    next: { revalidate: Math.floor(CACHE_MS / 1000) },
   });
   if (!res.ok) {
     throw new SubgraphError(

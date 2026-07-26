@@ -1,0 +1,159 @@
+{
+  "capturedAt": "2026-07-26T05:14:24.182Z",
+  "snapshot": {
+    "agents": [
+      {
+        "agentId": "8429",
+        "owner": "0x4f5cd20a4a3fbc9957f8d2a8d27d658b51fda326",
+        "skills": [
+          "market-analysis"
+        ],
+        "endpoint": "http://127.0.0.1:8811/task",
+        "verifiedDeliveries": 118,
+        "rejectedAttempts": 73,
+        "registeredBlock": "44584172"
+      },
+      {
+        "agentId": "8432",
+        "owner": "0x351c9f1a638cf018425db6547c52cd5ba5ad7ed6",
+        "skills": [
+          "market-analysis"
+        ],
+        "endpoint": "http://127.0.0.1:8899/task",
+        "verifiedDeliveries": 0,
+        "rejectedAttempts": 0,
+        "registeredBlock": "44592037"
+      }
+    ],
+    "jobs": [
+      {
+        "intentHash": "0xbcb96d777450ca69fda19b493f1bdee8fb1ee1310d34b709f8f4b793f6c43252",
+        "agentId": "8429",
+        "client": "0x827f728d4b7816019585891a1bcfaff5ab93d823",
+        "outputHash": "0xb944ecd041347d1bb5fd78f5009ade6d6017ce91a8e7df0a8c8954be671aef99",
+        "status": "VERIFIED",
+        "rejectionCode": null,
+        "price": "1000000",
+        "timestamp": "1785021958",
+        "block": "44626835",
+        "txHash": "0x2fbaf85b4ac7898b09c0496bd88c2258e204a112403abb110183f2576151bc85"
+      },
+      {
+        "intentHash": "0x9333ceb0d29f04aba4c82716acaf55a33fb2f4c32a1301d2641e8636700cd705",
+        "agentId": "8429",
+        "client": "0x827f728d4b7816019585891a1bcfaff5ab93d823",
+        "outputHash": "0x9ee7535a7ea3aea13f077358e31cc142193208bb84ad5c368416695c4d4d9035",
+        "status": "VERIFIED",
+        "rejectionCode": null,
+        "price": "1000000",
+        "timestamp": "1785021894",
+        "block": "44626803",
+        "txHash": "0xb06ec418387b90cbfdf2b3e1664cef43ae13628c8d8b8b8bbff9f42a53251176"
+      },
+      {
+        "intentHash": "0xc297aa45285c6beaf816e02b37184e10cf4d7c566e9e183dd8b777704107ac9d",
+        "agentId": "8429",
+        "client": "0x827f728d4b7816019585891a1bcfaff5ab93d823",
+        "outputHash": "0x93518af42c18a3a91a6b5a6fc85e3c0dd4ba15c9df850ed567eb60628b002a67",
+        "status": "VERIFIED",
+        "rejectionCode": null,
+        "price": "1000000",
+        "timestamp": "1785021462",
+        "block": "44626587",
+        "txHash": "0x02db206113841aba8978eeb0d55d5e006c31705d432df68aba28d771ad0f97bf"
+      },
+      {
+        "intentHash": "0x0bf9ab99e89b98f688c39da76e0ea51ad630611f14f37cea24a9e7c8117cc1eb",
+        "agentId": "8429",
+        "client": "0x827f728d4b7816019585891a1bcfaff5ab93d823",
+        "outputHash": "0xb00f545c593fa0c773b9b94fbdefa5801c33967b95e997a745caa351737996d5",
+        "status": "VERIFIED",
+        "rejectionCode": null,
+        "price": "1000000",
+        "timestamp": "1785021360",
+        "block": "44626536",
+        "txHash": "0x4466d64a013badcc389859a3ed4cb4d2ddd598dc9559493c6cc2577037e61170"
+      },
+      {
+        "intentHash": "0x03142660914d94d5bb0bbe6414e3d4ac7ae1c5c7add29e4c29e8b0ec2cc82c98",
+        "agentId": "8429",
+        "client": "0x827f728d4b7816019585891a1bcfaff5ab93d823",
+        "outputHash": "0x2a1f43be8338be53f6028b8b11e78c1e03b3d4631674964787a13f3099fdb8c8",
+        "status": "VERIFIED",
+        "rejectionCode": null,
+        "price": "1000000",
+        "timestamp": "1785020988",
+        "block": "44626350",
+        "txHash": "0x31b5b67e12db2dbb89c09410c58bf465bf7f38acc5553dc7c6c172d0b0b124fa"
+      },
+      {
+        "intentHash": "0x83ee429743448185d0384135de80c5a1bfc4b52f0c47e9844e7a97711039f590",
+        "agentId": "8429",
+        "client": "0x827f728d4b7816019585891a1bcfaff5ab93d823",
+        "outputHash": "0x28cad65612e2078975454ae4e6f8ef8705a83195d77578a228e05355a573de8e",
+        "status": "VERIFIED",
+        "rejectionCode": null,
+        "price": "1000000",
+        "timestamp": "1785018242",
+        "block": "44624977",
+        "txHash": "0x218593b543fa60a2aff9735a0a61aa0fb48ab3f16182be4835007750d135ccc0"
+      },
+      {
+        "intentHash": "0xcda8a28de965e75e214717cdcebdace6565bec59a4b7bb7f4ac3e72c0692b863",
+        "agentId": "8429",
+        "client": "0x827f728d4b7816019585891a1bcfaff5ab93d823",
+        "outputHash": "0x8a70fe8f9fde01fc5f22491a7d5ca61b670c69f32087ee405ff3e2e9afe0e266",
+        "status": "VERIFIED",
+        "rejectionCode": null,
+        "price": "1000000",
+        "timestamp": "1785018186",
+        "block": "44624949",
+        "txHash": "0x596d1e8301b8d860eabdb3c811f9920e2d296f43839f153c19b6a4ab2527885c"
+      },
+      {
+        "intentHash": "0xd0d39252d9fe29dfd38877a9436db65c45d9237cc7a0a0dba9d937d724de48cf",
+        "agentId": "8429",
+        "client": "0x827f728d4b7816019585891a1bcfaff5ab93d823",
+        "outputHash": "0x2b981248621d7825f7796be7d36128f0d5ad27df8f93a804653b3de695004ded",
+        "status": "VERIFIED",
+        "rejectionCode": null,
+        "price": "1000000",
+        "timestamp": "1785018078",
+        "block": "44624895",
+        "txHash": "0xa6f9b0b00e7076a4fa06370a77ad0fb23143920df4ede4953a2176cd390c6612"
+      },
+      {
+        "intentHash": "0x4790b0d5ba1792cfc510379fcadb221813181668c132ab42a97c7ed2503c3a8f",
+        "agentId": "8429",
+        "client": "0x827f728d4b7816019585891a1bcfaff5ab93d823",
+        "outputHash": "0xc76fc8fae5fb5208e23633bca5ba9a327eab1928b4c43adf70700e6a977b13e5",
+        "status": "VERIFIED",
+        "rejectionCode": null,
+        "price": "1000000",
+        "timestamp": "1785018012",
+        "block": "44624862",
+        "txHash": "0x47d8949422e31dea06e5bf767c122f2271a39c0f4468dea9c2cba4117f21cbb2"
+      },
+      {
+        "intentHash": "0x1181b1a00489b3b0aab07833de861cf17f29ff6b68cd71a67ba83a5487523812",
+        "agentId": "8429",
+        "client": "0x827f728d4b7816019585891a1bcfaff5ab93d823",
+        "outputHash": "0x70862b7734713528ecb36d9500954fbcf71276296da0799d6cfb9aa951923e6c",
+        "status": "VERIFIED",
+        "rejectionCode": null,
+        "price": "1000000",
+        "timestamp": "1785017782",
+        "block": "44624747",
+        "txHash": "0xe8ee8e634a2c90bd9f99c81dc42dc53ab62750f90ba40c06e3ad4cec3b3b3a84"
+      }
+    ],
+    "totals": {
+      "agentCount": 30,
+      "verifiedJobs": 118,
+      "rejectedJobs": 73
+    },
+    "indexedBlock": 44637286,
+    "hasIndexingErrors": false,
+    "subgraphUrl": "https://api.studio.thegraph.com/query/1756943/confidential-agents/v0.0.3"
+  }
+}

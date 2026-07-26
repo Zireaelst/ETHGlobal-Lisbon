@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/run": ["../fixtures/runs/*.json"],
     "/api/proof": ["../fixtures/runs/*.json"],
+    // Same reasoning for the discovery capture: the panel falls back to it when the Studio
+    // endpoint's query window is exhausted, and a serverless instance has no warm cache to hold
+    // over. Both the route and the page's first paint read it.
+    "/api/discovery": ["../fixtures/discovery/*.json"],
+    "/dashboard": ["../fixtures/discovery/*.json"],
   },
 
   // @ca/demo boots Bob's HTTP server, signs with ethers and spawns the Claude CLI. None of that

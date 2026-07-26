@@ -32,7 +32,8 @@
     "gate:P4-B": "tsx tests/gates/P4-B.ts",
     "gate:P3-B": "tsx tests/gates/P3-B.ts",
     "gate:P3-E": "tsx tests/gates/P3-E.ts",
-    "measure:e2e": "tsx scripts/measure-e2e.ts"
+    "measure:e2e": "tsx scripts/measure-e2e.ts",
+    "capture:discovery": "tsx scripts/capture-discovery.ts"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "^0.98.1",

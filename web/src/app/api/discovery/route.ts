@@ -5,7 +5,7 @@
 // demo machine being closed.
 
 import { NextResponse } from "next/server";
-import { SubgraphError, fetchDiscovery, lastGoodDiscovery } from "@/lib/server/subgraph";
+import { SubgraphError, fetchDiscovery, lastGoodDiscovery, recordedDiscovery } from "@/lib/server/subgraph";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +28,21 @@ export async function GET(request: Request) {
     const held = lastGoodDiscovery();
     if (held && held.ageMs < 120_000) {
       return NextResponse.json({ ...held.snapshot, staleMs: held.ageMs, staleReason: message, rateLimited });
+    }
+
+    // Last resort: the checked-in snapshot. On a serverless host the cache above is empty on
+    // every cold start, so a rate-limited window took the panel red for everyone — a real index
+    // that we can prove was read, shown as a dated capture, is better than that. Dated, not
+    // disguised: `capturedAt` travels with it and the panel says how old it is.
+    const recorded = recordedDiscovery();
+    if (recorded) {
+      return NextResponse.json({
+        ...recorded.snapshot,
+        capturedAt: recorded.capturedAt,
+        staleMs: Date.now() - Date.parse(recorded.capturedAt),
+        staleReason: message,
+        rateLimited,
+      });
     }
 
     // Report the failure rather than serving a plausible-looking empty registry: an empty

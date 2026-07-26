@@ -7,7 +7,7 @@
 import { ThemeProvider } from "@/lib/theme";
 import SiteHeader from "@/components/SiteHeader";
 import { DashboardClient } from "@/components/dashboard/DashboardClient";
-import { fetchDiscovery } from "@/lib/server/subgraph";
+import { fetchDiscovery, recordedDiscovery } from "@/lib/server/subgraph";
 import { runnerEnabled } from "@/lib/server/runner";
 import { networkEvidence } from "@/lib/server/networks";
 import type { DiscoverySnapshot } from "@/lib/run-types";
@@ -23,11 +23,15 @@ export const metadata = {
 export default async function DashboardPage() {
   // A failed subgraph read must not blank the whole page: the fraud panel still works without
   // it, and DiscoveryPanel reports the failure inside its own frame.
+  // A rate-limited window used to make that first paint an empty frame anyway, because the
+  // in-memory cache is cold on every serverless invocation. Falling back to the checked-in
+  // capture keeps the panel populated with a real index; the client re-reads immediately and
+  // replaces it the moment a live query succeeds.
   let discovery: DiscoverySnapshot | null = null;
   try {
     discovery = await fetchDiscovery();
   } catch {
-    discovery = null;
+    discovery = recordedDiscovery()?.snapshot ?? null;
   }
 
   return (
