@@ -16,7 +16,7 @@
 import "server-only";
 import "./env";
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { DemoReport } from "@ca/demo";
 import { repoRoot } from "@ca/shared";
@@ -40,10 +40,39 @@ export function runnerEnabled(): boolean {
   return process.env.DEMO_RUNNER_ENABLED === "1";
 }
 
+let cachedRunsDir: string | null = null;
+
+/**
+ * Where the recorded runs live.
+ *
+ * `fixtures/runs/` sits at the repo root, one level above this app, and the three places this
+ * code runs disagree about the working directory: `next dev` starts in web/, the CLI starts at
+ * the repo root, and a deployed serverless bundle contains no `pnpm-workspace.yaml` at all — so
+ * @ca/shared's `repoRoot()`, which walks up looking for exactly that marker, silently falls
+ * back to cwd there and every recording 404s. Since the marker does not survive the bundle,
+ * walk up looking for the directory we actually want instead.
+ *
+ * The fallback still goes through `repoRoot()`: a fresh checkout that has recorded nothing yet
+ * has no `fixtures/runs` to find, and the first run needs somewhere to write it.
+ */
+function runsDir(): string {
+  if (cachedRunsDir) return cachedRunsDir;
+  let dir = process.cwd();
+  for (let i = 0; i < 6; i++) {
+    const candidate = resolve(dir, "fixtures/runs");
+    if (existsSync(candidate)) return (cachedRunsDir = candidate);
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return (cachedRunsDir = resolve(repoRoot(), "fixtures/runs"));
+}
+
 function runPath(mode: FraudMode): string {
   // Tracked in git on purpose. A deployment with no filesystem persistence still needs a real
   // run to show, and the only way that is honest is if the recording ships with the code.
-  return resolve(repoRoot(), "fixtures/runs", `${mode}.json`);
+  // `next.config.ts` traces these files into the deployed bundle for the same reason.
+  return resolve(runsDir(), `${mode}.json`);
 }
 
 export function readRecordedRun(mode: FraudMode): RecordedRun | null {

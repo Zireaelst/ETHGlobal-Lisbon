@@ -36,3 +36,6 @@ agent/
 # Subgraph derleme çıktıları (kaynak: subgraph/src, subgraph.yaml, schema.graphql)
 subgraph/generated/
 subgraph/build/
+
+# Vercel CLI project link (project + org ids, machine-local)
+web/.vercel/
