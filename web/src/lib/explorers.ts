@@ -38,7 +38,9 @@ export type Kind =
   | "block"
   | "account"
   | "topic"
-  | "storage-root";
+  | "storage-root"
+  /** A 0G Storage UPLOAD transaction — see the `storage-root` case for why this exists. */
+  | "storage-tx";
 
 /**
  * The explorer URL for an identifier, or null when the thing genuinely is not on one.
@@ -83,8 +85,18 @@ export function explorerFor(network: Network, kind: Kind, id: string | null | un
         case "address":
         case "contract":
           return `${OG_SCAN}/address/${id}`;
+        // A storage ROOT has no page. `${OG_STORAGE_SCAN}/file/<root>` was the obvious guess and
+        // it 404s — verified against a root we uploaded ourselves, and the explorer does route
+        // (its /tx/ path answers 200 for the same upload), so this is a missing page rather than
+        // a site that rejects everything. The blob is fetched from the indexer by root hash, not
+        // browsed. Returning null keeps it rendering as plain text, which is what an identifier
+        // with no explorer page is supposed to look like here.
         case "storage-root":
-          return `${OG_STORAGE_SCAN}/file/${id}`;
+          return null;
+        // The upload transaction, however, is on chain and does have a page — that is the
+        // checkable destination for an archive.
+        case "storage-tx":
+          return `${OG_STORAGE_SCAN}/tx/${id}`;
         default:
           return null;
       }

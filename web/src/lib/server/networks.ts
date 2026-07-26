@@ -8,7 +8,7 @@
 import "server-only";
 import "./env";
 import { computeAddress } from "ethers";
-import { erc8004AgentUrl, facilitatorSupportedUrl } from "@/lib/explorers";
+import { erc8004AgentUrl, explorerFor, facilitatorSupportedUrl } from "@/lib/explorers";
 import type { SponsorId } from "@/components/SponsorLogo";
 import { readRecordedRun } from "./runner";
 
@@ -60,10 +60,11 @@ export interface NetworkEvidence {
 /**
  * The 0G Storage archive (P3-E), read from the last recorded honest run.
  *
- * There is no explorer page for a storage root — a blob is fetched from the indexer BY the root
- * hash, so the checkable destination is the bundle, which carries the root plus the exact
- * download command. Showing the hash with a link to an explorer that does not hold it would be
- * the dead link this panel's whole arrangement is designed to avoid.
+ * A storage root has no explorer page — `storagescan/file/<root>` 404s, checked against a root we
+ * uploaded ourselves. The UPLOAD TRANSACTION does have one, so that is where this links: it is on
+ * 0G Chain, it names the root, and it is the closest thing to "prove this was really stored"
+ * that can be opened in a browser. The blob itself is fetched from the indexer by root hash, and
+ * the bundle carries the command for that.
  *
  * When a run archived nothing, the fact says so. An address we did not produce is not one we
  * invent (the same rule `compute.ts` follows for a missing TEE signature).
@@ -83,10 +84,10 @@ function archiveFact(): NetworkFact {
     label: "Deliverable archive (0G Storage)",
     value: archive.rootHash,
     kind: "text",
-    href: "/api/proof?mode=none",
-    goesTo: "the proof bundle — the root hash plus the command to download the blob yourself",
+    href: explorerFor("0g", "storage-tx", archive.txHash),
+    goesTo: "the upload transaction on 0G's storage explorer — a root hash has no page of its own",
     why:
-      "Fetched from the 0G indexer by root hash, not from an explorer. The blob is AES-256-GCM ciphertext and the key is not published: anyone can confirm the artefact exists and is retrievable, reading it stays the client's privilege.",
+      "The blob is fetched from the 0G indexer by root hash; the bundle carries the command. It is AES-256-GCM ciphertext and the key is not published: anyone can confirm the artefact exists and is retrievable, reading it stays the client's privilege.",
   };
 }
 
