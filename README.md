@@ -29,7 +29,7 @@ them. We carry **one signed intent hash** from the payment, through the enclave,
 
 A job goes end to end across four networks, each doing exactly one thing:
 
-**Base = the verdict · Hedera = the money and the timeline · The Graph = the read layer · 0G = the compute.**
+**Base = the verdict · Hedera = the money and the timeline · The Graph = the read layer · 0G = the compute and the archive.**
 
 ```
 Alice (client agent)                                Bob (analyst agent)
@@ -41,6 +41,8 @@ Alice (client agent)                                Bob (analyst agent)
                                                       run the model in 0G Sealed Inference
                                                       verify 0G's TEE signature
   verify + decrypt result         ◀── ECIES ────      sign {intentHash, outputHash, match}
+                                                      archive the deliverable on 0G Storage —
+                                                      encrypted, and the key goes only to Alice
 
   Verifier.sol (Base Sepolia): recover Bob's binding signature + Alice's EIP-712 intent,
   require match == true  →  emit JobVerified
@@ -76,12 +78,12 @@ the `JobVerified` receipt before releasing anything. Recorded runs: `fixtures/ru
 | Hedera x402 payment + delegated signing | ✅ | [`docs/hedera.md`](./docs/hedera.md) |
 | Hedera HCS job timeline | ✅ | `packages/payment/src/hcs-timeline.ts` |
 | Base Sepolia stealth-address rail (recipient privacy) | ✅ | `packages/payment/src/base-stealth.ts` |
-| 0G Storage encrypted archive | ✅ | `packages/shared/src/storage.ts` |
+| 0G Storage encrypted archive | ✅ | `packages/shared/src/storage.ts`, `pnpm gate:P3-E` |
 | Autonomous reasoning (agents that choose and approve) | ✅ | `packages/shared/src/reasoning*.ts` |
 | Demo dApp — six panels, live data | ✅ | `web/` |
 | **Per-sponsor submissions** | ✅ all three write-ups | [`0g`](./docs/0g.md) · [`the-graph`](./docs/the-graph.md) · [`hedera`](./docs/hedera.md) |
 | **Demo videos** | ⏳ not recorded | — |
-| **Hosted demo link** | ⏳ not deployed — runs locally, see below | `web/` |
+| **Hosted demo link** | ✅ deployed | [mithra-protocol.vercel.app/dashboard](https://mithra-protocol.vercel.app/dashboard) |
 | Reusable MCP server / SKILL for the registry | ❌ deliberately out of scope | [`docs/the-graph.md` §7.1](./docs/the-graph.md) |
 | Bob's binding inside an attested TEE (Level 1) | ❌ no TDX host available | see below |
 | HCS-14 UAID bridge | ❌ | [`docs/hedera.md` §7.1](./docs/hedera.md) |
@@ -123,7 +125,7 @@ Fill `.env` — it is validated by zod and tells you exactly which field is miss
 | Group | Fields |
 |---|---|
 | Base Sepolia | `BASE_RPC_URL`, `PRIVATE_KEY_ALICE/BOB/DEPLOYER`, `ERC8004_IDENTITY`, `USDC_BASE_SEPOLIA`, `VERIFIER_ADDRESS` |
-| 0G | `OG_RPC_URL`, `OG_PRIVATE_KEY`, `OG_PROVIDER_ADDRESS` |
+| 0G | `OG_RPC_URL`, `OG_PRIVATE_KEY`, `OG_PROVIDER_ADDRESS`, `OG_STORAGE_INDEXER` |
 | Hedera | `HEDERA_OPERATOR_ID`, `HEDERA_OPERATOR_KEY`, `HEDERA_NETWORK`, `HEDERA_TOPIC_ID`, `BOB_HEDERA_ACCOUNT`, `BLOCKY402_URL`, `BLOCKY402_FEE_PAYER` |
 | The Graph | `SUBGRAPH_QUERY_URL`, `THEGRAPH_API_KEY`, `GRAPH_DEPLOY_KEY` |
 | Modes | `PAYMENT_BACKEND=hedera\|base`, `FRAUD_MODE`, `REASONING_BACKEND=claude\|0g\|policy`, `REPLAY_0G`, `OG_STORAGE` |
@@ -244,6 +246,7 @@ flowchart TD
     end
 
     Z(["0G Sealed Inference<br/>TeeML enclave"])
+    S(["0G Storage<br/>encrypted archive · public address, private contents"])
     V(["Verifier.sol · Base Sepolia<br/>both signatures + match == true"])
     G(["settlement guard<br/>payment/src/guard.ts"])
     P(["payment/src/{hedera-x402,base-stealth}.ts"])
@@ -256,6 +259,7 @@ flowchart TD
     B3 --> Z
     Z -->|"signed response body"| B4
     B4 --> B5
+    B5 -->|"AES-256-GCM, key stays<br/>inside the envelope"| S
     B5 -->|"ECIES back to Alice"| A0
     A0 -->|"submits both signatures"| V
     V -->|"JobVerified"| G
@@ -265,7 +269,7 @@ flowchart TD
     V -.-> H
 
     classDef ext fill:none,stroke-dasharray: 4 3;
-    class Z,V,G,P,H ext;
+    class Z,S,V,G,P,H ext;
 ```
 
 The two dotted facts worth reading twice: **the guard sits between the verdict and the money** —
