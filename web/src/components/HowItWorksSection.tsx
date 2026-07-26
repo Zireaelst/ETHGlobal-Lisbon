@@ -17,14 +17,16 @@ const STEPS = [
     n: "02",
     icon: KeySquare,
     title: "Encrypt & pay",
-    body: "The brief and data are ECIES-encrypted to Bob's pubkey. Alice signs an EIP-712 intent hash and pays over x402.",
+    body: "The brief and data are ECIES-encrypted to Bob's pubkey. Alice signs an EIP-712 intent hash and authorises an x402 payment — signed, not yet submitted.",
     tint: "cool" as const,
   },
   {
     n: "03",
     icon: ShieldCheck,
     title: "Verify",
-    body: "Bob's enclave recomputes the hash and signs the match. Verifier.sol checks both signatures before a cent moves.",
+    // Not "Bob's enclave" — the recompute runs on an ordinary host (CLAUDE.md
+    // §11, and the Architecture section says so twelve lines further down).
+    body: "Bob recomputes the hash and signs the match. Verifier.sol recovers both signatures — Alice's intent and Bob's binding key — before a cent moves.",
     tint: "warm" as const,
   },
 ];

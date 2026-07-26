@@ -76,9 +76,13 @@ function ReceiptPhase() {
 }
 
 function VerifierPhase() {
+  // The two signatures are NOT the same signature (CLAUDE.md §3.1 A vs B).
+  // On chain the contract checks Bob's registered binding key against
+  // `enclaveSignerOf[agentId]`; 0G's TEE signature is verified off-chain,
+  // which is why it is named in the receipt phase and not in this list.
   const checks = [
     "Intent signer matches the registered client",
-    "Enclave signer matches the registered 0G TEE signer",
+    "Binding signer matches the registered seal key",
     "match == true",
   ];
   return (

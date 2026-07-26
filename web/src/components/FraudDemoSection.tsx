@@ -24,9 +24,9 @@ const RUNS = {
     caption: "One flag makes Bob answer a different brief.",
     recomputed: "0x4e11…8ba7",
     match: false,
-    verdict: "Reverted · IntentMismatch",
-    code: "require(match, IntentMismatch()) ✗",
-    outcome: "No event, no settlement. The money never moves.",
+    verdict: "Rejected · MatchFalse",
+    code: "emit JobRejected(intentHash, code 5) ✗",
+    outcome: "No JobVerified, no settlement. The money never moves.",
   },
 } as const;
 
@@ -106,7 +106,7 @@ export default function FraudDemoSection() {
           <div className="flex flex-col gap-3.5 font-mono text-[12.5px]">
             <HashRow label="Alice signed" value="0x9f3a…c02e" />
             <HashRow
-              label="Enclave recomputed"
+              label="Bob recomputed"
               value={active.recomputed}
               tone={rejected ? "alert" : "ok"}
               swapKey={run}
@@ -152,7 +152,7 @@ export default function FraudDemoSection() {
         </motion.div>
 
         <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Illustrative values · the same require() runs in Verifier.sol
+          Illustrative values · the same check runs in Verifier.sol on Base Sepolia
         </p>
       </Reveal>
     </section>
