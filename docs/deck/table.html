@@ -34,7 +34,9 @@
     --paper-edge: #e7e1d4;
     --ink: #23201b;
     --ink-soft: #5c554a;
-    --ink-faint: #8d8478;
+    /* 4.86:1 on the paper. The previous #8d8478 was 3.09:1 — under the 4.5:1 floor, and it was
+       carrying the footnotes and every mono label on the deck. */
+    --ink-faint: #6f675a;
     --rule: #cfc7b6;
     --rule-soft: #ded7c8;
     --gold: #8c6824;
@@ -520,9 +522,18 @@
     var root = document.documentElement;
     var W = 1280, H = 720;
 
-    root.setAttribute("data-track", "0g");
+    /* ?track=graph preselects a track without a click, which is what lets a headless browser
+       print all three decks from this one file. Anything unrecognised falls back to 0G, so a
+       typo prints a deck rather than a blank page. */
+    var valid = { "0g": 1, graph: 1, hedera: 1 };
+    var wanted = new URLSearchParams(location.search).get("track");
+    var initial = valid[wanted] ? wanted : "0g";
+    root.setAttribute("data-track", initial);
 
     var buttons = document.querySelectorAll(".bar [data-set]");
+    for (var b = 0; b < buttons.length; b++) {
+      buttons[b].setAttribute("aria-pressed", String(buttons[b].getAttribute("data-set") === initial));
+    }
     for (var i = 0; i < buttons.length; i++) {
       buttons[i].addEventListener("click", function (e) {
         var pick = e.currentTarget.getAttribute("data-set");

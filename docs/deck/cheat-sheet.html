@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mithra — table cheat sheet</title>
+
+<!--
+  The card you hold at the sponsor table. Two A4 pages: print double-sided and it is one card.
+
+  FRONT: the three-minute spine + the sixty seconds that changes per track.
+  BACK:  the questions you will actually get, the live ids, and the sentences that lose the room.
+
+  Committed to one light world on purpose, same as table.html — this is paper. Chrome: Cmd-P,
+  Save as PDF, margins None, background graphics ON, and tick two-sided if your printer does it.
+
+  Everything here is a compression of docs/table-pitch.md. When the two disagree, table-pitch.md
+  is the source — it has the room to be precise and this one does not.
+-->
+
+<style>
+  :root {
+    --paper: #f3efe6;
+    --ink: #23201b;
+    --ink-soft: #5c554a;
+    /* 4.86:1 on the paper — #8d8478 was 3.09:1, and on this card it carries the SHOW blocks at
+       8.4px, which is the smallest type in the whole project. */
+    --ink-faint: #6f675a;
+    --rule: #cfc7b6;
+    --rule-soft: #ded7c8;
+    --gold: #8c6824;
+    --alert: #9c3024;
+    --ok: #2f6b4f;
+    --f-display: "Hoefler Text", "Iowan Old Style", Palatino, Georgia, serif;
+    --f-body: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+    --f-data: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  h1, h2, h3, h4, p, ul, ol, dl, dd, dt { margin: 0; padding: 0; }
+  ul { list-style: none; }
+
+  html { background: #d8d2c6; }
+  body {
+    margin: 0; background: #d8d2c6;
+    font-family: var(--f-body); color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* A4 minus a hairline, so a printer that insists on its own margin still fits the page */
+  .page {
+    width: 210mm; min-height: 296mm;
+    margin: 8mm auto; padding: 13mm 14mm 10mm;
+    background: var(--paper);
+    box-shadow: 0 2px 14px rgba(0,0,0,.18);
+    display: flex; flex-direction: column; gap: 6mm;
+  }
+
+  .masthead { display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 1.5px solid var(--ink); padding-bottom: 2.5mm; }
+  .masthead .mark { font-family: var(--f-display); font-size: 19px; letter-spacing: .01em; }
+  .masthead .side { font-family: var(--f-data); font-size: 8.5px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-faint); }
+
+  h2 { font-family: var(--f-data); font-size: 8.5px; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--gold); border-bottom: 1px solid var(--rule);
+    padding-bottom: 1.6mm; margin-bottom: 2.6mm; }
+
+  .lede { font-family: var(--f-display); font-size: 15.5px; line-height: 1.32; max-width: 62ch; }
+  .lede em { color: var(--gold); font-style: italic; }
+
+  /* -- the spine: a time column against the line ---------------------------- */
+  .spine { display: grid; grid-template-columns: 15mm 1fr; gap: 2mm 4mm; }
+  .spine dt { font-family: var(--f-data); font-size: 10px; color: var(--gold);
+    font-variant-numeric: tabular-nums; padding-top: .35mm; }
+  .spine dd { font-size: 10.5px; line-height: 1.42; color: var(--ink-soft); }
+  .spine dd b { color: var(--ink); font-weight: 600; }
+  .spine dd .say { font-family: var(--f-display); font-size: 11.5px; color: var(--ink);
+    font-style: italic; display: block; }
+  .spine .hot dd .say { color: var(--alert); font-style: normal; }
+
+  /* -- the three track boxes ------------------------------------------------ */
+  .tracks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; flex: 1; }
+  .track { border: 1px solid var(--rule); border-top: 2.5px solid var(--gold);
+    padding: 3mm 3.4mm; display: flex; flex-direction: column; gap: 2mm; }
+  .track h3 { font-family: var(--f-display); font-weight: 400; font-size: 15px; line-height: 1.1; }
+  .track .role { font-family: var(--f-data); font-size: 8px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-faint); }
+  .track p { font-size: 9.6px; line-height: 1.44; color: var(--ink-soft); }
+  .track p b { color: var(--ink); font-weight: 600; }
+  .track .show { margin-top: auto; padding-top: 2mm; border-top: 1px solid var(--rule-soft);
+    font-family: var(--f-data); font-size: 8.4px; line-height: 1.5; color: var(--ink-faint); }
+  .track .show b { color: var(--gold); font-weight: 500; }
+
+  /* -- Q&A ------------------------------------------------------------------ */
+  .qa { display: flex; flex-direction: column; gap: 3.2mm; }
+  .qa .q { font-family: var(--f-display); font-size: 12px; color: var(--ink); }
+  .qa .a { font-size: 10px; line-height: 1.46; color: var(--ink-soft); margin-top: .8mm; }
+  .qa .a b { color: var(--ink); font-weight: 600; }
+
+  /* -- ids ------------------------------------------------------------------ */
+  .ids { display: grid; grid-template-columns: 34mm 1fr; gap: 1.5mm 4mm;
+    font-family: var(--f-data); font-size: 8.6px; line-height: 1.45; }
+  .ids dt { color: var(--ink-faint); text-transform: uppercase; letter-spacing: .1em; }
+  .ids dd { color: var(--ink); word-break: break-all; }
+
+  /* -- the never-say list --------------------------------------------------- */
+  .never { border: 1px solid var(--alert); border-left-width: 3px;
+    background: rgba(156,48,36,.045); padding: 3mm 4mm; }
+  .never h2 { color: var(--alert); border-color: rgba(156,48,36,.3); }
+  .never ul { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4mm 6mm; }
+  .never li { font-size: 9.6px; line-height: 1.4; color: var(--ink-soft); padding-left: 4mm;
+    position: relative; }
+  .never li::before { content: "\00d7"; position: absolute; left: 0; color: var(--alert);
+    font-family: var(--f-data); }
+  .never li b { color: var(--ink); font-weight: 600; }
+
+  .prep { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.4mm 6mm; }
+  .prep li { font-size: 9.6px; line-height: 1.4; color: var(--ink-soft); padding-left: 4mm;
+    position: relative; }
+  .prep li::before { content: "\25a1"; position: absolute; left: 0; color: var(--gold); }
+  .prep li b { color: var(--ink); font-weight: 600; }
+
+  .foot { margin-top: auto; padding-top: 3mm; border-top: 1px solid var(--rule);
+    font-family: var(--f-data); font-size: 8px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); display: flex; justify-content: space-between; gap: 6mm; }
+
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; width: 210mm; height: 297mm; page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================ FRONT ============================ -->
+<div class="page">
+  <div class="masthead">
+    <span class="mark">Mithra &middot; table card</span>
+    <span class="side">Three minutes &middot; front</span>
+  </div>
+
+  <p class="lede">
+    Open with the thing only you can show. <em>Then</em> say what it was &mdash; they have heard
+    &ldquo;the problem in agent payments is&hellip;&rdquo; nine times today.
+  </p>
+
+  <section>
+    <h2>The spine &mdash; same every table</h2>
+    <dl class="spine">
+      <dt>0:00</dt>
+      <dd>
+        <span class="say">&ldquo;Two AI agents that have never met. One hires the other, pays it,
+        and gets work back &mdash; and nothing in the middle can see what the work was. I&rsquo;m
+        going to make the seller cheat.&rdquo;</span>
+        Click. <b>Do not narrate while it runs.</b>
+      </dd>
+
+      <dt class="hot">0:20</dt>
+      <dd class="hot">
+        <span class="say">&ldquo;The seller answered a different job than the one that was ordered.
+        The contract on Base just refused it &mdash; MatchFalse &mdash; and the payment never
+        settled. He did the work and gets nothing.&rdquo;</span>
+        Point at two lines: <b>the rejection code</b>, and <b>payment not settled</b>.
+      </dd>
+
+      <dt>1:00</dt>
+      <dd>
+        The problem, <b>now that they have watched it get solved.</b> Payment, private execution and
+        reputation are each solved; nothing connects them. You can pay an agent and get
+        <em>an</em> answer &mdash; nothing proves it answered <b>your</b> question with
+        <b>your</b> data. One signed commitment travels from the payment, through the enclave, into
+        the reputation index. <b>Intent-bound verification.</b>
+      </dd>
+
+      <dt>1:30</dt>
+      <dd><b>The track section</b> &mdash; the three boxes below. Sixty seconds, one of them.</dd>
+
+      <dt>2:30</dt>
+      <dd>
+        <b>What we do not claim. Never skip this</b> &mdash; thirty-nine of forty teams are
+        overclaiming and the judges know it. We didn&rsquo;t build the TEE, 0G did. The match check
+        runs in unattested code because we had no TDX host, so the client can verify it and a
+        stranger can&rsquo;t &mdash; that gap is real and it&rsquo;s what we&rsquo;d close next.
+        The reputation isn&rsquo;t Sybil-proof; faking it is expensive and visible, not impossible.
+      </dd>
+
+      <dt>2:50</dt>
+      <dd>
+        <span class="say">&ldquo;Everything on that screen is testnet but none of it is mocked
+        &mdash; every hash opens on a public explorer. The write-up for your track is in the repo,
+        with the exact files and gates.&rdquo;</span>
+      </dd>
+    </dl>
+  </section>
+
+  <section style="display:flex;flex-direction:column;flex:1;">
+    <h2>1:30 &mdash; the sixty seconds that changes</h2>
+    <div class="tracks">
+
+      <div class="track">
+        <span class="role">0G &middot; Best AI Product</span>
+        <h3>The compute</h3>
+        <p>The model runs in a <b>Sealed Inference enclave</b>, so the party being paid never sees
+        the brief. The output comes back TEE-signed.</p>
+        <p><b>And here is the part that is ours:</b> the client&rsquo;s signed commitment is written
+        into the top of the prompt and the model copies it <b>verbatim</b> into the answer. So the
+        signature 0G&rsquo;s hardware produces covers a body that <b>contains</b> the client&rsquo;s
+        intent. Bob can&rsquo;t manufacture that on his own machine &mdash; the first link comes
+        from 0G silicon.</p>
+        <p>The deliverable is then archived on <b>0G Storage, encrypted</b> &mdash; anyone can fetch
+        it by root hash, only the client can read it.</p>
+        <p class="show">SHOW <b>ogVerified=true</b> &middot; <b>intentEchoed</b> &middot; the archive
+        root &middot; the pinned provider.<br />
+        IF ASKED, say it plainly: <b>ProviderType: centralized</b>, <b>ProviderIdentity: aliyun</b>.
+        The seal is real; the operator is one cloud.</p>
+      </div>
+
+      <div class="track">
+        <span class="role">The Graph &middot; AI Use Case</span>
+        <h3>The read layer</h3>
+        <p>Alice is <b>never given Bob&rsquo;s address</b>. She queries the subgraph by skill and
+        ranks by deliveries <b>a contract confirmed</b>.</p>
+        <p>And you <b>cannot write</b> to this reputation &mdash; there is no review endpoint. The
+        only thing that increments the counter is a <b>JobVerified</b> event from the Verifier.</p>
+        <p>The rejected attempts are indexed on the same record, so cheating is permanently visible
+        <b>exactly where the hiring decision gets made</b>.</p>
+        <p class="show">SHOW the discovery panel, then the query endpoint &mdash;
+        <b>offer to let them POST the query themselves</b>.<br />
+        THE STRONG DETAIL, with the numbers: <b>31 agents indexed, 21 distinct owners, 28 of them
+        not ours</b> &mdash; strangers register into this public ERC-8004 registry while we watch.
+        The panel shows only 2 because it filters by skill and <b>only 3 registrants fill the
+        skills field in</b>. Say that yourself before they ask.</p>
+      </div>
+
+      <div class="track">
+        <span class="role">Hedera &middot; Agentic Payments</span>
+        <h3>The money &amp; the timeline</h3>
+        <p>x402 through the <b>blocky402</b> facilitator &mdash; and the split matters. Alice
+        authorises, but <b>the money stays hers</b>. Bob does the work, and only after the contract
+        emits <b>JobVerified</b> does he submit the authorisation.</p>
+        <p>On the HCS topic, the honest run ends
+        <b>&hellip; &rarr; OUTPUT_COMMIT &rarr; SETTLED</b>. The fraud run stops at
+        <b>OUTPUT_COMMIT</b>. <b>The missing stage is the whole argument</b> &mdash; recorded on a
+        chain that isn&rsquo;t ours to edit.</p>
+        <p>Every stage is a commitment, <b>never content</b>. The brief never touches Hedera.</p>
+        <p class="show">HONEST, UNPROMPTED: this rail buys <b>autonomy</b> and a timestamped trail,
+        <b>not privacy</b>. The stealth recipient is on the Base run &mdash; offer the contrast.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="foot"><span>docs/table-pitch.md is the long form</span><span>Front &middot; 1 of 2</span></div>
+</div>
+
+<!-- ============================ BACK ============================= -->
+<div class="page">
+  <div class="masthead">
+    <span class="mark">Mithra &middot; table card</span>
+    <span class="side">Questions &amp; ids &middot; back</span>
+  </div>
+
+  <section>
+    <h2>Before you sit down</h2>
+    <ul class="prep">
+      <li><b>/dashboard</b> open, <b>fraud mode already selected</b>, logs cleared</li>
+      <li><b>OG_STORAGE=0</b> for the live click &mdash; the archive adds ~15s to a ~13s run</li>
+      <li>Show the archive from the <b>recorded</b> run instead &mdash; same evidence, no dead air</li>
+      <li><b>One warm-up run</b> before the first table &mdash; broker setup is a first-call cost</li>
+      <li>Second tab: the proof bundle <b>/api/proof?mode=none</b>, already downloaded</li>
+      <li>Subgraph 429? <b>Say so, don&rsquo;t reload</b> &mdash; honest failure is the right behaviour</li>
+    </ul>
+  </section>
+
+  <section class="qa" style="flex:1;">
+    <h2>The four you will actually get &mdash; two sentences, then stop</h2>
+
+    <div>
+      <p class="q">&ldquo;Did you build the TEE?&rdquo;</p>
+      <p class="a"><b>No. 0G did. We bind it to the client&rsquo;s intent.</b> We verify signatures
+      on chain and check the attestation off chain at setup &mdash; not a raw on-chain TDX quote.</p>
+    </div>
+
+    <div>
+      <p class="q">&ldquo;Is the match check verifiable by me, or do I have to trust you?&rdquo;</p>
+      <p class="a"><b>Today: by the client, not by a stranger.</b> The recompute runs in unattested
+      code because we had no TDX host. With an attested runtime the attestation would read
+      <b>codeDigest + inputHash + outputHash</b> and nobody would need to trust us. That is one
+      deployment away, not a redesign &mdash; the binding is already a pure function with no
+      environment reads in it.</p>
+    </div>
+
+    <div>
+      <p class="q">&ldquo;What stops an agent from farming its own reputation?&rdquo;</p>
+      <p class="a"><b>Nothing stops it; it costs.</b> You can&rsquo;t write the score, only earn it,
+      and earning it means a job the contract verified &mdash; a real inference and real gas per
+      fake delivery. But a ring of agents you control can hire each other and every job is genuinely
+      valid, because cryptography can&rsquo;t tell a fake <em>relationship</em> from a real one.
+      What we do is make it <b>paid and visible</b>: every job&rsquo;s client, timestamp and price
+      is in the same public index, so the ring is queryable. The right fix is weighting a delivery
+      by the client&rsquo;s own standing &mdash; computable from data we already index.
+      <b>We haven&rsquo;t built it.</b></p>
+    </div>
+
+    <div>
+      <p class="q">&ldquo;Why four chains?&rdquo;</p>
+      <p class="a"><b>Because none of them duplicates another.</b> Base is the verdict, Hedera is
+      the money and the timeline, The Graph is the read layer, 0G is the compute. Drop one and
+      something stops being checkable.</p>
+    </div>
+
+    <div>
+      <p class="q">&ldquo;The model output isn&rsquo;t deterministic &mdash; how do you recompute it?&rdquo;</p>
+      <p class="a"><b>We don&rsquo;t.</b> We recompute the <b>intent hash</b> from the brief and the
+      data, which is deterministic, and bind the output by <em>its</em> hash. Nothing here ever
+      tries to reproduce a model&rsquo;s answer.</p>
+    </div>
+
+    <div>
+      <p class="q">&ldquo;How slow is it?&rdquo;</p>
+      <p class="a"><b>p50 21.0s, p95 22.7s</b> over 5 runs against a 60s budget &mdash;
+      <b>fixtures/latency/P0-G.json</b>, reproduce with <b>pnpm measure:e2e</b>. The 0G inference
+      call is ~12.4s of that and is the dominant term.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Live ids &mdash; every one opens on a public explorer</h2>
+    <dl class="ids">
+      <dt>Verifier · Base Sep.</dt><dd>0x3B116D648B710f551e37223c4c4d39879AFEEb96</dd>
+      <dt>0G provider</dt><dd>0xa48f01287233509FD694a22Bf840225062E67836 · qwen/qwen2.5-omni-7b · TeeML</dd>
+      <dt>Hedera topic</dt><dd>0.0.9738448</dd>
+      <dt>ERC-8004</dt><dd>Bob 8429 · Alice 8431 · registry 0x8004A818BFB912233c491871b3d84c89A494BD9e</dd>
+      <dt>Hosted demo</dt><dd>mithra-protocol.vercel.app/dashboard</dd>
+      <dt>Latency</dt><dd>p50 21.0s · p95 22.7s · 5 runs · 60s budget</dd>
+    </dl>
+  </section>
+
+  <section class="never">
+    <h2>Sentences that lose the room</h2>
+    <ul>
+      <li><b>&ldquo;solves prompt injection&rdquo;</b> &mdash; task substitution and input tampering only</li>
+      <li><b>&ldquo;Sybil-proof&rdquo;</b> &mdash; expensive and visible, not impossible</li>
+      <li><b>&ldquo;first confidential agent payments&rdquo;</b> &mdash; ProwlFi and TACEO shipped first</li>
+      <li><b>&ldquo;private on Hedera&rdquo;</b> &mdash; that run buys autonomy; privacy is the Base run</li>
+      <li><b>&ldquo;two TEEs&rdquo;</b> &mdash; one, 0G&rsquo;s</li>
+      <li><b>&ldquo;the 0G signature covers the answer&rdquo;</b> &mdash; it covers its <b>fingerprint</b></li>
+      <li><b>&ldquo;decentralized compute&rdquo;</b> &mdash; the pinned provider is one cloud, aliyun</li>
+      <li><b>&ldquo;we built the TEE&rdquo;</b> &mdash; 0G did; we bind it to intent</li>
+    </ul>
+  </section>
+
+  <div class="foot"><span>If you catch yourself starting one, the honest version is shorter anyway</span><span>Back &middot; 2 of 2</span></div>
+</div>
+
+</body>
+</html>

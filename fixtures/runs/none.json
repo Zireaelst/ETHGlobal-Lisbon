@@ -1,75 +1,93 @@
 {
   "report": {
     "fraudMode": "none",
-    "signedIntentHash": "0xbcb96d777450ca69fda19b493f1bdee8fb1ee1310d34b709f8f4b793f6c43252",
-    "bodyIntentHash": "0xbcb96d777450ca69fda19b493f1bdee8fb1ee1310d34b709f8f4b793f6c43252",
+    "signedIntentHash": "0xf744341c095509382adfe26b2dcb137a3cab5475347ea972c3c4218f7b4b4265",
+    "bodyIntentHash": "0xf744341c095509382adfe26b2dcb137a3cab5475347ea972c3c4218f7b4b4265",
     "match": true,
     "clientSigOk": true,
     "bindingSigOk": true,
     "computeProvider": "0g-sealed-inference",
     "ogVerified": true,
-    "reasoningProvider": "policy",
+    "reasoningProvider": "claude-local",
     "decisions": {
       "hire": {
-        "provider": "policy",
-        "rationale": "highest verified-delivery count (117) with 73 rejected attempts",
-        "latencyMs": 0,
-        "agentId": "8429"
+        "provider": "claude-local",
+        "agentId": "8429",
+        "rationale": "Agent 8429 has a solid track record of completed jobs, while 8432 has zero history to trust.",
+        "latencyMs": 7223
       },
       "price": {
-        "provider": "policy",
-        "rationale": "1000000 USDC is within the 5000000 ceiling",
-        "latencyMs": 0,
-        "approve": true
+        "provider": "claude-local",
+        "approve": true,
+        "rationale": "The price is well within budget, the agent has a strong track record, and payment only releases if a smart contract confirms the work matches the order.",
+        "latencyMs": 6937
       },
       "result": {
-        "provider": "policy",
-        "rationale": "the commitment matched, so the delivered work is the work that was ordered",
-        "latencyMs": 0,
-        "accept": true
+        "provider": "claude-local",
+        "accept": false,
+        "rationale": "The analysis is generic boilerplate with a sloppy currency mix-up (euros vs dollars) and doesn't dig into the actual numbers like deferred-revenue ratio or contract concentration, so it's not reliable enough to use.",
+        "latencyMs": 11533
       }
     },
-    "output": "ORDER-ID: 0xbcb96d777450ca69fda19b493f1bdee8fb1ee1310d34b709f8f4b793f6c43252\n\nRevenue recognition risk assessment based on the provided data:\n\n1. **Total Revenue**: The total revenue reported is €12,400,000 EUR.\n2. **Deferred Revenue**: There is €3,100,000 EUR of deferred revenue, which indicates that some portion of the revenue has not yet been recognized as income according to accounting standards (e.g., IFRS or US GAAP).\n3. **Number of Contracts**: There are 41 contracts associated with this revenue.\n\n**Risk Assessment**:\n- **High Risk of Revenue Recognition Delays**: With significant deferred revenue ($3,100,000), there is a high risk that revenue recognition may be delayed beyond the reporting period due to various factors such as contract completion milestones, customer acceptance, or regulatory requirements.\n- **Impact on Cash Flow**: Deferred revenue does not impact cash flow immediately but can affect it significantly when recognized. This could lead to fluctuations in cash flow from operations if the timing of revenue recognition varies significantly between periods.\n- **Contract Complexity**: Having multiple contracts (41) suggests complex arrangements and potentially higher variability in revenue recognition processes. Each contract might have different terms and conditions affecting when revenue is recognized.\n- **Compliance and Audit Risks**: Significant deferred revenue requires robust internal controls and documentation to ensure compliance with accounting standards. Failure to properly manage these risks could result in audit issues or financial statement restatements.\n\n**Recommendations**:\n- **Enhance Internal Controls**: Strengthen internal controls over revenue recognition processes to ensure timely and accurate recognition of revenue.\n- **Regular Review of Contracts**: Regularly review and update contracts to understand their impact on revenue recognition schedules.\n- **Communication with Stakeholders**: Maintain clear communication with stakeholders about the status of deferred revenue and any potential delays in revenue recognition.\n- **Training and Awareness**: Provide training to relevant personnel on the latest accounting standards and best practices related to revenue recognition.\n\nBy addressing these areas, the company can mitigate the risks associated with revenue recognition and maintain transparency with its stakeholders.",
-    "storage": {
-      "rootHash": "0x2e91c6e06e72eff9a3b8664fb606ddeaa050309480340fb0b660dc10743ee60c",
-      "txHash": "0x090020cf54f1d0c8dfcf6e318ffff150bb73a8cba99c37ca5ae6354fc6b6af96",
-      "bytes": 2426
+    "output": "ORDER-ID: 0xf744341c095509382adfe26b2dcb137a3cab5475347ea972c3c4218f7b4b4265\n\nRevenue recognition risk assessment based on the provided data:\n\n1. **Total Revenue**: The total reported revenue is €12,400,000 EUR.\n2. **Deferred Revenue**: There is €3,100,000 EUR of deferred revenue, which indicates that some portion of the revenue has not yet been recognized as income according to accounting standards (likely IFRS or US GAAP).\n3. **Number of Contracts**: There are 41 active contracts contributing to the revenue.\n\n**Risk Assessment**:\n- **High Risk of Revenue Recognition Delays**: With significant deferred revenue ($3,100,000), there is a high risk that future periods may experience delays in recognizing revenue from these contracts. This could be due to various factors such as contract terms, payment schedules, or regulatory requirements.\n  \n- **Impact on Cash Flow**: Deferred revenue does not impact cash flow immediately but can affect it significantly when recognized. Companies need to ensure they have adequate liquidity to manage cash flow during periods of deferred revenue recognition.\n\n- **Contract Terms and Conditions**: The number of contracts (41) suggests multiple ongoing agreements. Each contract's specific terms regarding revenue recognition should be carefully reviewed to understand potential risks associated with each one.\n\n- **Regulatory Compliance**: Ensuring compliance with relevant accounting standards (e.g., IFRS or US GAAP) is crucial. Non-compliance could lead to financial penalties and reputational damage.\n\n**Recommendations**:\n- **Regular Review of Deferred Revenue**: Conduct regular reviews of deferred revenue balances to identify any unusual patterns or delays.\n- **Communication with Stakeholders**: Maintain open communication with stakeholders about the status of deferred revenue and expected recognition timelines.\n- **Internal Controls**: Strengthen internal controls over revenue recognition processes to minimize errors and fraud.\n- **Legal and Regulatory Updates**: Stay updated with changes in accounting regulations and legal requirements affecting revenue recognition.\n\nBy addressing these areas, the company can mitigate revenue recognition risks effectively.",
+    "brief": "Assess revenue-recognition risk in the attached quarterly figures.",
+    "data": "Q3-2026 revenue 12,400,000 EUR; deferred 3,100,000 EUR; 41 contracts.",
+    "binding": {
+      "agentId": "agent-8429",
+      "sealId": "0x184749fae313c8a9",
+      "timestamp": "1785070115",
+      "r": "0xed7e22ced3f84f8dd8c5f1cfa4e6f4a3fac781f67840a6b3095b937d992f4ea0",
+      "s": "0x78ad98aa399a8f9ea6492d4cfa022aff414a4a43fe7f1375106fa1e6e4972a3e",
+      "v": 28,
+      "seal": "0xed7e22ced3f84f8dd8c5f1cfa4e6f4a3fac781f67840a6b3095b937d992f4ea078ad98aa399a8f9ea6492d4cfa022aff414a4a43fe7f1375106fa1e6e4972a3e1c",
+      "sealDigest": "0x9f4c560990efde4fc239cec8ff7c99b1e8c7e1f87afbb7c3e3b0f445a90100c3",
+      "bodyHex": "0xf744341c095509382adfe26b2dcb137a3cab5475347ea972c3c4218f7b4b426533f8cfeb64ca4aaf984e0f822f8ae87aeaa6dedaafcabe7aa17fe6680d15ccd20000000000000000000000000000000000000000000000000000000000000001685c63b00b17e0fdd2f2c3a5a381df689cba7f77eec48ccaee8662092de111b7",
+      "expectedSigner": "0x521dc808769A27F50DBA439619bd3E3F7c24F557",
+      "recoveredCandidates": [
+        {
+          "v": 27,
+          "address": "0x037dFe6DE6b4D0d57093466Bd4F3aB73063Cd436"
+        },
+        {
+          "v": 28,
+          "address": "0x521dc808769A27F50DBA439619bd3E3F7c24F557"
+        }
+      ]
     },
     "code": 0,
     "codeName": "OK",
     "verified": true,
-    "totalMs": 32431,
+    "totalMs": 41011,
     "stageMs": {
-      "discovery": 193,
-      "agent_card": 32,
-      "intent_sign": 77,
-      "ecies_encrypt": 379,
-      "http_task_send1": 28,
-      "payment_authorize": 755,
-      "http_task_send2": 29067,
-      "http_result": 3,
-      "ecies_decrypt_result": 9,
-      "enclave_ecies_decrypt": 23,
-      "enclave_recompute": 2,
-      "enclave_client_sig_verify": 16,
-      "enclave_compute_0g": 13181,
-      "enclave_seal_sign": 12,
-      "enclave_storage_upload": 15239,
-      "hcs_open_topic": 17,
-      "alice_job_total": 30550,
-      "chain_verify_tx": 1863
+      "discovery": 7685,
+      "agent_card": 4,
+      "intent_sign": 5,
+      "ecies_encrypt": 11,
+      "http_task_send1": 3,
+      "payment_authorize": 7582,
+      "http_task_send2": 12154,
+      "http_result": 2,
+      "ecies_decrypt_result": 7,
+      "enclave_ecies_decrypt": 13,
+      "enclave_recompute": 1,
+      "enclave_client_sig_verify": 6,
+      "enclave_compute_0g": 11572,
+      "enclave_seal_sign": 4,
+      "hcs_open_topic": 5,
+      "alice_job_total": 38988,
+      "chain_verify_tx": 2018
     },
     "discoveredAgentId": "8429",
-    "txHash": "0x2fbaf85b4ac7898b09c0496bd88c2258e204a112403abb110183f2576151bc85",
-    "blockNumber": 44626835,
-    "basescanUrl": "https://sepolia.basescan.org/tx/0x2fbaf85b4ac7898b09c0496bd88c2258e204a112403abb110183f2576151bc85",
+    "txHash": "0x9aa9e1281003d76104489de90b1eedecb420a9fae8960584256a9c09587c3138",
+    "blockNumber": 44650927,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x9aa9e1281003d76104489de90b1eedecb420a9fae8960584256a9c09587c3138",
     "payment": {
       "rail": "hedera-x402",
       "quoted": true,
       "authorized": true,
       "settled": true,
-      "txRef": "0.0.7162784@1785021918.172781757",
-      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7162784-1785021918-172781757",
+      "txRef": "0.0.7162784@1785070107.471116702",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7162784-1785070107-471116702",
       "paidTo": "0.0.9738447",
       "agentIdentity": "0.0.9738447"
     },
@@ -85,5 +103,5 @@
       ]
     }
   },
-  "recordedAt": "2026-07-25T23:26:04.304Z"
+  "recordedAt": "2026-07-26T12:49:06.243Z"
 }

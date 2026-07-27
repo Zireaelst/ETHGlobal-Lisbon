@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mithra — table deck</title>
+
+<!--
+  The table deck. Open it in a browser and print to PDF.
+
+  WHY A FIXED CANVAS: an earlier version sized the slide with `aspect-ratio` and the type with
+  viewport units. Those scale on different curves — a narrower window shortens the box while the
+  text inside it wraps onto more lines — so past a certain width the dense slides overflowed their
+  grid row and printed on top of the footer. Here every slide is exactly 1280x720 with type in
+  fixed pixels, and the whole canvas is scaled to fit the window. "Does it fit?" is answered once.
+
+  PRINTING: @page is set to the same 1280x720, so the PDF comes out 16:9 with one slide per page
+  and no scaling artefacts. Chrome: Ctrl/Cmd-P, Destination "Save as PDF", Margins "None",
+  and tick "Background graphics".
+
+  THE TRACK SLIDE: pick 0G / The Graph / Hedera in the bar. Only the selected one is shown and
+  only it is printed, so one file produces three decks.
+-->
+
+<style>
+  /* --------------------------------------------------------------------------
+     Palette: the project's own "open" theme (web/lib/theme-tokens.ts), at
+     print-safe opacity. Committed to one light world on purpose — this is paper.
+     `--alert` is defined and deliberately unused: the red that means "the chain
+     said no" belongs to the live screen, not to a printed slide.
+     -------------------------------------------------------------------------- */
+  :root {
+    --paper: #f3efe6;
+    --paper-edge: #e7e1d4;
+    --ink: #23201b;
+    --ink-soft: #5c554a;
+    --ink-faint: #8d8478;
+    --rule: #cfc7b6;
+    --rule-soft: #ded7c8;
+    --gold: #8c6824;
+    --alert: #a03024;
+
+    --display: "Cormorant Garamond", Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --body: Jost, "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+    --W: 1280px;
+    --H: 720px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper-edge);
+    color: var(--ink);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- control bar (screen only) ---------- */
+
+  .bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    padding: 11px 22px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .bar-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .bar-tracks { display: flex; gap: 6px; }
+
+  .bar button {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 6px 13px;
+    border: 1px solid var(--rule);
+    border-radius: 1px;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: border-color .15s ease, color .15s ease, background-color .15s ease;
+  }
+
+  .bar button:hover { border-color: var(--gold); color: var(--ink); }
+  .bar button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .bar button[aria-pressed="true"] { border-color: var(--gold); background: var(--gold); color: var(--paper); }
+
+  .bar-hint { margin-left: auto; font-size: 12px; font-weight: 300; color: var(--ink-faint); }
+
+  /* ---------- the scaling stage ----------
+     Each slide is laid out at its true 1280x720 and then scaled as one piece. The wrapper
+     reserves the scaled height so the page still flows normally. */
+
+  .deck { padding: 22px 16px 64px; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+
+  .stage { width: 100%; max-width: var(--W); }
+
+  .fit {
+    position: relative;
+    width: 100%;
+    /* set by script: the scaled height */
+    height: var(--H);
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--W);
+    height: var(--H);
+    transform-origin: top left;
+    background: var(--paper);
+    border: 1px solid var(--rule-soft);
+    padding: 52px 84px 40px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    /* `auto` on the middle row, NOT 1fr: a row that can be shorter than its content is what let
+       the dense slides print on top of the footer. Content decides the height; the canvas has
+       room for it. */
+    grid-template-rows: auto auto;
+    align-content: start;
+  }
+
+  /* ---------- the claim ---------- */
+
+  .claim {
+    grid-column: 1;
+    grid-row: 1;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 26px;
+    /* The canvas gives 628px between the paddings, and the closing line is now 22px over up to
+       three lines. 480 leaves the densest slide (04) about 25px of air rather than 9. */
+    min-height: 480px;
+  }
+
+  /* Under the name now, so it is the subtitle rather than the headline — 48px, not 88. */
+  /* Cormorant defaults to old-style figures, where `0` is drawn at x-height as a small oval —
+     which renders "0G" as "oG". Force lining figures anywhere a digit can appear next to a
+     capital. (Same fix docs/deck/index.html carries; the two decks hit it independently.) */
+  h1, h2, .brand, .foot, p, .points dd { font-variant-numeric: lining-nums; font-feature-settings: "lnum" 1, "onum" 0; }
+
+  h1 { font-family: var(--display); font-weight: 400; font-size: 46px; line-height: 1.08; letter-spacing: -.01em; margin: 0; max-width: 26ch; color: var(--ink-soft); text-wrap: balance; }
+
+  /* Measures, not just sizes. The slide is one column now, so nothing stops a line running the
+     full 1112px — which no one reads comfortably. Every text element carries its own measure and
+     the leftover width is deliberate space rather than an accident. */
+  h2 { font-family: var(--display); font-weight: 500; font-size: 50px; line-height: 1.04; letter-spacing: -.012em; margin: 0; max-width: 21ch; text-wrap: balance; }
+
+  p { margin: 0; font-size: 22px; font-weight: 300; line-height: 1.5; color: var(--ink-soft); max-width: 58ch; }
+  p em { font-style: normal; font-weight: 400; color: var(--ink); }
+  p .gold { color: var(--gold); }
+
+  /* The name, as the title of the title slide. */
+  .brand {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 150px;
+    line-height: .86;
+    letter-spacing: .01em;
+    color: var(--ink);
+  }
+
+  /* ---------- the closing line ----------
+     These carry the honest qualifiers — "not prompt injection", "ProviderType: centralized",
+     "this rail buys autonomy, not privacy" — so they were never candidates for deletion when the
+     small print came off. They are set as ordinary muted text now rather than a hairline band:
+     same words, no longer a footnote. */
+  .foot {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0;
+    padding-top: 26px;
+    font-size: 22px;
+    font-weight: 300;
+    line-height: 1.5;
+    color: var(--ink-faint);
+    max-width: 66ch;
+  }
+
+  /* The verdict used to be printed here in alert red. It came off because the slide was giving
+     away the live moment: a judge who has already read "JobRejected" on the wall is not watching
+     the screen when the chain says it. A fixed verdict on a slide is also a claim about a run
+     that has not happened yet. The colour is left in the palette above, unused, deliberately —
+     nothing on this deck should be the red that means "the chain said no". */
+
+  /* ---------- lists ---------- */
+
+  .points { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .points > div { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 4px 24px; align-items: baseline; }
+  .points dt { font-family: var(--mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+  .points dd { margin: 0; font-size: 21px; font-weight: 300; line-height: 1.45; color: var(--ink-soft); max-width: 68ch; }
+  .points dd .m { font-family: var(--mono); font-size: .9em; color: var(--ink); overflow-wrap: anywhere; }
+
+
+  /* ---------- track switching ---------- */
+
+  .stage.track { display: none; }
+  html[data-track="0g"] .stage.track-0g,
+  html[data-track="graph"] .stage.track-graph,
+  html[data-track="hedera"] .stage.track-hedera { display: block; }
+
+  /* ---------- print: 16:9 pages, one slide each, no scaling ---------- */
+
+  @page { size: 1280px 720px; margin: 0; }
+
+  @media print {
+    .bar { display: none; }
+    body { background: #fff; }
+    .deck { padding: 0; gap: 0; display: block; }
+    .stage { max-width: none; width: var(--W); }
+    .fit { height: var(--H) !important; overflow: visible; }
+    .slide {
+      position: static;
+      transform: none !important;
+      border: 0;
+      break-after: page;
+      page-break-after: always;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .stage:last-of-type .slide { break-after: auto; page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="bar-label">Track slide</span>
+  <div class="bar-tracks">
+    <button type="button" data-set="0g" aria-pressed="true">0G</button>
+    <button type="button" data-set="graph" aria-pressed="false">The Graph</button>
+    <button type="button" data-set="hedera" aria-pressed="false">Hedera</button>
+  </div>
+  <span class="bar-hint">Ctrl/Cmd-P → Save as PDF · margins None · background graphics on</span>
+</div>
+
+<div class="deck">
+
+  <!-- 01 -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="claim">
+      <span class="brand">Mithra</span>
+      <h1>Two agents that never met, one job neither can lie about.</h1>
+    </div>
+    <p class="foot">The work stays private. The proof that it was <em>the work you ordered</em> goes on chain.</p>
+  </section></div></div>
+
+  <!-- 02 · PROBLEM -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="claim">
+      <h2>You can pay an agent and get an answer. Nothing proves it answered <em>your</em> question.</h2>
+      <p>
+        Not with your data, not to your brief. Today two strangers need an NDA or a platform in the
+        middle — someone who sees everything and vouches for both sides.
+      </p>
+    </div>
+    <p class="foot">Payment, private execution and reputation are each solved for agents. Nothing connects them.</p>
+  </section></div></div>
+
+  <!-- 03 · SOLUTION, live -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="claim">
+      <h2>One signed commitment, carried from the payment through the enclave to the chain.</h2>
+      <p>
+        Make the seller answer a different job and the contract refuses it, live.
+        <em>He did the work and gets nothing.</em>
+      </p>
+      <p class="gold">Intent-bound verification.</p>
+    </div>
+    <p class="foot">Catches task substitution and input tampering — not prompt injection, and we do not say otherwise.</p>
+  </section></div></div>
+
+  <!-- 04 · THREE SURFACES -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="claim">
+      <h2>Two guarantees. Neither is enough on its own.</h2>
+      <dl class="points">
+        <div>
+          <dt>What was said</dt>
+          <dd>Encrypted to the recipient. The seller's own server holds ciphertext it cannot read.</dd>
+        </div>
+        <div>
+          <dt>Who was paid</dt>
+          <dd>A fresh stealth address per job. The payout does not name the seller.</dd>
+        </div>
+        <div>
+          <dt>What was done</dt>
+          <dd>Inside a TEE. The infrastructure carrying the work cannot see it either.</dd>
+        </div>
+      </dl>
+    </div>
+    <p class="foot">
+      Verification alone lets you hire only someone you would already show your data to.
+      Confidentiality alone lets you pay only someone you already trust. Two strangers need both.
+    </p>
+  </section></div></div>
+
+  <!-- 05 · 0G -->
+  <div class="stage track track-0g"><div class="fit"><section class="slide">
+    <div class="claim">
+      <h2>0G proves the computation happened. We prove it was the right one.</h2>
+      <dl class="points">
+        <div>
+          <dt>Sealed</dt>
+          <dd>The model runs in a 0G Sealed Inference enclave. The party being paid never sees the brief.</dd>
+        </div>
+        <div>
+          <dt>Carried</dt>
+          <dd>The buyer's commitment goes into the prompt and comes back verbatim, so the TEE signature covers a body that <span class="m">contains</span> her intent. The seller cannot forge that.</dd>
+        </div>
+        <div>
+          <dt>Archived</dt>
+          <dd>Encrypted on 0G Storage. Anyone can fetch it by root hash; only the buyer can read it.</dd>
+        </div>
+      </dl>
+    </div>
+    <p class="foot">The pinned provider reports <span style="font-family:var(--mono)">ProviderType: centralized</span> — the TEE seal is real, the operator is one cloud. We say so.</p>
+  </section></div></div>
+
+  <!-- 05 · The Graph -->
+  <div class="stage track track-graph"><div class="fit"><section class="slide">
+    <div class="claim">
+      <h2>Reputation with no review button — and no way to write to it.</h2>
+      <dl class="points">
+        <div>
+          <dt>Discovery</dt>
+          <dd>The buyer is never given the seller's address. She queries by skill, ranked by deliveries a contract confirmed.</dd>
+        </div>
+        <div>
+          <dt>Unwritable</dt>
+          <dd>No review endpoint. Only a <span class="m">JobVerified</span> event from the Verifier can move the counter.</dd>
+        </div>
+        <div>
+          <dt>Visible</dt>
+          <dd>Rejected attempts sit on the same record — cheating stays visible where hiring happens.</dd>
+        </div>
+      </dl>
+    </div>
+    <p class="foot">Most agents in the index are strangers registering into the same public registry. It is not our sandbox.</p>
+  </section></div></div>
+
+  <!-- 05 · Hedera -->
+  <div class="stage track track-hedera"><div class="fit"><section class="slide">
+    <div class="claim">
+      <h2>The proof is the stage that is missing.</h2>
+      <dl class="points">
+        <div>
+          <dt>Authorised</dt>
+          <dd>x402 through the blocky402 facilitator. The buyer authorises — the money stays hers.</dd>
+        </div>
+        <div>
+          <dt>Then paid</dt>
+          <dd>The authorisation is submitted only after the contract emits <span class="m">JobVerified</span>.</dd>
+        </div>
+        <div>
+          <dt>On the topic</dt>
+          <dd>An honest run ends <span class="m">SETTLED</span>. A fraud run stops one stage earlier. The missing stage is the argument.</dd>
+        </div>
+      </dl>
+    </div>
+    <p class="foot">Every stage is a commitment, never content — the brief never touches Hedera. This rail buys autonomy, not privacy; the stealth recipient is on the Base run.</p>
+  </section></div></div>
+
+  <!-- The "what we do not claim" slide was cut for time. The refusals themselves were not: they
+       are spoken (docs/table-pitch.md keeps the 20-second beat) and several already sit in the
+       closing lines here — prompt injection on 03, ProviderType: centralized on the 0G slide,
+       "autonomy, not privacy" on the Hedera one. -->
+
+  <!-- 06 -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="claim">
+      <h2>Four networks. None of them duplicates another.</h2>
+      <p>
+        Drop one and something stops being checkable. Everything you saw is testnet, and every hash
+        on this deck opens on a public explorer without asking us for anything.
+      </p>
+    </div>
+    <p class="foot">Two strangers, one job, no platform in the middle — and the payment moves only after the proof does.</p>
+  </section></div></div>
+
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var W = 1280, H = 720;
+
+    root.setAttribute("data-track", "0g");
+
+    var buttons = document.querySelectorAll(".bar [data-set]");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener("click", function (e) {
+        var pick = e.currentTarget.getAttribute("data-set");
+        root.setAttribute("data-track", pick);
+        for (var j = 0; j < buttons.length; j++) {
+          buttons[j].setAttribute("aria-pressed", String(buttons[j].getAttribute("data-set") === pick));
+        }
+        fit();
+      });
+    }
+
+    /* Lay each slide out at its true size, then scale the whole thing. Nothing inside ever
+       reflows, so a slide that fits at 1280 fits at every window width. */
+    function fit() {
+      var stages = document.querySelectorAll(".stage");
+      for (var i = 0; i < stages.length; i++) {
+        var box = stages[i].querySelector(".fit");
+        var slide = stages[i].querySelector(".slide");
+        if (!box || !slide) continue;
+        var available = stages[i].clientWidth;
+        if (!available) continue;
+        var s = Math.min(1, available / W);
+        slide.style.transform = "scale(" + s + ")";
+        box.style.height = Math.round(H * s) + "px";
+      }
+    }
+
+    window.addEventListener("resize", fit);
+    window.addEventListener("beforeprint", function () {
+      var slides = document.querySelectorAll(".slide");
+      for (var i = 0; i < slides.length; i++) slides[i].style.transform = "none";
+    });
+    window.addEventListener("afterprint", fit);
+    fit();
+  })();
+</script>
+</body>
+</html>

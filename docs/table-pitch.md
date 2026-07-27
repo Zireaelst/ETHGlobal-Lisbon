@@ -96,8 +96,16 @@ Say it plainly if asked: the provider we pinned reports `ProviderType: centraliz
 
 Show: the discovery panel, then the query endpoint — offer to let them POST the query themselves.
 
-The strong detail: of the agents indexed, most are **not ours**. It is a shared public ERC-8004
-registry and strangers register into it while we watch. That is the proof it is not our sandbox.
+The strong detail, and give the numbers rather than the adjective: **31 agents indexed from 21
+distinct owners, 28 of them not ours**. It is a shared public ERC-8004 registry and strangers
+register into it while we watch. That is the proof it is not our sandbox.
+
+Say the next part *before* they notice it, because the panel in front of them lists two agents and
+a judge who spots that on their own will read the sentence above as a bluff: the panel filters by
+skill, and **only three registrants fill the skills field in** — the ERC-8004 metadata is optional
+and almost nobody sets it. "Twenty-eight strangers in the registry, two of them discoverable by
+skill" is the honest shape of it, and it is a better story anyway: the read layer is the thing
+making an under-populated registry usable.
 
 ### Hedera — Agentic Payments
 

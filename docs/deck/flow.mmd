@@ -1,0 +1,28 @@
+%%{init: {"theme":"base","themeVariables":{"background":"#f3efe6","primaryColor":"#f3efe6","secondaryColor":"#ece6da","tertiaryColor":"#ece6da","primaryTextColor":"#23201b","secondaryTextColor":"#23201b","tertiaryTextColor":"#23201b","primaryBorderColor":"#8c6824","secondaryBorderColor":"#cfc7b6","tertiaryBorderColor":"#cfc7b6","lineColor":"#5c554a","textColor":"#23201b","fontFamily":"Jost, Avenir Next, Segoe UI, system-ui, sans-serif","fontSize":"19px","edgeLabelBackground":"#f3efe6"},"flowchart":{"curve":"basis","nodeSpacing":34,"rankSpacing":58,"padding":10,"useMaxWidth":false}} }%%
+flowchart LR
+  G[("<b>The Graph</b><br/>find by skill")]
+  A["<b>Alice</b><br/>signs the intentHash"]
+  B["<b>Bob</b><br/>recomputes it → match"]
+  Z["<b>0G</b> Sealed Inference<br/>the prompt carries the hash"]
+  V{{"<b>Verifier.sol</b> · Base<br/>two signatures, one flag"}}
+  H["<b>Hedera</b> x402<br/>now it settles"]
+  X["<b>rejected</b><br/>no money moves"]
+  S[("<b>0G Storage</b>")]
+  T[/"<b>Hedera</b> HCS"/]
+  R[("<b>The Graph</b><br/>reputation")]
+
+  G -->|"1"| A
+  A -->|"2 · encrypted brief<br/>+ signed intent"| B
+  B -->|"3"| Z
+  Z -->|"4 · TEE-signed body"| B
+  B -->|"5"| V
+  V ==>|"JobVerified"| H
+  V -.->|"MatchFalse"| X
+  B -.->|"archive"| S
+  B -.->|"commitments"| T
+  V --> R
+
+  classDef bad fill:#f7eae8,stroke:#a03024,color:#a03024;
+  classDef ok fill:#eaf2ee,stroke:#2f6b4f,color:#23201b;
+  class X bad;
+  class H ok;

@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mithra — the pitch</title>
+
+<!--
+  The long deck: what it is → what was broken → how it is built, sponsor by sponsor.
+  Fifteen slides, in the order you speak them. Ends by handing over to the live demo.
+
+  RELATION TO THE OTHER TWO DECKS
+    table.html  — 7 slides, one per sponsor table, three minutes, printed.
+    index.html  — the finalist stage deck, dark, four minutes, animated.
+    pitch.html  — this one. For when you have fifteen minutes and someone actually wants the
+                  architecture: a sponsor mentor, a judging deep-dive, a technical follow-up.
+
+  SAME CANVAS AS table.html, and for the same reason: every slide is laid out at exactly
+  1280x720 in fixed pixels and then scaled as one piece. Type never reflows, so "does it fit"
+  is answered once, at authoring time, instead of at every window width.
+
+  PRINTING: @page matches the canvas, so the PDF is 16:9, one slide per page. Chrome: Cmd-P,
+  Save as PDF, Margins "None", tick "Background graphics".
+
+  NAVIGATION: arrows / space / PageUp-Down move one slide in presenter mode; press F to enter
+  it and Esc to leave. Without presenter mode the deck is one scrolling page, which is the
+  better shape for reading it over someone's shoulder.
+
+  EVERY NUMBER ON THE ARCHITECTURE SLIDES CAME OUT OF THE CODE, not out of the spec: the
+  preimages match contracts/src/Verifier.sol and packages/shared/src/sealsig.ts, the registry
+  counts were queried from the deployed subgraph, and the latency is fixtures/latency/P0-G.json.
+  If you change one of those, change it here too — a deck that has drifted from the repo is
+  worse than no deck, because you will quote it under pressure.
+-->
+
+<style>
+  /* --------------------------------------------------------------------------
+     The project's "open" theme, print-safe — identical to table.html so the three
+     decks read as one family. `--alert` is reserved for a rejected verdict and
+     appears on exactly two slides. `--ok` is reserved for a verified one.
+     -------------------------------------------------------------------------- */
+  :root {
+    --paper: #f3efe6;
+    --paper-edge: #e7e1d4;
+    --sunk: #ece6da;
+    --ink: #23201b;
+    --ink-soft: #5c554a;
+    /* Was #8d8478, which is 3.09:1 on the paper — under the 4.5:1 floor, and this is the colour
+       the footnotes and every mono label are set in. #6f675a is 4.86:1: still clearly the
+       quietest voice on the slide, but legible at 10px on a projector at the back of a room. */
+    --ink-faint: #6f675a;
+    --rule: #cfc7b6;
+    --rule-soft: #ded7c8;
+    --gold: #8c6824;
+    --gold-soft: #b9975b;
+    --alert: #a03024;
+    --ok: #2f6b4f;
+
+    --display: "Cormorant Garamond", Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --body: Jost, "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+    --W: 1280px;
+    --H: 720px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper-edge);
+    color: var(--ink);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- control bar (screen only) ---------- */
+
+  .bar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+    padding: 11px 22px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+  }
+  .bar-label { font-family: var(--mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-faint); }
+  .bar button {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    padding: 6px 13px; border: 1px solid var(--rule); border-radius: 1px;
+    background: transparent; color: var(--ink-soft); cursor: pointer;
+    transition: border-color .15s ease, color .15s ease, background-color .15s ease;
+  }
+  .bar button:hover { border-color: var(--gold); color: var(--ink); }
+  .bar button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .bar button[aria-pressed="true"] { border-color: var(--gold); background: var(--gold); color: var(--paper); }
+  .bar-hint { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--ink-faint); }
+
+  /* ---------- the scaling stage ---------- */
+
+  .deck { padding: 22px 16px 64px; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+  .stage { width: 100%; max-width: var(--W); }
+  .fit { position: relative; width: 100%; height: var(--H); overflow: hidden; }
+
+  .slide {
+    position: absolute; top: 0; left: 0;
+    width: var(--W); height: var(--H);
+    transform-origin: top left;
+    background: var(--paper);
+    border: 1px solid var(--rule-soft);
+    padding: 44px 60px 36px;
+    display: grid;
+    grid-template-columns: 176px minmax(0, 1fr);
+    /* `auto`, not 1fr — a row that can be shorter than its content is what prints on top of
+       the footer. Content decides the height; the canvas has room for it. */
+    grid-template-rows: auto auto auto;
+    align-content: start;
+    column-gap: 40px;
+  }
+
+  /* ---------- head ---------- */
+
+  .head {
+    grid-column: 1 / -1;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
+    padding-bottom: 9px; border-bottom: 1px solid var(--ink);
+    font-family: var(--mono); font-size: 10px; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .head .num { color: var(--gold); }
+  .head .part { color: var(--gold); letter-spacing: .2em; }
+
+  /* ---------- left margin column ---------- */
+
+  .margin {
+    grid-column: 1; grid-row: 2; margin: 0;
+    padding: 30px 22px 0 0;
+    display: flex; flex-direction: column; gap: 14px;
+    border-right: 1px solid var(--rule-soft);
+    /* 500 is the ceiling, not a preference: 44 pad + 25 head + 30 claim-pad + 500 + 12 + a
+       three-line foot (57) + 36 pad = 704 of the 720. Slide 10 has that three-line foot and is
+       the one that breaks first, so check it before raising this. */
+    min-height: 500px;
+  }
+  .note { display: flex; flex-direction: column; gap: 3px; }
+  .note dt { font-family: var(--mono); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); }
+  .note dd { margin: 0; font-family: var(--mono); font-size: 10.5px; line-height: 1.5; color: var(--ink-soft); overflow-wrap: anywhere; }
+
+  /* ---------- right column ---------- */
+
+  .claim {
+    grid-column: 2; grid-row: 2;
+    padding: 30px 0 0;
+    display: flex; flex-direction: column; justify-content: center; gap: 20px;
+    /* 500 is the ceiling, not a preference: 44 pad + 25 head + 30 claim-pad + 500 + 12 + a
+       three-line foot (57) + 36 pad = 704 of the 720. Slide 10 has that three-line foot and is
+       the one that breaks first, so check it before raising this. */
+    min-height: 500px;
+  }
+  .claim.tight { gap: 16px; justify-content: flex-start; }
+
+  /* The display serif uses old-style figures, so "0G" sets as "oG" — the sponsor's own name,
+     misspelt on the sponsor's own slide. `font-variant-numeric: lining-nums` does NOT fix it:
+     Cormorant Garamond is not installed anywhere we present from, the stack falls back to
+     Georgia, and Georgia exposes no `lnum` feature to switch to. So the fix cannot live in a
+     font property. Names that contain digits get set in the mono face instead — which this deck
+     already uses for every identifier, so it reads as deliberate rather than as a patch. */
+  h1, h2, h3, h4, .view h3, .sbox h4, .stop h4, .net h4, .sig h4, .nots li b {
+    font-variant-numeric: lining-nums;
+    font-feature-settings: "lnum" 1, "onum" 0;
+  }
+  .tok { font-family: var(--mono); font-size: .8em; letter-spacing: -.01em; font-weight: 400; }
+
+  h1 { font-family: var(--display); font-weight: 500; font-size: 84px; line-height: .95; letter-spacing: -.018em; margin: 0; text-wrap: balance; }
+  h2 { font-family: var(--display); font-weight: 500; font-size: 50px; line-height: 1.03; letter-spacing: -.012em; margin: 0; max-width: 23ch; text-wrap: balance; }
+  h2.sm { font-size: 40px; max-width: 27ch; }
+
+  p { margin: 0; font-size: 18px; font-weight: 400; line-height: 1.5; color: var(--ink-soft); max-width: 52ch; }
+  p.wide { max-width: 66ch; }
+  p em { font-style: normal; font-weight: 400; color: var(--ink); }
+  p .gold { color: var(--gold); }
+  .mark { font-family: var(--mono); font-size: 11px; letter-spacing: .32em; text-transform: uppercase; color: var(--gold); }
+
+  .foot {
+    grid-column: 2; grid-row: 3; margin: 0;
+    padding-top: 12px; border-top: 1px solid var(--rule-soft);
+    /* 400, not the deck's usual 300: hairline weight is what actually costs the footnote its
+       legibility at 13px, more than the colour did. */
+    font-size: 13px; font-weight: 400; line-height: 1.45; color: var(--ink-faint); max-width: 74ch;
+  }
+
+  .verdict { font-family: var(--mono); font-size: 46px; line-height: 1; letter-spacing: -.01em; color: var(--alert); }
+  .verdict-sub { font-family: var(--mono); font-size: 15px; color: var(--alert); }
+
+  /* ---------- definition lists ---------- */
+
+  .points { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .points > div { display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 4px 20px; align-items: baseline; }
+  .points dt { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+  .points dd { margin: 0; font-size: 16.5px; font-weight: 400; line-height: 1.42; color: var(--ink-soft); }
+  .points dd .m, .m { font-family: var(--mono); font-size: .9em; color: var(--ink); overflow-wrap: anywhere; }
+  .points.dense > div { grid-template-columns: 96px minmax(0, 1fr); }
+  .points.dense dd { font-size: 15px; line-height: 1.4; }
+
+  /* ---------- 03 · the two views ---------- */
+
+  .views { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--rule); }
+  .view { padding: 20px 22px; display: flex; flex-direction: column; gap: 11px; }
+  .view + .view { border-left: 1px solid var(--rule); background: var(--sunk); }
+  .view h3 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 24px; line-height: 1.05; }
+  .view .who { font-family: var(--mono); font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-faint); }
+  .row { display: flex; flex-direction: column; gap: 2px; }
+  .row dt { font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+  .row dd { margin: 0; font-size: 14px; font-weight: 400; line-height: 1.35; color: var(--ink-soft); }
+  .row dd.h { font-family: var(--mono); font-size: 12px; color: var(--ink); overflow-wrap: anywhere; }
+  .redact { display: inline-block; color: transparent; user-select: none; border-radius: 1px;
+    background: repeating-linear-gradient(90deg, var(--rule) 0 7px, var(--rule-soft) 7px 8px); }
+  .seal { margin-top: auto; padding-top: 11px; border-top: 1px solid var(--rule-soft);
+    font-family: var(--mono); font-size: 12px; color: var(--ok); }
+
+  /* ---------- 05 · three boxes, broken wires ---------- */
+
+  .solved { display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr; align-items: stretch; }
+  .sbox { border: 1px solid var(--rule); background: var(--paper); padding: 17px 18px;
+    display: flex; flex-direction: column; gap: 7px; justify-content: center; }
+  .sbox .tag { font-family: var(--mono); font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--ok); }
+  .sbox h4 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 27px; line-height: 1; }
+  .sbox p { font-size: 14px; line-height: 1.4; }
+  .wire { display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 22px; color: var(--alert); }
+
+  /* ---------- 07 · the journey ---------- */
+
+  .journey { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--rule); }
+  .stop { padding: 17px 18px; display: flex; flex-direction: column; gap: 7px; }
+  .stop + .stop { border-left: 1px solid var(--rule); }
+  .stop .n { font-family: var(--mono); font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+  .stop h4 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 22px; line-height: 1.05; }
+  .stop p { font-size: 13.5px; line-height: 1.4; }
+  .carrier { display: flex; align-items: center; gap: 12px; padding: 9px 14px;
+    border: 1px solid var(--gold); background: rgba(140,104,36,.06); }
+  .carrier .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); white-space: nowrap; }
+  .carrier .val { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+
+  /* ---------- 08 · the flow diagram ----------
+     This slide drops the margin column: the diagram is 1682 units wide and every 176px given
+     to the margin comes straight off its type size. Full bleed buys it ~15% more scale. */
+
+  .slide.wide { grid-template-columns: minmax(0, 1fr); }
+  .slide.wide .claim, .slide.wide .foot { grid-column: 1; }
+
+  /* The mermaid source lives beside this file at flow.mmd. The SVG is inlined rather than
+     loaded, so the deck still works with no network — which is the state a venue is usually in. */
+  .diagram { width: 100%; display: flex; justify-content: center; }
+  .diagram svg { width: 100%; height: auto; max-height: 340px; }
+
+  /* ---------- 08 · legacy flow blocks, still used by the caption row ---------- */
+
+  .flow { display: flex; flex-direction: column; gap: 9px; }
+  .lane { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; align-items: stretch; }
+  .lane .actor { font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--gold); display: flex; align-items: center; }
+  .lane .steps { display: flex; gap: 6px; }
+  .step { flex: 1; border: 1px solid var(--rule); background: var(--paper); padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .step .t { font-family: var(--mono); font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); }
+  .step .d { font-size: 12.5px; font-weight: 400; line-height: 1.3; color: var(--ink-soft); }
+  .step.on { border-color: var(--gold); background: rgba(140,104,36,.05); }
+  .step.bad { border-color: var(--alert); background: rgba(160,48,36,.05); }
+  .step.bad .d, .step.bad .t { color: var(--alert); }
+  .step.good { border-color: var(--ok); background: rgba(47,107,79,.05); }
+  .gate { border: 1px solid var(--ink); background: var(--sunk); padding: 9px 13px;
+    display: flex; align-items: baseline; gap: 13px; }
+  .gate .g { font-family: var(--mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
+  .gate .x { font-size: 13px; font-weight: 400; color: var(--ink-soft); line-height: 1.35; }
+
+  /* ---------- 09 · the four lanes ---------- */
+
+  .nets { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--rule); }
+  .net { padding: 16px 17px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .net + .net { border-left: 1px solid var(--rule); }
+  .net .role { font-family: var(--mono); font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+  .net h4 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 25px; line-height: 1; }
+  .net p { font-size: 13.5px; line-height: 1.4; }
+  .net .id { margin-top: auto; padding-top: 9px; border-top: 1px solid var(--rule-soft);
+    font-family: var(--mono); font-size: 10px; line-height: 1.45; color: var(--ink-faint); overflow-wrap: anywhere; }
+
+  /* ---------- 14 · the two signatures ---------- */
+
+  .sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .sig { border: 1px solid var(--rule); border-top: 2px solid var(--gold); padding: 15px 17px;
+    display: flex; flex-direction: column; gap: 9px; }
+  .sig .who { font-family: var(--mono); font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+  .sig h4 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 22px; line-height: 1.05; }
+  .sig p { font-size: 13px; line-height: 1.42; }
+  pre { margin: 0; font-family: var(--mono); font-size: 11.5px; line-height: 1.55; color: var(--ink);
+    background: var(--sunk); border-left: 2px solid var(--gold); padding: 9px 11px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  pre .c { color: var(--ink-faint); }
+  .sig.unattested { border-top-color: var(--alert); }
+  .sig.unattested .who { color: var(--alert); }
+
+  /* ---------- the refusals ---------- */
+
+  .nots { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 44px; }
+  .nots li { display: flex; flex-direction: column; gap: 4px; font-size: 15px; font-weight: 400;
+    line-height: 1.4; color: var(--ink-soft); padding-left: 15px; border-left: 2px solid var(--rule); }
+  .nots li b { font-weight: 500; font-size: 16px; color: var(--ink); line-height: 1.28; }
+
+  /* ---------- presenter mode ---------- */
+
+  html[data-mode="present"] body { background: #1a1713; overflow: hidden; }
+  html[data-mode="present"] .bar { display: none; }
+  html[data-mode="present"] .deck { padding: 0; gap: 0; height: 100vh; justify-content: center; }
+  html[data-mode="present"] .stage { display: none; max-width: none; }
+  html[data-mode="present"] .stage.here { display: block; }
+  html[data-mode="present"] .slide { border: 0; }
+
+  .counter { position: fixed; right: 18px; bottom: 14px; z-index: 30; display: none;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .1em; color: #8d8478; }
+  html[data-mode="present"] .counter { display: block; }
+
+  /* ---------- print ---------- */
+
+  @page { size: 1280px 720px; margin: 0; }
+
+  @media print {
+    .bar, .counter { display: none; }
+    body { background: #fff; }
+    .deck { padding: 0; gap: 0; display: block; height: auto; }
+    .stage, html[data-mode="present"] .stage { display: block; max-width: none; width: var(--W); }
+    .fit { height: var(--H) !important; overflow: visible; }
+    .slide {
+      position: static; transform: none !important; border: 0;
+      break-after: page; page-break-after: always;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .stage:last-of-type .slide { break-after: auto; page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="bar-label">Mithra · the pitch</span>
+  <button type="button" id="presentBtn" aria-pressed="false">Presenter mode · F</button>
+  <span class="bar-hint">15 slides · arrows to move · Cmd-P → Save as PDF, margins None, background graphics on</span>
+</div>
+
+<div class="deck" id="deck">
+
+  <!-- ============================ I · THE PROJECT ============================ -->
+
+  <!-- 01 · TITLE -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span>Confidential agents · ETHGlobal Lisbon 2026</span><span class="num">01</span></div>
+    <dl class="margin">
+      <div class="note"><dt>Networks</dt><dd>Base · 0G<br />Hedera · The Graph</dd></div>
+      <div class="note"><dt>Status</dt><dd>100% testnet<br />nothing mocked</dd></div>
+      <div class="note"><dt>Team</dt><dd>two people<br />TypeScript</dd></div>
+    </dl>
+    <div class="claim">
+      <span class="mark">Mithra</span>
+      <h1>Two agents that never met, one job neither can lie about.</h1>
+    </div>
+    <p class="foot">The work stays private. The proof that it was <em>the work you ordered</em> goes on chain.</p>
+  </section></div></div>
+
+  <!-- 02 · WHAT IT IS -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">I · The project</span><span>What it is</span><span class="num">02</span></div>
+    <dl class="margin">
+      <div class="note"><dt>Buyer</dt><dd>Alice<br />agentId 8431</dd></div>
+      <div class="note"><dt>Seller</dt><dd>Bob<br />agentId 8429</dd></div>
+      <div class="note"><dt>Job</dt><dd>confidential<br />market analysis</dd></div>
+      <div class="note"><dt>Elapsed</dt><dd>p50 21.0 s<br />p95 22.7 s · 5 runs</dd></div>
+    </dl>
+    <div class="claim">
+      <h2>One agent hires another, pays it, and gets work back &mdash; in the open, with nothing revealed.</h2>
+      <dl class="points">
+        <div><dt>Find</dt><dd>Alice needs an analysis. She has never heard of Bob and is never given his address &mdash; she finds him through a public registry, by skill.</dd></div>
+        <div><dt>Order</dt><dd>She signs her order, encrypts the brief and the data to his key, and authorises payment. <em>The money does not move.</em></dd></div>
+        <div><dt>Work</dt><dd>Bob runs the model inside a sealed enclave. Neither he nor the infrastructure carrying the job can read it.</dd></div>
+        <div><dt>Settle</dt><dd>A contract rules on whether the delivery matches the order. <em>Only then</em> does the payment go through.</dd></div>
+      </dl>
+    </div>
+    <p class="foot">A demo dApp, deliberately &mdash; not a marketplace. The thing worth having is the primitive underneath.</p>
+  </section></div></div>
+
+  <!-- 03 · TWO VIEWS -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">I · The project</span><span>One job, two views</span><span class="num">03</span></div>
+    <dl class="margin">
+      <div class="note"><dt>On chain</dt><dd>two 32-byte hashes<br />a price, a verdict</dd></div>
+      <div class="note"><dt>Never on chain</dt><dd>the brief<br />the data<br />the deliverable</dd></div>
+      <div class="note"><dt>Tested</dt><dd>captured traffic scanned for the plaintext — 0 hits, plain and hex</dd></div>
+    </dl>
+    <div class="claim tight">
+      <h2 class="sm">Here is everything the chain saw.</h2>
+      <div class="views">
+        <div class="view">
+          <div><span class="who">Alice &amp; Bob only</span><h3>What happened</h3></div>
+          <div class="row"><dt>Brief</dt><dd>Assess counterparty concentration in the Q3 exposure ledger. Flag any position above 4%.</dd></div>
+          <div class="row"><dt>Data</dt><dd>exposure-ledger-q3.csv · 1.2 MB · encrypted to Bob's key</dd></div>
+          <div class="row"><dt>Deliverable</dt><dd>Six-page analysis, produced inside a sealed enclave</dd></div>
+          <div class="seal">Job verified · Bob paid</div>
+        </div>
+        <div class="view">
+          <div><span class="who">Everyone else</span><h3>What the chain got</h3></div>
+          <div class="row"><dt>Brief</dt><dd><span class="redact">Assess counterparty concentration in the ledger.</span></dd></div>
+          <div class="row"><dt>Data</dt><dd><span class="redact">exposure-ledger-q3.csv · 1.2 MB</span></dd></div>
+          <div class="row"><dt>intentHash</dt><dd class="h">0xcc81e393…79fa</dd></div>
+          <div class="row"><dt>outputHash</dt><dd class="h">0xbd71b9ae…788a</dd></div>
+          <div class="seal">Job verified</div>
+        </div>
+      </div>
+    </div>
+    <p class="foot">Both columns are true at the same time. That combination is the product &mdash; a public verdict on work the public never sees.</p>
+  </section></div></div>
+
+  <!-- ============================ II · THE PROBLEM ============================ -->
+
+  <!-- 04 · THE NOTARY -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">II · The problem</span><span>The gap</span><span class="num">04</span></div>
+    <dl class="margin">
+      <div class="note"><dt>What a TEE says</dt><dd>a computation<br />happened in here</dd></div>
+      <div class="note"><dt>What it does not say</dt><dd>which computation<br />you ordered</dd></div>
+      <div class="note"><dt>Cost of cheating</dt><dd>negative — the<br />wrong job is the<br />cheaper job</dd></div>
+    </dl>
+    <div class="claim">
+      <h2>A seal that never looked at the document.</h2>
+      <p class="wide">
+        You pay a translator for a forty-page contract. A file comes back under a notary's seal:
+        <em>&ldquo;this document was produced in my office.&rdquo;</em> The seal is real. But the notary
+        never read what was translated &mdash; so if he seals some other document he already had,
+        <em>the seal still checks out.</em>
+      </p>
+      <p class="wide">
+        That is exactly where agents are. Run something cheaper, sign the output, and the signature
+        verifies. <span class="gold">The attestation is real. The job is wrong.</span>
+      </p>
+    </div>
+    <p class="foot">This is not a flaw in TEEs. A TEE is answering the question it was asked &mdash; nobody was asking the other one.</p>
+  </section></div></div>
+
+  <!-- 05 · THREE SOLVED, ONE MISSING -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">II · The problem</span><span>The state of the art</span><span class="num">05</span></div>
+    <dl class="margin">
+      <div class="note"><dt>Payment</dt><dd>x402 · shipped</dd></div>
+      <div class="note"><dt>Execution</dt><dd>TEEs · shipped</dd></div>
+      <div class="note"><dt>Reputation</dt><dd>ERC-8004 · shipped</dd></div>
+      <div class="note"><dt>The wire</dt><dd>nobody's</dd></div>
+    </dl>
+    <div class="claim tight">
+      <h2 class="sm">Three solved problems. One missing wire.</h2>
+      <div class="solved">
+        <div class="sbox">
+          <span class="tag">Solved</span><h4>Payment</h4>
+          <p>Agents pay each other per request, without us.</p>
+        </div>
+        <div class="wire">?</div>
+        <div class="sbox">
+          <span class="tag">Solved</span><h4>Execution</h4>
+          <p>A machine can sign <em>&ldquo;I ran this in here.&rdquo;</em></p>
+        </div>
+        <div class="wire">?</div>
+        <div class="sbox">
+          <span class="tag">Solved</span><h4>Reputation</h4>
+          <p>Agents have identities you can look up.</p>
+        </div>
+      </div>
+      <p class="wide">
+        We did not need a fourth payment rail or a better TEE. We needed the thing that makes the
+        payment, the execution and the score refer to <em>the same job</em>.
+      </p>
+    </div>
+    <p class="foot">Three good pieces sitting next to each other is not an economy. It is three good pieces.</p>
+  </section></div></div>
+
+  <!-- 06 · WHY NOW -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">II · The problem</span><span>Why it starts mattering now</span><span class="num">06</span></div>
+    <dl class="margin">
+      <div class="note"><dt>Today</dt><dd>a human opens<br />the deliverable</dd></div>
+      <div class="note"><dt>The premise</dt><dd>nobody opens<br />the deliverable</dd></div>
+      <div class="note"><dt>Result</dt><dd>substitution stops<br />being a risk and<br />starts being a<br />business model</dd></div>
+    </dl>
+    <div class="claim">
+      <h2>The premise of agent commerce is that nobody opens the file.</h2>
+      <dl class="points">
+        <div><dt>The reader</dt><dd>A human client re-reads the work and notices it is the wrong work. That reader was the entire quality-control layer &mdash; and the roadmap deletes them.</dd></div>
+        <div><dt>The incentive</dt><dd>Substituted work is <em>cheaper</em> work. You do not need malice; you need a margin.</dd></div>
+        <div><dt>The scale</dt><dd>Autonomous payment means autonomous fraud &mdash; at machine speed, without anyone deciding to commit it.</dd></div>
+        <div><dt>The laundry</dt><dd>Reputation anchored to <em>unverified</em> delivery turns bad work into a good score, so the layer meant to catch it makes it worse.</dd></div>
+      </dl>
+    </div>
+    <p class="foot">Everything above is true of a system where every individual component is working exactly as specified.</p>
+  </section></div></div>
+
+  <!-- ============================ III · THE IDEA ============================ -->
+
+  <!-- 07 · THE COMMITMENT -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">III · The idea</span><span>Intent-bound verification</span><span class="num">07</span></div>
+    <dl class="margin">
+      <div class="note"><dt>Built from</dt><dd>briefHash<br />dataHash<br />constraintsHash<br />price · nonce</dd></div>
+      <div class="note"><dt>Signed</dt><dd>EIP-712<br />by the buyer</dd></div>
+      <div class="note"><dt>Size</dt><dd>32 bytes</dd></div>
+    </dl>
+    <div class="claim tight">
+      <h2 class="sm">One signed commitment, carried all the way through.</h2>
+      <div class="carrier">
+        <span class="lbl">intentHash</span>
+        <span class="val">keccak256(briefHash, dataHash, constraintsHash, price, nonce)</span>
+      </div>
+      <div class="journey">
+        <div class="stop"><span class="n">01 · Sign</span><h4>Alice</h4><p>She hashes everything that defines the job and signs it. That hash is now the job's identity.</p></div>
+        <div class="stop"><span class="n">02 · Pay</span><h4><span class="tok">x402</span></h4><p>The same hash authorises the payment &mdash; the authorisation names the job, not just the amount.</p></div>
+        <div class="stop"><span class="n">03 · Run</span><h4><span class="tok">0G</span> enclave</h4><p>It goes in at the top of the prompt and comes back <em>inside</em> the body the TEE signs.</p></div>
+        <div class="stop"><span class="n">04 · Rule</span><h4>Verifier.sol</h4><p>The contract recovers it on chain before it will emit any verdict at all.</p></div>
+      </div>
+      <p class="wide">
+        So the guarantee is not <em>&ldquo;a TEE produced an output.&rdquo;</em> It is
+        <span class="gold">&ldquo;this TEE produced this output, for this order.&rdquo;</span>
+      </p>
+    </div>
+    <p class="foot">0G attests the compute. We attest the intent. One number is the whole idea &mdash; the rest of this deck is how it survives four networks.</p>
+  </section></div></div>
+
+  <!-- ============================ IV · ARCHITECTURE ============================ -->
+
+  <!-- 08 · THE FLOW -->
+  <div class="stage"><div class="fit"><section class="slide wide">
+    <div class="head"><span class="part">IV · Architecture</span><span>The whole flow</span><span class="num">08</span></div>
+    <div class="claim tight">
+      <h2 class="sm">One job, end to end.</h2>
+      <div class="diagram">
+<svg id="flow-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" height="430.35821533203125" viewBox="0 0 1682.46875 430.35821533203125" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#flow-svg{font-size:19px;fill:#23201b;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#flow-svg .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#flow-svg .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#flow-svg .error-icon{fill:#ece6da;}#flow-svg .error-text{fill:#23201b;stroke:#23201b;}#flow-svg .edge-thickness-normal{stroke-width:1px;}#flow-svg .edge-thickness-thick{stroke-width:3.5px;}#flow-svg .edge-pattern-solid{stroke-dasharray:0;}#flow-svg .edge-thickness-invisible{stroke-width:0;fill:none;}#flow-svg .edge-pattern-dashed{stroke-dasharray:3;}#flow-svg .edge-pattern-dotted{stroke-dasharray:2;}#flow-svg .marker{fill:#5c554a;stroke:#5c554a;}#flow-svg .marker.cross{stroke:#5c554a;}#flow-svg svg{font-size:19px;}#flow-svg p{margin:0;}#flow-svg .label{color:#23201b;}#flow-svg .cluster-label text{fill:#23201b;}#flow-svg .cluster-label span{color:#23201b;}#flow-svg .cluster-label span p{background-color:transparent;}#flow-svg .label text,#flow-svg span{fill:#23201b;color:#23201b;}#flow-svg .node rect,#flow-svg .node circle,#flow-svg .node ellipse,#flow-svg .node polygon,#flow-svg .node path{fill:#f3efe6;stroke:#8c6824;stroke-width:1px;}#flow-svg .rough-node .label text,#flow-svg .node .label text,#flow-svg .image-shape .label,#flow-svg .icon-shape .label{text-anchor:middle;}#flow-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#flow-svg .rough-node .label,#flow-svg .node .label,#flow-svg .image-shape .label,#flow-svg .icon-shape .label{text-align:center;}#flow-svg .node.clickable{cursor:pointer;}#flow-svg .root .anchor path{fill:#5c554a!important;stroke-width:0;stroke:#5c554a;}#flow-svg .arrowheadPath{fill:#0c1019;}#flow-svg .edgePath .path{stroke:#5c554a;stroke-width:1px;}#flow-svg .flowchart-link{stroke:#5c554a;fill:none;}#flow-svg .edgeLabel{background-color:#f3efe6;text-align:center;}#flow-svg .edgeLabel p{background-color:#f3efe6;}#flow-svg .edgeLabel rect{opacity:0.5;background-color:#f3efe6;fill:#f3efe6;}#flow-svg .labelBkg{background-color:rgba(243, 239, 230, 0.5);}#flow-svg .cluster rect{fill:#ece6da;stroke:#cfc7b6;stroke-width:1px;}#flow-svg .cluster text{fill:#23201b;}#flow-svg .cluster span{color:#23201b;}#flow-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-size:12px;background:#ece6da;border:1px solid #cfc7b6;border-radius:2px;pointer-events:none;z-index:100;}#flow-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#23201b;}#flow-svg rect.text{fill:none;stroke-width:0;}#flow-svg .icon-shape,#flow-svg .image-shape{background-color:#f3efe6;text-align:center;}#flow-svg .icon-shape p,#flow-svg .image-shape p{background-color:#f3efe6;padding:2px;}#flow-svg .icon-shape .label rect,#flow-svg .image-shape .label rect{opacity:0.5;background-color:#f3efe6;fill:#f3efe6;}#flow-svg .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#flow-svg .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#flow-svg .node .neo-node{stroke:#8c6824;}#flow-svg [data-look="neo"].node rect,#flow-svg [data-look="neo"].cluster rect,#flow-svg [data-look="neo"].node polygon{stroke:url(#flow-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#flow-svg [data-look="neo"].swimlane.cluster rect{filter:none;}#flow-svg [data-look="neo"].node path{stroke:url(#flow-svg-gradient);stroke-width:1px;}#flow-svg [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#flow-svg [data-look="neo"].node .neo-line path{stroke:#8c6824;filter:none;}#flow-svg [data-look="neo"].node circle{stroke:url(#flow-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#flow-svg [data-look="neo"].node circle .state-start{fill:#000000;}#flow-svg [data-look="neo"].icon-shape .icon{fill:url(#flow-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#flow-svg [data-look="neo"].icon-shape .icon-neo path{stroke:url(#flow-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#flow-svg :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}#flow-svg .bad&gt;*{fill:rgb(247, 234, 232)!important;stroke:rgb(160, 48, 36)!important;color:rgb(160, 48, 36)!important;}#flow-svg .bad span{fill:rgb(247, 234, 232)!important;stroke:rgb(160, 48, 36)!important;color:rgb(160, 48, 36)!important;}#flow-svg .bad tspan{fill:rgb(160, 48, 36)!important;}#flow-svg .ok&gt;*{fill:rgb(234, 242, 238)!important;stroke:rgb(47, 107, 79)!important;color:rgb(35, 32, 27)!important;}#flow-svg .ok span{fill:rgb(234, 242, 238)!important;stroke:rgb(47, 107, 79)!important;color:rgb(35, 32, 27)!important;}#flow-svg .ok tspan{fill:rgb(35, 32, 27)!important;}</style><g><marker id="my-svg_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-pointEnd-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="11.5" refY="7" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="14" orient="auto"><path d="M 0 0 L 11.5 7 L 0 14 z" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-pointStart-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="1" refY="7" markerUnits="userSpaceOnUse" markerWidth="11.5" markerHeight="14" orient="auto"><polygon points="0,7 11.5,14 11.5,0" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleEnd-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refY="5" refX="12.25" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleStart-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-2" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-crossEnd-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="17.7" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5;"/></marker><marker id="my-svg_flowchart-v2-crossStart-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="-3.5" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5; stroke-dasharray: 1, 0;"/></marker><g class="root"><g class="clusters"/><g class="edgePaths"><path d="M116.719,195.25L122.383,195.25C128.047,195.25,139.375,195.25,150.036,195.25C160.698,195.25,170.693,195.25,175.69,195.25L180.688,195.25" id="my-svg-L_G_A_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_G_A_0" data-points="W3sieCI6MTE2LjcxODc1LCJ5IjoxOTUuMjV9LHsieCI6MTUwLjcwMzEyNSwieSI6MTk1LjI1fSx7IngiOjE4NC42ODc1LCJ5IjoxOTUuMjV9XQ==" data-look="classic" marker-end="url(#flow-svg_flowchart-v2-pointEnd)"/><path d="M397.234,195.25L415.474,195.25C433.714,195.25,470.193,195.25,506.005,195.25C541.818,195.25,576.964,195.25,594.536,195.25L612.109,195.25" id="my-svg-L_A_B_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_A_B_0" data-points="W3sieCI6Mzk3LjIzNDM3NSwieSI6MTk1LjI1fSx7IngiOjUwNi42NzE4NzUsInkiOjE5NS4yNX0seyJ4Ijo2MTYuMTA5Mzc1LCJ5IjoxOTUuMjV9XQ==" data-look="classic" marker-end="url(#flow-svg_flowchart-v2-pointEnd)"/><path d="M813.339,142.5L839.205,124.833C865.07,107.167,916.801,71.833,962.219,56.132C1007.637,40.43,1046.743,44.36,1066.295,46.325L1085.848,48.29" id="my-svg-L_B_Z_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_B_Z_0" data-points="W3sieCI6ODEzLjMzOTMyMDg2NjE0MTcsInkiOjE0Mi41fSx7IngiOjk2OC41MzEyNSwieSI6MzYuNX0seyJ4IjoxMDg5LjgyODEyNSwieSI6NDguNjkwMTY3MDY1OTg0NTl9XQ==" data-look="classic" marker-end="url(#flow-svg_flowchart-v2-pointEnd)"/><path d="M1089.828,82.134L1069.612,85.737C1049.396,89.34,1008.964,96.545,970.631,107.28C932.298,118.014,896.065,132.279,877.948,139.411L859.831,146.543" id="my-svg-L_Z_B_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_Z_B_0" data-points="W3sieCI6MTA4OS44MjgxMjUsInkiOjgyLjEzNDQ0NjAyNzMyNjN9LHsieCI6OTY4LjUzMTI1LCJ5IjoxMDMuNzV9LHsieCI6ODU2LjEwOTM3NSwieSI6MTQ4LjAwODMxOTMyNzczMTF9XQ==" data-look="classic" marker-end="url(#flow-svg_flowchart-v2-pointEnd)"/><path d="M856.109,195.25L874.846,195.25C893.583,195.25,931.057,195.25,967.948,195.33C1004.839,195.411,1041.146,195.572,1059.3,195.652L1077.453,195.732" id="my-svg-L_B_V_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_B_V_0" data-points="W3sieCI6ODU2LjEwOTM3NSwieSI6MTk1LjI1fSx7IngiOjk2OC41MzEyNSwieSI6MTk1LjI1fSx7IngiOjEwODEuNDUzMTI1LCJ5IjoxOTUuNzV9XQ==" data-look="classic" marker-end="url(#flow-svg_flowchart-v2-pointEnd)"/><path d="M1298.962,148L1318.446,137.375C1337.93,126.75,1376.899,105.5,1410.705,94.875C1444.51,84.25,1473.154,84.25,1487.475,84.25L1501.797,84.25" id="my-svg-L_V_H_0" class="edge-thickness-thick edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_V_H_0" data-points="W3sieCI6MTI5OC45NjIwNDYwMzA0MDU0LCJ5IjoxNDh9LHsieCI6MTQxNS44NjcxODc1LCJ5Ijo4NC4yNX0seyJ4IjoxNTA1Ljc5Njg3NSwieSI6ODQuMjV9XQ==" data-look="classic" marker-end="url(#flow-svg_flowchart-v2-pointEnd)"/><path d="M1339.203,195.75L1351.98,195.667C1364.758,195.583,1390.313,195.417,1415.284,195.333C1440.255,195.25,1464.643,195.25,1476.837,195.25L1489.031,195.25" id="my-svg-L_V_X_0" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_V_X_0" data-points="W3sieCI6MTMzOS4yMDMxMjUsInkiOjE5NS43NX0seyJ4IjoxNDE1Ljg2NzE4NzUsInkiOjE5NS4yNX0seyJ4IjoxNDkzLjAzMTI1LCJ5IjoxOTUuMjV9XQ==" data-look="classic" marker-end="url(#flow-svg_flowchart-v2-pointEnd)"/><path d="M839.852,248L861.299,258.905C882.745,269.81,925.638,291.619,977.824,302.524C1030.01,313.429,1091.49,313.429,1122.229,313.429L1152.969,313.429" id="my-svg-L_B_S_0" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_B_S_0" data-points="W3sieCI6ODM5Ljg1MjM2NzY4NDAwODUsInkiOjI0OH0seyJ4Ijo5NjguNTMxMjUsInkiOjMxMy40MjkxMDM4NTEzMTgzNn0seyJ4IjoxMTU2Ljk2ODc1LCJ5IjozMTMuNDI5MTAzODUxMzE4MzZ9XQ==" data-look="classic" marker-end="url(#flow-svg_flowchart-v2-pointEnd)"/><path d="M795.093,248L823.999,273.851C852.906,299.703,910.719,351.405,968.305,377.338C1025.891,403.271,1083.25,403.434,1111.93,403.515L1140.609,403.597" id="my-svg-L_B_T_0" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_B_T_0" data-points="W3sieCI6Nzk1LjA5MzExMjIzOTcxMjksInkiOjI0OH0seyJ4Ijo5NjguNTMxMjUsInkiOjQwMy4xMDgyMDc3MDI2MzY3fSx7IngiOjExNDQuNjA5Mzc1LCJ5Ijo0MDMuNjA4MjA3NzAyNjM2N31d" data-look="classic" marker-end="url(#flow-svg_flowchart-v2-pointEnd)"/><path d="M1290.397,243.5L1311.308,255.937C1332.22,268.375,1374.044,293.25,1413.747,305.687C1453.451,318.124,1491.034,318.124,1509.826,318.124L1528.617,318.124" id="my-svg-L_V_R_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_V_R_0" data-points="W3sieCI6MTI5MC4zOTY2MjE4Mjg1MTQ4LCJ5IjoyNDMuNX0seyJ4IjoxNDE1Ljg2NzE4NzUsInkiOjMxOC4xMjQzNTkxMzA4NTk0fSx7IngiOjE1MzIuNjE3MTg3NSwieSI6MzE4LjEyNDM1OTEzMDg1OTR9XQ==" data-look="classic" marker-end="url(#flow-svg_flowchart-v2-pointEnd)"/></g><g class="edgeLabels"><g class="edgeLabel" transform="translate(150.703125, 195.25)"><g class="label" data-id="L_G_A_0" transform="translate(-4.984375, -14.25)"><foreignObject width="9.96875" height="28.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>1</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(506.671875, 195.25)"><g class="label" data-id="L_A_B_0" transform="translate(-80.4375, -28.5)"><foreignObject width="160.875" height="57"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>2 · encrypted brief<br />+ signed intent</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(941.2688, 55.12094)"><g class="label" data-id="L_B_Z_0" transform="translate(-4.984375, -14.25)"><foreignObject width="9.96875" height="28.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>3</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(968.53125, 103.75)"><g class="label" data-id="L_Z_B_0" transform="translate(-83.421875, -14.25)"><foreignObject width="166.84375" height="28.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>4 · TEE-signed body</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(968.53125, 195.25)"><g class="label" data-id="L_B_V_0" transform="translate(-4.984375, -14.25)"><foreignObject width="9.96875" height="28.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>5</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(1415.8671875, 84.25)"><g class="label" data-id="L_V_H_0" transform="translate(-48.1640625, -14.25)"><foreignObject width="96.328125" height="28.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>JobVerified</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(1415.8671875, 195.25)"><g class="label" data-id="L_V_X_0" transform="translate(-47.203125, -14.25)"><foreignObject width="94.40625" height="28.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>MatchFalse</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(968.53125, 313.42910385131836)"><g class="label" data-id="L_B_S_0" transform="translate(-31.125, -14.25)"><foreignObject width="62.25" height="28.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>archive</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(968.53125, 403.1082077026367)"><g class="label" data-id="L_B_T_0" transform="translate(-57.921875, -14.25)"><foreignObject width="115.84375" height="28.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>commitments</p></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="L_V_R_0" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default" id="my-svg-flowchart-G-0" data-look="classic" transform="translate(62.359375, 195.25)"><path d="M0,11.629228506484825 a54.359375,11.629228506484825 0,0,0 108.71875,0 a54.359375,11.629228506484825 0,0,0 -108.71875,0 l0,78.62922850648482 a54.359375,11.629228506484825 0,0,0 108.71875,0 l0,-78.62922850648482" class="basic label-container outer-path" style="" transform="translate(-54.359375, -50.94384275972723)"/><g class="label" style="" transform="translate(-49.359375, -21.833333333333332)"><rect/><foreignObject width="98.71875" height="57"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p><b>The Graph</b><br />find by skill</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-A-1" data-look="classic" transform="translate(290.9609375, 195.25)"><rect class="basic label-container" style="" x="-106.2734375" y="-38.5" width="212.546875" height="77"/><g class="label" style="" transform="translate(-86.2734375, -28.5)"><rect/><foreignObject width="172.546875" height="57"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p><b>Alice</b><br />signs the intentHash</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-B-2" data-look="classic" transform="translate(736.109375, 195.25)"><rect class="basic label-container" style="" x="-120" y="-52.75" width="240" height="105.5"/><g class="label" style="" transform="translate(-100, -42.75)"><rect/><foreignObject width="200" height="85.5"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel"><p><b>Bob</b><br />recomputes it → match</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-Z-3" data-look="classic" transform="translate(1209.828125, 60.75)"><rect class="basic label-container" style="" x="-120" y="-52.75" width="240" height="105.5"/><g class="label" style="" transform="translate(-100, -42.75)"><rect/><foreignObject width="200" height="85.5"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel"><p><b>0G</b> Sealed Inference<br />the prompt carries the hash</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-V-4" data-look="classic" transform="translate(1209.828125, 195.25)"><polygon points="23.875,0 233.875,0 257.75,-47.75 233.875,-95.5 23.875,-95.5 0,-47.75" class="label-container" transform="translate(-128.875,47.75)"/><g class="label" style="" transform="translate(-100, -42.75)"><rect/><foreignObject width="200" height="85.5"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel"><p><b>Verifier.sol</b> · Base<br />two signatures, one flag</p></span></div></foreignObject></g></g><g class="node default ok" id="my-svg-flowchart-H-5" data-look="classic" transform="translate(1583.75, 84.25)"><rect class="basic label-container" style="fill:#eaf2ee !important;stroke:#2f6b4f !important" x="-77.953125" y="-38.5" width="155.90625" height="77"/><g class="label" style="color:#23201b !important" transform="translate(-57.953125, -28.5)"><rect/><foreignObject width="115.90625" height="57"><div style="color: rgb(35, 32, 27) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#23201b !important" class="nodeLabel"><p><b>Hedera</b> x402<br />now it settles</p></span></div></foreignObject></g></g><g class="node default bad" id="my-svg-flowchart-X-6" data-look="classic" transform="translate(1583.75, 195.25)"><rect class="basic label-container" style="fill:#f7eae8 !important;stroke:#a03024 !important" x="-90.71875" y="-38.5" width="181.4375" height="77"/><g class="label" style="color:#a03024 !important" transform="translate(-70.71875, -28.5)"><rect/><foreignObject width="141.4375" height="57"><div style="color: rgb(160, 48, 36) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;" xmlns="http://www.w3.org/1999/xhtml"><span style="color:#a03024 !important" class="nodeLabel"><p><b>rejected</b><br />no money moves</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-S-7" data-look="classic" transform="translate(1209.828125, 313.42910385131836)"><path d="M0,11.455370445618312 a52.859375,11.455370445618312 0,0,0 105.71875,0 a52.859375,11.455370445618312 0,0,0 -105.71875,0 l0,49.955370445618314 a52.859375,11.455370445618312 0,0,0 105.71875,0 l0,-49.955370445618314" class="basic label-container outer-path" style="" transform="translate(-52.859375, -36.43305566842747)"/><g class="label" style="" transform="translate(-47.859375, -7.583333333333333)"><rect/><foreignObject width="95.71875" height="28.5"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p><b>0G Storage</b></p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-T-8" data-look="classic" transform="translate(1209.828125, 403.1082077026367)"><polygon points="-19.25,0 112.1875,0 131.4375,-38.5 0,-38.5" class="label-container" transform="translate(-56.09375,19.25)"/><g class="label" style="" transform="translate(-51.09375, -14.25)"><rect/><foreignObject width="102.1875" height="28.5"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p><b>Hedera</b> HCS</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-R-9" data-look="classic" transform="translate(1583.75, 318.1243591308594)"><path d="M0,11.249570299071847 a51.1328125,11.249570299071847 0,0,0 102.265625,0 a51.1328125,11.249570299071847 0,0,0 -102.265625,0 l0,78.24957029907185 a51.1328125,11.249570299071847 0,0,0 102.265625,0 l0,-78.24957029907185" class="basic label-container outer-path" style="" transform="translate(-51.1328125, -50.37435544860777)"/><g class="label" style="" transform="translate(-46.1328125, -21.833333333333332)"><rect/><foreignObject width="92.265625" height="57"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p><b>The Graph</b><br />reputation</p></span></div></foreignObject></g></g></g></g></g><defs><filter id="my-svg-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="my-svg-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><linearGradient id="my-svg-gradient" gradientUnits="objectBoundingBox" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#8c6824" stop-opacity="1"/><stop offset="100%" stop-color="#cfc7b6" stop-opacity="1"/></linearGradient></svg>
+      </div>
+      <div class="gate">
+        <span class="g">The gate · Base</span>
+        <span class="x">Verifier.sol rebuilds the signed body <em>from the struct fields</em> &mdash; no JSON parsing, no trusting what Bob claims he signed &mdash; recovers both signatures, and requires <span class="m">match == true</span>. Pass emits <span class="m">JobVerified</span>; fail emits <span class="m">JobRejected(code)</span> and the settlement guard re-reads that receipt, so the authorisation is never submitted.</span>
+      </div>
+    </div>
+    <p class="foot">The buyer never trusts the seller's arithmetic and the contract never trusts the seller's JSON. Both recompute from primary inputs.</p>
+  </section></div></div>
+
+  <!-- 09 · FOUR NETWORKS -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">IV · Architecture</span><span>Division of labour</span><span class="num">09</span></div>
+    <dl class="margin">
+      <div class="note"><dt>The test</dt><dd>drop one — what<br />stops being<br />checkable?</dd></div>
+      <div class="note"><dt>Answer</dt><dd>Base: the verdict<br />0G: the work<br />Graph: the search<br />Hedera: the order<br />of events</dd></div>
+    </dl>
+    <div class="claim tight">
+      <h2 class="sm">One job, four networks, zero overlap.</h2>
+      <div class="nets">
+        <div class="net">
+          <span class="role">The compute</span><h4><span class="tok">0G</span></h4>
+          <p>Runs the model where nobody can watch, and signs what came out. Archives the deliverable, encrypted.</p>
+          <span class="id">Galileo · chainId 16602<br />qwen2.5-omni-7b · TeeML</span>
+        </div>
+        <div class="net">
+          <span class="role">The verdict</span><h4>Base</h4>
+          <p>The only place a job becomes true or false. Two signatures recovered, one flag required.</p>
+          <span class="id">Sepolia<br />0x3B116D64…AFEEb96</span>
+        </div>
+        <div class="net">
+          <span class="role">The read layer</span><h4>The Graph</h4>
+          <p>How a buyer finds a stranger and ranks him &mdash; and the only surface reputation is readable from.</p>
+          <span class="id">confidential-agents<br />ERC-8004 + JobVerified</span>
+        </div>
+        <div class="net">
+          <span class="role">Money &amp; time</span><h4>Hedera</h4>
+          <p>x402 settlement, and an ordered record of the job's stages on a ledger we cannot edit.</p>
+          <span class="id">topic 0.0.9738448<br />blocky402 facilitator</span>
+        </div>
+      </div>
+    </div>
+    <p class="foot">Four chains is a smell, so here is the test we hold ourselves to: remove any one and name what stops being verifiable. Every one of them has an answer.</p>
+  </section></div></div>
+
+  <!-- 10 · 0G -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">IV · Architecture</span><span>0G · where and how</span><span class="num">10</span></div>
+    <dl class="margin">
+      <div class="note"><dt>SDK</dt><dd>@0gfoundation<br />/0g-compute-ts-sdk</dd></div>
+      <div class="note"><dt>Provider</dt><dd>0xa48f0128…62E67836<br />TeeML, acknowledged</dd></div>
+      <div class="note"><dt>Model</dt><dd>qwen/qwen2.5<br />-omni-7b</dd></div>
+      <div class="note"><dt>Archive</dt><dd>0G Storage<br />AES-256-GCM</dd></div>
+      <div class="note"><dt>Gate</dt><dd>pnpm gate:P0-B<br />pnpm gate:P3-B</dd></div>
+    </dl>
+    <div class="claim tight">
+      <h2 class="sm"><span class="tok">0G</span> proves the computation happened. We make it prove which one.</h2>
+      <dl class="points dense">
+        <div><dt>Sealed</dt><dd>The model runs in a <em>Sealed Inference</em> enclave via the broker: pin a TeeML provider, fetch request headers, POST <span class="m">/chat/completions</span>, verify with <span class="m">processResponse</span>. The party being paid never sees the brief.</dd></div>
+        <div><dt>Verified</dt><dd>We check the TEE signature ourselves, and we require <span class="m">teeSignerAcknowledged</span> &mdash; without it the signer address is the provider's own claim and nobody has vouched for it. The <span class="m">chatID</span> comes from the <span class="m">ZG-Res-Key</span> header, not the completion id.</dd></div>
+        <div><dt>Carried</dt><dd>The buyer's commitment is written to the top of the prompt and the model copies it back <em>verbatim</em>, so the signature 0G's hardware produces covers a body that <em>contains</em> her intent. Measured 5/5. Bob cannot manufacture that on his own machine.</dd></div>
+        <div><dt>Archived</dt><dd>The deliverable goes to 0G Storage encrypted client-side. Anyone can fetch it by root hash; only the buyer holds the key.</dd></div>
+      </dl>
+    </div>
+    <p class="foot">Two things we say out loud: the signature covers the body's <em>fingerprint</em>, not its text &mdash; so we hash the raw response bytes, never a re-serialised copy. And the pinned provider reports <span class="m">ProviderType: centralized · aliyun</span>: the seal is real, the operator is one cloud.</p>
+  </section></div></div>
+
+  <!-- 11 · THE GRAPH -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">IV · Architecture</span><span>The Graph · where and how</span><span class="num">11</span></div>
+    <dl class="margin">
+      <div class="note"><dt>Registry</dt><dd>0x8004A818…A494BD9e<br />ERC-8004, public</dd></div>
+      <div class="note"><dt>Indexed</dt><dd>31 agents<br />21 distinct owners<br />28 not ours</dd></div>
+      <div class="note"><dt>Seller record</dt><dd>agentId 8429<br />121 verified<br />74 rejected</dd></div>
+      <div class="note"><dt>Try it</dt><dd>POST the query<br />yourself</dd></div>
+    </dl>
+    <div class="claim tight">
+      <h2 class="sm">Reputation with no review button &mdash; and no way to write to it.</h2>
+      <dl class="points dense">
+        <div><dt>Two sources</dt><dd>One subgraph indexes both the public ERC-8004 registry (<em>who exists, what skills, which endpoint, which pubkey</em>) and our own <span class="m">JobVerified</span> / <span class="m">JobRejected</span> events (<em>what actually happened</em>). Joining those two is what makes discovery mean something.</dd></div>
+        <div><dt>Discovery</dt><dd>Alice queries <span class="m">where: { skills_contains: [skill] }</span> and ranks by verified deliveries. She is never handed an address &mdash; the read layer is how she learns Bob exists at all.</dd></div>
+        <div><dt>Unwritable</dt><dd>There is no review endpoint and no self-report. The <em>only</em> thing that increments the counter is a contract event. You cannot buy the score; you can only earn it.</dd></div>
+        <div><dt>Visible</dt><dd>Rejected attempts sit on the same record as the successes, so a cheat stays visible exactly where the next hiring decision is made.</dd></div>
+      </dl>
+    </div>
+    <p class="foot">Say the shape of it before anyone catches it: 28 of the 31 indexed agents are strangers &mdash; but only three registrants fill the optional skills field in, so a skill query returns a short list. The read layer is what makes a sparse public registry usable at all.</p>
+  </section></div></div>
+
+  <!-- 12 · HEDERA -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">IV · Architecture</span><span>Hedera · where and how</span><span class="num">12</span></div>
+    <dl class="margin">
+      <div class="note"><dt>Scheme</dt><dd>@x402/hedera<br />exact</dd></div>
+      <div class="note"><dt>Facilitator</dt><dd>api.testnet<br />.blocky402.com</dd></div>
+      <div class="note"><dt>Fee payer</dt><dd>0.0.7162784</dd></div>
+      <div class="note"><dt>Topic</dt><dd>0.0.9738448<br />HashScan</dd></div>
+      <div class="note"><dt>Key custody</dt><dd>signer/ package<br />never in agent<br />or LLM context</dd></div>
+    </dl>
+    <div class="claim tight">
+      <h2 class="sm">The proof is the stage that is missing.</h2>
+      <dl class="points dense">
+        <div><dt>Authorised</dt><dd>Bob's endpoint answers <span class="m">402</span> with a price and does <em>no work</em>. Alice signs an x402 authorisation through the blocky402 facilitator &mdash; and the money stays hers.</dd></div>
+        <div><dt>Then paid</dt><dd>The verify/settle split is the whole point: Bob submits the authorisation only <em>after</em> the contract emits <span class="m">JobVerified</span>, and the settlement guard re-reads that receipt before releasing anything.</dd></div>
+        <div><dt>On the topic</dt><dd>Every stage is committed to a Consensus Service topic. An honest run ends <span class="m">… → OUTPUT_COMMIT → SETTLED</span>. A fraud run stops at <span class="m">OUTPUT_COMMIT</span>. The absent stage is the argument, timestamped on a ledger that is not ours to edit.</dd></div>
+        <div><dt>Delegated</dt><dd>The payment key lives behind a signer boundary. The agent &mdash; and the model driving it &mdash; is never given it. That boundary is tested, not just documented.</dd></div>
+      </dl>
+    </div>
+    <p class="foot">Unprompted, because it is the honest half: every message is a commitment, never content &mdash; the brief never touches Hedera. This rail buys <em>autonomy and an ordered public record</em>, not privacy. The unlinkable recipient is on the Base run.</p>
+  </section></div></div>
+
+  <!-- 13 · BASE -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">IV · Architecture</span><span>Base · where and how</span><span class="num">13</span></div>
+    <dl class="margin">
+      <div class="note"><dt>Verifier</dt><dd>0x3B116D64…AFEEb96<br />Base Sepolia</dd></div>
+      <div class="note"><dt>Codes</dt><dd>Expired<br />AlreadyVerified<br />BadClientSig<br />BadEnclaveSig<br />MatchFalse</dd></div>
+      <div class="note"><dt>Entry points</dt><dd>verifyJob · reverts<br />verifyJobLenient<br />previewJob · view</dd></div>
+      <div class="note"><dt>Stealth</dt><dd>ERC-5564<br />on the Base run</dd></div>
+    </dl>
+    <div class="claim tight">
+      <h2 class="sm">The one place a job becomes true or false.</h2>
+      <dl class="points dense">
+        <div><dt>Rebuilt</dt><dd>The contract reconstructs the signed body as <span class="m">abi.encode(intentHash, outputHash, match, ogSigHash)</span> <em>from the struct fields</em>. It never parses Bob's JSON and never trusts an intent + signature pair he supplies.</dd></div>
+        <div><dt>Two recoveries</dt><dd>Bob's binding signature must recover to the registered signer for that agentId; Alice's EIP-712 signature must recover to <span class="m">intent.client</span>, and that client must be registered. Either failure is its own code.</dd></div>
+        <div><dt>One flag</dt><dd>Then, and only then, <span class="m">require(match)</span>. Replay is blocked by a <span class="m">verified[intentHash]</span> map and staleness by a deadline.</dd></div>
+        <div><dt>Two doors</dt><dd><span class="m">verifyJob</span> reverts and is what settlement calls. <span class="m">verifyJobLenient</span> emits the rejection code instead of reverting &mdash; that is the fraud button, so a refusal is a permanent public event rather than a failed transaction nobody can read.</dd></div>
+      </dl>
+    </div>
+    <p class="foot">On the Base run the payout also lands on a fresh ERC-5564 stealth address, derived per job: it does not name the seller, and two of his jobs cannot be linked by their payouts.</p>
+  </section></div></div>
+
+  <!-- 14 · THE SIGNATURES -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span class="part">IV · Architecture</span><span>The two signatures, exactly</span><span class="num">14</span></div>
+    <dl class="margin">
+      <div class="note"><dt>Both</dt><dd>secp256k1<br />ecrecover-compatible</dd></div>
+      <div class="note"><dt>Trap 1</dt><dd>one is EIP-191<br />prefixed, one is not</dd></div>
+      <div class="note"><dt>Trap 2</dt><dd>sha256 and keccak256<br />back to back</dd></div>
+      <div class="note"><dt>Trap 3</dt><dd>the wrapper discards<br />v — brute-force it<br />off chain, pass it in</dd></div>
+    </dl>
+    <div class="claim tight">
+      <h2 class="sm">Two signatures, and neither one is where you would guess.</h2>
+      <div class="sigs">
+        <div class="sig">
+          <span class="who">0G · attested hardware</span>
+          <h4>Proves a genuine enclave produced the body</h4>
+<pre><span class="c">// EIP-191 personal_sign, NOT over the answer text</span>
+"&lt;h1&gt;:&lt;sha256(raw body)&gt;
+     :&lt;ProviderType&gt;:&lt;ProviderIdentity&gt;:&lt;h3&gt;"</pre>
+          <p>The answer is covered as the <em>fingerprint of the body containing it</em> &mdash; so a one-byte change drops out of the tuple. Hash the raw response bytes; a JSON round-trip breaks silently the day the provider reorders a field.</p>
+        </div>
+        <div class="sig unattested">
+          <span class="who">Bob's binding · unattested host</span>
+          <h4>Proves his code checked match and bound intent to output</h4>
+<pre><span class="c">// keccak256 of a pipe-joined string, NO prefix</span>
+"agentId|sealId|timestamp|hex(sha256(body))"
+body = abi.encode(intentHash, outputHash,
+                  match, ogSigHash)</pre>
+          <p>The signer is an ephemeral seal key registered per run, never Bob's agentId. <em>This one is honest but not attested</em> &mdash; see slide 15.</p>
+        </div>
+      </div>
+    </div>
+    <p class="foot">Every crypto boundary here has its own unit test, because all three traps above fail silently: a wrong prefix, a swapped hash primitive or a dropped recovery byte all produce a valid-looking address that simply is not the right one.</p>
+  </section></div></div>
+
+  <!-- 15 · HANDOVER -->
+  <div class="stage"><div class="fit"><section class="slide">
+    <div class="head"><span>Now the demo</span><span class="num">15</span></div>
+    <dl class="margin">
+      <div class="note"><dt>Watch for</dt><dd>the observer panel<br />stays hashes only</dd></div>
+      <div class="note"><dt>Then</dt><dd>the money does not<br />move until the<br />verdict lands</dd></div>
+      <div class="note"><dt>Then</dt><dd>I make the seller<br />cheat</dd></div>
+    </dl>
+    <div class="claim">
+      <h2>Everything you just heard is testnet, and none of it is mocked.</h2>
+      <p class="wide">
+        Every hash on these slides opens on a public explorer without asking us for anything. So
+        rather than describe it any further &mdash; <em>let me run one job in front of you, and then
+        let me break it.</em>
+      </p>
+      <div class="verdict">JobRejected · MatchFalse</div>
+      <div class="verdict-sub">payment not settled — the job was not verified</div>
+    </div>
+    <p class="foot">One write-up per track in the repo, each pointing at the exact file, address or gate you can run yourself.</p>
+  </section></div></div>
+
+</div>
+
+<div class="counter" id="counter"></div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var W = 1280, H = 720;
+    var stages = Array.prototype.slice.call(document.querySelectorAll(".stage"));
+    var counter = document.getElementById("counter");
+    var btn = document.getElementById("presentBtn");
+    var here = 0;
+
+    /* Lay each slide out at its true size, then scale the whole thing. Nothing inside ever
+       reflows, so a slide that fits at 1280 fits at every window width. In presenter mode the
+       height is the constraint too, so scale by whichever runs out first. */
+    function fit() {
+      var present = root.getAttribute("data-mode") === "present";
+      for (var i = 0; i < stages.length; i++) {
+        var box = stages[i].querySelector(".fit");
+        var slide = stages[i].querySelector(".slide");
+        if (!box || !slide) continue;
+        var available = present ? window.innerWidth : stages[i].clientWidth;
+        if (!available) continue;
+        var s = Math.min(1, available / W);
+        if (present) s = Math.min(s, window.innerHeight / H);
+        slide.style.transform = "scale(" + s + ")";
+        box.style.height = Math.round(H * s) + "px";
+        if (present) box.style.width = Math.round(W * s) + "px";
+        else box.style.width = "";
+      }
+    }
+
+    function show(n) {
+      here = Math.max(0, Math.min(stages.length - 1, n));
+      for (var i = 0; i < stages.length; i++) stages[i].classList.toggle("here", i === here);
+      counter.textContent = (here + 1) + " / " + stages.length;
+      fit();
+    }
+
+    function present(on) {
+      root.setAttribute("data-mode", on ? "present" : "read");
+      btn.setAttribute("aria-pressed", String(on));
+      if (on) show(here);
+      else {
+        for (var i = 0; i < stages.length; i++) stages[i].classList.remove("here");
+        fit();
+        stages[here].scrollIntoView({ block: "start" });
+      }
+    }
+
+    btn.addEventListener("click", function () {
+      present(root.getAttribute("data-mode") !== "present");
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      var on = root.getAttribute("data-mode") === "present";
+      if (e.key === "f" || e.key === "F") { present(!on); return; }
+      if (e.key === "Escape" && on) { present(false); return; }
+      if (!on) return;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " " || e.key === "PageDown") {
+        e.preventDefault(); show(here + 1);
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") {
+        e.preventDefault(); show(here - 1);
+      } else if (e.key === "Home") { e.preventDefault(); show(0); }
+      else if (e.key === "End") { e.preventDefault(); show(stages.length - 1); }
+    });
+
+    window.addEventListener("resize", fit);
+    /* Print has to see every slide unscaled, whatever mode the screen was in. */
+    window.addEventListener("beforeprint", function () {
+      var slides = document.querySelectorAll(".slide");
+      for (var i = 0; i < slides.length; i++) slides[i].style.transform = "none";
+    });
+    window.addEventListener("afterprint", fit);
+
+    root.setAttribute("data-mode", "read");
+    counter.textContent = "1 / " + stages.length;
+    fit();
+  })();
+</script>
+</body>
+</html>
