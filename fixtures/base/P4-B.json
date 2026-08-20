@@ -1,16 +1,16 @@
 {
-  "capturedAt": "2026-07-25T12:26:48.005Z",
-  "stealthAddress": "0xa62087b4558c6f63bd045509405576187181C2De",
-  "settleTx": "0x013d4ea892cefd4fbc4f86999ae45bcc413ce2b8c2784dfcc8b8701b9425f933",
+  "capturedAt": "2026-08-20T14:09:44.833Z",
+  "stealthAddress": "0x70142A10780916F5D59898237755De1ABA6C4FFF",
+  "settleTx": "0xe9cce8e8693f1cec38e5a3867241f577995545be6a7ebffcd46b2c1fd19f6c03",
   "amount": "1000000",
   "announcement": {
-    "stealthAddress": "0xa62087b4558c6f63bd045509405576187181C2De",
-    "ephemeralPublicKey": "0x03d0d8b73a571185613589deab93e90ff091a531772a9ac46bc35b58594ce0636c",
-    "viewTag": 114
+    "stealthAddress": "0x70142A10780916F5D59898237755De1ABA6C4FFF",
+    "ephemeralPublicKey": "0x0324be45c307d139a1fbd66e26e850948601a4516f1f8921caea0d250a3c5f664b",
+    "viewTag": 34
   },
   "sweep": {
-    "txHash": "0x7949ca531e21b63e72da38dc8409308731ef0974d1af257077d6f456b902eedf",
-    "sink": "0x6e2F98cEC8b5801295149ae7D598f4e41f08176b",
+    "txHash": "0x6a4d4bfde020b517b2c4f9ac4dd8d6ae2a8e5114198c418d89f326c918b4aaee",
+    "sink": "0x46090E66b331E7a4047cBA106700Da4891869C78",
     "amount": "1000000"
   },
   "unlinkability": {
@@ -19,14 +19,14 @@
     "bobAddress": "0x4F5Cd20a4a3fBc9957f8D2A8D27D658B51Fda326"
   },
   "ordering": {
-    "jobVerifiedBlock": 44607069,
-    "settleBlock": 44607070
+    "jobVerifiedBlock": 45733369,
+    "settleBlock": 45733370
   },
   "fraud": {
     "code": "MatchFalse",
-    "skipped": "JobVerified yok (MatchFalse)"
+    "skipped": "no JobVerified for this job (MatchFalse)"
   },
-  "strangerRejected": "stealth adres bu agent'ın meta-adresinden türetilmemiş",
+  "strangerRejected": "the stealth address does not derive from this agent's meta-address",
   "announcerAddress": "0x55649E01B5Df198D18D95b5cc5051630cfD45564",
   "registryAddress": "0x6538E6bf4B0eBd30A8Ea093027Ac2422ce5d6538",
   "metaAddress": "st:base:0x02ee3df921edef538a2b434e2806d215e2767d89f7532b05c794506880c11a1440038aff33d6222cfb9d182c628f462f909fb6b8ed1ba347f1feb49e02e62593be78"

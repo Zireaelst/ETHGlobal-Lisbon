@@ -1,5 +1,5 @@
 {
-  "_comment": "Produced by pnpm gate:P3-A. The seal signature is the REAL output of @ca/bob-binding. Alice's signature is made inside the test (the domain depends on the contract address).",
+  "_comment": "pnpm gate:P3-A üretir. seal imzası @ca/bob-binding GERÇEK çıktısıdır. Alice imzası testin içinde atılır (domain kontrat adresine bağlı).",
   "chainId": 84532,
   "alicePrivateKey": "38207243490446002571500799598855127549516883484667288829423004038932447429196",
   "intent": {
@@ -9,18 +9,18 @@
     "price": "1000000",
     "deadline": "1900000000"
   },
-  "outputHash": "0xafccb12ae717c3bf80982bc8580cc1c305e384dfeb55b886d87a733eede9658e",
+  "outputHash": "0x802d644e7cafff348c76209c0fbbf1ed30dc3d4fe9b3b60d63ec0d069cdce43a",
   "match": true,
   "ogSigHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "seal": {
     "agentId": "bob-tapp",
     "sealId": "0xseal01",
     "timestamp": "1784900000",
-    "r": "0x07800f845bbd80d919759142665a76cffda10f955628e0e839f66fda4bc2760d",
-    "s": "0x5eeafb8b8b598504f37fcb545fe1c4f70b6e60aa39aa806e1e3f9a70b5a5f7d4"
+    "r": "0x1fae861cad2ec10c8cb065d9feebfc86c48f9e939141ed7ad6075222164d4b16",
+    "s": "0x1aa1b5384df76decf90cd05936bb7c78b7da5a2dba2aa01ca8f36cb907fb5dbd"
   },
   "enclaveSigner": "0xf5645D4EDC5799c7BA0bd8AD8649Ba14384151Ef",
-  "bodyHex": "0x07d2700850dd3d40b042b2ae674ed179f24fe5eddba78dad70f910bc02a84cc8afccb12ae717c3bf80982bc8580cc1c305e384dfeb55b886d87a733eede9658e00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000",
-  "bodyKeccak": "0x2c68a2b1cfa8132de80a4e3ad4896fc856bd3316119e35351c5b93775a904562",
-  "sealDigest": "0xe1922b4b9b6bfb5295722a4e1a32cb5f261a62a8f35a9fccb65a070abdbad2fd"
+  "bodyHex": "0x07d2700850dd3d40b042b2ae674ed179f24fe5eddba78dad70f910bc02a84cc8802d644e7cafff348c76209c0fbbf1ed30dc3d4fe9b3b60d63ec0d069cdce43a00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000",
+  "bodyKeccak": "0x014af278035f114505aaebf2b4d5617982ad68272c1a35f288322e2eca5c09cf",
+  "sealDigest": "0xd03eb9d626b97fabd7940892f9cce69ca3d55622dfa7b7b489f327108c10ae0b"
 }

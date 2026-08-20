@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-07-25T11:54:48.303Z",
+  "capturedAt": "2026-08-20T14:05:14.459Z",
   "paymentGate": {
     "rail": "hedera-x402",
     "intentHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
@@ -8,33 +8,99 @@
     "decimals": 6,
     "recipient": "0.0.9738447",
     "network": "hedera:testnet",
-    "expiresAt": 1784980788862
+    "expiresAt": 1787235014919
   },
   "honest": {
     "fraudMode": "none",
-    "signedIntentHash": "0x77d3631d4129125621bbca798df621fcddb6b46fdb76383214f08fa6ca84d048",
-    "bodyIntentHash": "0x77d3631d4129125621bbca798df621fcddb6b46fdb76383214f08fa6ca84d048",
+    "signedIntentHash": "0x5ef69af36ccae5f456bb05f645f22f8718357c2c39d616f7e0e017ccf085f8af",
+    "bodyIntentHash": "0x5ef69af36ccae5f456bb05f645f22f8718357c2c39d616f7e0e017ccf085f8af",
     "match": true,
     "clientSigOk": true,
     "bindingSigOk": true,
     "computeProvider": "0g-sealed-inference",
     "ogVerified": true,
-    "output": "ORDER-ID: 0x77d3631d4129125621bbca798df621fcddb6b46fdb76383214f08fa6ca84d048\n\nRevenue recognition risk assessment based on the provided data:\n\n1. **Total Revenue**: The total reported revenue for Q3-2026 is €12,400,000 EUR.\n   \n2. **Deferred Revenue**: There is €3,100,000 EUR of deferred revenue, which indicates that some portion of the revenue has not yet been recognized as income according to accounting standards (e.g., IFRS or US GAAP).\n\n3. **Number of Contracts**: There are 41 contracts listed, suggesting multiple transactions contributing to the revenue.\n\n**Risk Assessment**:\n- **Timing Risk**: Deferred revenue implies that there may be uncertainty regarding when these revenues will be recognized. This could be due to various factors such as contract terms, payment schedules, or performance obligations being met over time.\n  \n- **Contractual Terms**: The number of contracts suggests variability in revenue streams. If any of these contracts have non-standard terms or if there are delays in meeting contractual milestones, it could affect the timing and amount of revenue recognized.\n\n- **Market Conditions**: External market conditions can also impact revenue recognition. For example, changes in customer demand, economic downturns, or regulatory changes might affect future revenue expectations.\n\n**Recommendations**:\n- **Regular Review of Contracts**: Ensure ongoing review of all contracts to understand their terms and conditions accurately.\n- **Proactive Communication**: Maintain open communication with customers to manage expectations around revenue recognition.\n- **Internal Controls**: Strengthen internal controls related to revenue recognition processes to mitigate risks associated with delayed recognition.\n- **Financial Reporting Accuracy**: Ensure accurate financial reporting practices to comply with relevant accounting standards and avoid potential regulatory issues.\n\nBy addressing these areas, the company can better manage revenue recognition risks and maintain transparency in its financial reporting.",
+    "reasoningProvider": "claude-local",
+    "decisions": {
+      "hire": {
+        "provider": "claude-local",
+        "agentId": "8429",
+        "rationale": "Agent 8429 has a proven track record of 141 successful deliveries despite some rejections, while 8432 has zero history to judge.",
+        "latencyMs": 7207
+      },
+      "price": {
+        "provider": "claude-local",
+        "approve": true,
+        "rationale": "The price is well under budget and the agent has a strong track record, plus payment only releases if the delivered work is verified.",
+        "latencyMs": 6860
+      },
+      "result": {
+        "provider": "claude-local",
+        "accept": false,
+        "rationale": "The report just restates the three input numbers and offers generic, boilerplate advice without any real analysis of contract terms or recognition methods, so it doesn't deliver the substantive risk assessment that was commissioned.",
+        "latencyMs": 11105
+      }
+    },
+    "output": "ORDER-ID: 0x5ef69af36ccae5f456bb05f645f22f8718357c2c39d616f7e0e017ccf085f8af\n\nRevenue recognition risk assessment based on the provided data:\n\n1. **Total Revenue**: The total revenue reported is €12,400,000 EUR.\n2. **Deferred Revenue**: There is €3,100,000 EUR of deferred revenue, which indicates that some portion of the revenue has not yet been recognized as income.\n3. **Number of Contracts**: There are 41 contracts associated with this revenue.\n\n**Risk Assessment**:\n- **High Risk of Deferred Revenue Impact**: With significant deferred revenue (approximately 25% of total revenue), there is a high risk that future periods may experience fluctuations due to changes in the timing of revenue recognition from these deferred amounts.\n- **Contractual Dependencies**: The presence of multiple contracts suggests potential variability in revenue streams depending on contract performance and completion timelines.\n- **Need for Detailed Analysis**: A detailed analysis of each contract's status, including any specific terms related to revenue recognition, would be necessary to better understand the underlying risks.\n\n**Recommendations**:\n- Conduct a thorough review of all contracts to identify any clauses that could affect revenue recognition timing.\n- Monitor deferred revenue closely and adjust financial forecasts accordingly.\n- Consider implementing more robust internal controls to manage and report on deferred revenue accurately.",
+    "brief": "Assess revenue-recognition risk in the attached quarterly figures.",
+    "data": "Q3-2026 revenue 12,400,000 EUR; deferred 3,100,000 EUR; 41 contracts.",
+    "binding": {
+      "agentId": "agent-8429",
+      "sealId": "0x184749fae313c8a9",
+      "timestamp": "1787234731",
+      "r": "0x322f05e47b1d8fa30ea9f39b0ce15c41d943d472a03d9782464e5aabe8474902",
+      "s": "0x5c4d65796907deab78ac651a0cc34bf8b87e18d74297a4f839e4ecb3b9b94df2",
+      "v": 28,
+      "seal": "0x322f05e47b1d8fa30ea9f39b0ce15c41d943d472a03d9782464e5aabe84749025c4d65796907deab78ac651a0cc34bf8b87e18d74297a4f839e4ecb3b9b94df21c",
+      "sealDigest": "0x9bcc6f42136625381f5a23891446b4f39ae2b6ee7bec1368170075a4f0ef71e9",
+      "bodyHex": "0x5ef69af36ccae5f456bb05f645f22f8718357c2c39d616f7e0e017ccf085f8afc81658207d2544483a1ceb1c1fbb965ebdbf445e091129a558516eb2233ec5dd000000000000000000000000000000000000000000000000000000000000000122bea4ae33cc1f3611c8b8d8b0271141a64079a72ab972f983896332ce648539",
+      "expectedSigner": "0x521dc808769A27F50DBA439619bd3E3F7c24F557",
+      "recoveredCandidates": [
+        {
+          "v": 27,
+          "address": "0x05e863b88309D3b423ACA690c1B0EF21F65E5d34"
+        },
+        {
+          "v": 28,
+          "address": "0x521dc808769A27F50DBA439619bd3E3F7c24F557"
+        }
+      ]
+    },
     "code": 0,
     "codeName": "OK",
     "verified": true,
-    "totalMs": 15686,
+    "totalMs": 41974,
+    "stageMs": {
+      "discovery": 7534,
+      "agent_card": 4,
+      "intent_sign": 15,
+      "ecies_encrypt": 9,
+      "http_task_send1": 3,
+      "payment_authorize": 7586,
+      "http_task_send2": 9337,
+      "http_result": 1,
+      "ecies_decrypt_result": 8,
+      "enclave_ecies_decrypt": 16,
+      "enclave_recompute": 2,
+      "enclave_client_sig_verify": 6,
+      "enclave_compute_0g": 8895,
+      "enclave_seal_sign": 5,
+      "hcs_open_topic": 6,
+      "alice_job_total": 35607,
+      "chain_verify_tx": 6360
+    },
     "discoveredAgentId": "8429",
-    "txHash": "0x33eb45687b498dc7dbf8db20c08ecb2c0baa832a33ebbf91ccd76ed9b8e329bb",
-    "blockNumber": 44606110,
-    "basescanUrl": "https://sepolia.basescan.org/tx/0x33eb45687b498dc7dbf8db20c08ecb2c0baa832a33ebbf91ccd76ed9b8e329bb",
+    "txHash": "0x6088ecec71fd094d60dd66fd59239dda4ef6d7cd8fb3ddca84f51681dc7d2b2a",
+    "blockNumber": 45733234,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0x6088ecec71fd094d60dd66fd59239dda4ef6d7cd8fb3ddca84f51681dc7d2b2a",
     "payment": {
       "rail": "hedera-x402",
       "quoted": true,
       "authorized": true,
       "settled": true,
-      "txRef": "0.0.7162784@1784980486.244117925",
-      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7162784-1784980486-244117925"
+      "txRef": "0.0.7162784@1787234726.573507460",
+      "explorerUrl": "https://hashscan.io/testnet/transaction/0.0.7162784-1787234726-573507460",
+      "paidTo": "0.0.9738447",
+      "agentIdentity": "0.0.9738447"
     },
     "timeline": {
       "topicId": "0.0.9738448",
@@ -51,8 +117,8 @@
   "mirrorTransaction": {
     "batch_key": null,
     "bytes": null,
-    "charged_tx_fee": 286155,
-    "consensus_timestamp": "1784980509.446022890",
+    "charged_tx_fee": 274197,
+    "consensus_timestamp": "1787234759.481154120",
     "entity_id": null,
     "high_volume": false,
     "high_volume_pricing_multiplier": 0,
@@ -61,24 +127,24 @@
     "memo_base64": "",
     "name": "CRYPTOTRANSFER",
     "nft_transfers": [],
-    "node": "0.0.6",
+    "node": "0.0.4",
     "nonce": 0,
     "parent_consensus_timestamp": null,
     "result": "SUCCESS",
     "scheduled": false,
     "staking_reward_transfers": [],
     "token_transfers": [],
-    "transaction_hash": "RCStTc+CbdsoHaL/+2L0OSiFQc96NkNRhhK2/ZyvtLWzN8d4jRft/Q3YcbxN4bjc",
-    "transaction_id": "0.0.7162784-1784980486-244117925",
+    "transaction_hash": "kX8VTBzWSbWDNVLjB/2vlZY65CtbICstcA4W1cjrUBwxAr8DCsI0gydBeCfw0Ikx",
+    "transaction_id": "0.0.7162784-1787234726-573507460",
     "transfers": [
       {
         "account": "0.0.802",
-        "amount": 286155,
+        "amount": 274197,
         "is_approval": false
       },
       {
         "account": "0.0.7162784",
-        "amount": -286155,
+        "amount": -274197,
         "is_approval": false
       },
       {
@@ -93,32 +159,96 @@
       }
     ],
     "valid_duration_seconds": "120",
-    "valid_start_timestamp": "1784980486.244117925"
+    "valid_start_timestamp": "1787234726.573507460"
   },
   "fraud": {
     "fraudMode": "substitute",
-    "signedIntentHash": "0x5eb61a5dba2d2194bd514090fe87fb06525e0616fbab8dd83ba8f118d739f428",
-    "bodyIntentHash": "0x5eb61a5dba2d2194bd514090fe87fb06525e0616fbab8dd83ba8f118d739f428",
+    "signedIntentHash": "0x418a0af00ea0b29c71efb34f20a6ab172631adf3b10b37993cb3b91ff9236b02",
+    "bodyIntentHash": "0x418a0af00ea0b29c71efb34f20a6ab172631adf3b10b37993cb3b91ff9236b02",
     "match": false,
     "clientSigOk": false,
     "bindingSigOk": true,
     "computeProvider": "0g-sealed-inference",
     "ogVerified": true,
-    "output": "[binding] Yeniden hesaplanan taahhüt istemcinin imzaladığıyla uyuşmuyor — iş sipariş edilen iş değil. (compute: 0g-sealed-inference)",
+    "reasoningProvider": "claude-local",
+    "decisions": {
+      "hire": {
+        "provider": "claude-local",
+        "agentId": "8429",
+        "rationale": "Agent 8429 has a proven track record of 142 verified deliveries, while 8432 has no history to judge at all.",
+        "latencyMs": 7467
+      },
+      "price": {
+        "provider": "claude-local",
+        "approve": true,
+        "rationale": "The price is well under budget and the agent has a strong track record, plus payment only releases if the delivery is verified.",
+        "latencyMs": 6596
+      },
+      "result": {
+        "provider": "claude-local",
+        "accept": false,
+        "rationale": "The delivery's own verification says it doesn't match what was ordered, so it cannot be trusted as the requested revenue-recognition risk assessment.",
+        "latencyMs": 7290
+      }
+    },
+    "output": "[binding] The recomputed commitment does not match what the client signed — this is not the job that was ordered. (compute: 0g-sealed-inference)",
+    "brief": "Assess revenue-recognition risk in the attached quarterly figures.",
+    "data": "Q3-2026 revenue 12,400,000 EUR; deferred 3,100,000 EUR; 41 contracts.",
+    "binding": {
+      "agentId": "agent-8429",
+      "sealId": "0x184749fae313c8a9",
+      "timestamp": "1787234779",
+      "r": "0x3f6cefbceea0aff1f83e88fff96c23132f18e4d518452d07295aefabe8467b5a",
+      "s": "0x37228b4616e59c5b24897c4a7422925b1c85c48e4d6b28ed89f47fe2b1f90207",
+      "v": 28,
+      "seal": "0x3f6cefbceea0aff1f83e88fff96c23132f18e4d518452d07295aefabe8467b5a37228b4616e59c5b24897c4a7422925b1c85c48e4d6b28ed89f47fe2b1f902071c",
+      "sealDigest": "0x3e83f1fff730f985f5d8333057829d98b365017965beefd9ce75ca4f792d7669",
+      "bodyHex": "0x418a0af00ea0b29c71efb34f20a6ab172631adf3b10b37993cb3b91ff9236b02d6e649547df345fa2cc48fcac6b8a19154289d01a2738bc79cc8bd8aea8497ca0000000000000000000000000000000000000000000000000000000000000000baa6027500b43cf3a81ad802a3005b322c56c008b85819398c4931006361f1ca",
+      "expectedSigner": "0x521dc808769A27F50DBA439619bd3E3F7c24F557",
+      "recoveredCandidates": [
+        {
+          "v": 27,
+          "address": "0x004b0450DAf3ee4ce1cbe9dF7a5f3EE33f6e0Fa6"
+        },
+        {
+          "v": 28,
+          "address": "0x521dc808769A27F50DBA439619bd3E3F7c24F557"
+        }
+      ]
+    },
     "code": 5,
     "codeName": "MatchFalse",
     "verified": false,
-    "totalMs": 10798,
+    "totalMs": 30339,
+    "stageMs": {
+      "discovery": 8096,
+      "agent_card": 2,
+      "intent_sign": 3,
+      "ecies_encrypt": 8,
+      "http_task_send1": 2,
+      "payment_authorize": 7257,
+      "http_task_send2": 5720,
+      "http_result": 2,
+      "ecies_decrypt_result": 7,
+      "enclave_ecies_decrypt": 9,
+      "enclave_recompute": 1,
+      "enclave_client_sig_verify": 1,
+      "enclave_compute_0g": 5299,
+      "enclave_seal_sign": 2,
+      "hcs_open_topic": 3,
+      "alice_job_total": 28388,
+      "chain_verify_tx": 1948
+    },
     "discoveredAgentId": "8429",
-    "txHash": "0x1db6a302ac51bc4a8faef905f7bac163d048e07d89d74484e9aa7aa28cdf345f",
-    "blockNumber": 44606119,
-    "basescanUrl": "https://sepolia.basescan.org/tx/0x1db6a302ac51bc4a8faef905f7bac163d048e07d89d74484e9aa7aa28cdf345f",
+    "txHash": "0xbfad695da68cd5c7af9f61b1de4ec450795d30715090cb480304de8317e05bc7",
+    "blockNumber": 45733254,
+    "basescanUrl": "https://sepolia.basescan.org/tx/0xbfad695da68cd5c7af9f61b1de4ec450795d30715090cb480304de8317e05bc7",
     "payment": {
-      "rail": "x402",
+      "rail": "hedera",
       "quoted": true,
       "authorized": true,
       "settled": false,
-      "skippedReason": "JobVerified yok (MatchFalse)"
+      "skippedReason": "no JobVerified for this job (MatchFalse)"
     },
     "timeline": {
       "topicId": "0.0.9738448",
