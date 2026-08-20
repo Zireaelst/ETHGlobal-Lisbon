@@ -252,6 +252,39 @@ chainId, dolayısıyla farklı domain. Bir zincirin imzası diğerinde geçerli 
 
 ---
 
+## 3.5 Barındırılan Bob — dışarıdan doğrulandı
+
+Railway: `https://ethglobal-lisbon-production.up.railway.app` (2026-08-21)
+
+| Kontrol | Sonuç |
+|---|---|
+| `/health` | `{"status":"healthy","agentId":"8429","stage":"echo"}` |
+| TLS | geçerli (`ssl_verify_result 0`), ~0.45 s |
+| Agent card `endpoint` | `https://ethglobal-lisbon-production.up.railway.app/task` — localhost DEĞİL |
+| Gerçek iş (`scripts/spikes/probe-deployed-bob.ts`) | `matched=true` · `ogVerified=true` · 1912 karakter analiz |
+| intentHash echo | çıktı `ORDER-ID: 0x2822727c…` ile başlıyor |
+
+**İki hata bu doğrulama sırasında bulundu ve düzeltildi:**
+
+`main()` **hiç çağrılmıyordu** — `node dist/index.js` modülü yükleyip çıkıyordu. Railway'de
+bu, hata vermeden başlayıp ölen ve sonsuza dek yeniden başlatılan bir container olarak
+görünüyordu. Yerelde görünmemesinin sebebi her çağıranın `createBobAgent`'ı kütüphane olarak
+import etmesi; dosya entry point olarak hiç kullanılmamıştı.
+
+`main()` **compute geçmiyordu** — `createNoComputeBackend()`'e düşüyor ve her `/task`'a
+"NO real inference was run" diyen bir placeholder dönüyordu. Bu hâldeyken ücretli bir ASP
+olarak listelenmek, ucun veremeyeceği bir şeyi ilan etmek olurdu.
+
+> **Probe'un kendisi de bir kez yanlış cevap verdi.** İlk sürümü `report.output` okuyordu;
+> doğru alan `report.result.output`. Boş string'te placeholder işareti bulamayınca "gerçek
+> analiz" dedi — eksik veride geçen bir kontrol, hiç kontrol olmamasından kötüdür. Artık boş
+> çıktıda `KARARSIZ` diyor ve sonuç çıkarmıyor.
+
+**Ödeme kapısı bilinçli olarak KAPALI.** Barındırılan Bob 402 döndürmüyor. A2MCP listelemesinde
+ödemeyi OKX topluyor; ucun ayrıca kendi x402 ücretini alması çift ücretlendirme olurdu.
+
+---
+
 ## 4. Dürüstlük: `intentHash` bu rayda İMZAYLA KORUNMUYOR
 
 `extra.intentHash` ödeme isteğinde **taşınıyor**, ama `exact` şeması yalnızca
