@@ -140,7 +140,7 @@ Base. Keşif Base'de kalmak **zorunda**, çünkü The Graph X Layer **testnet**'
 | Chain başına idempotency | `VERIFIER_ADDRESS` · `VERIFIER_ADDRESS_XLAYER` |
 | Gas token etiketi | chain'e göre (X Layer'da **OKB**) |
 | Base yolu | **bozulmadı** — aşağıya bakın |
-| X Layer deploy'u | ⚠️ **HENÜZ YOK — faucet bekliyor** |
+| X Layer deploy'u | ✅ **YAPILDI** — aşağıya bakın |
 
 Base yolunun hâlâ idempotent olduğu, gerçek çalıştırma:
 
@@ -170,12 +170,31 @@ Error: unknown --chain "ethereum" — expected one of: base, xlayer.
        Refusing to guess: deploying to the wrong chain writes an address the whole demo then trusts.
 ```
 
-**Deploy için tek eksik:** `0x351c9f1a638cf018425dB6547c52cD5Ba5aD7Ed6` adresine
-[faucet](https://web3.okx.com/xlayer/faucet)'ten OKB. Sonra:
+### ✅ X Layer ayna Verifier'ı canlı
 
-```bash
-npx tsx scripts/deploy-verifier.ts --chain xlayer
-```
+Deployer fonlandıktan sonra deploy edildi ve **zincirden doğrulandı** (2026-08-20):
+
+| | |
+|---|---|
+| Adres | [`0x941729B3263ebE6fD0A9E7872F81962585C48028`](https://www.oklink.com/xlayer-test/address/0x941729B3263ebE6fD0A9E7872F81962585C48028) |
+| Ağ | X Layer testnet, `eip155:1952` |
+| Bytecode | 7 860 byte |
+| `owner()` | `0x351c9f1a…7Ed6` — bizim deployer'ımız |
+| `registeredClient(Alice)` | `true` |
+| `DOMAIN_SEPARATOR()` | `0xfdce3a0e…2561565` |
+
+**Domain separator'ın chainId'si doğrulandı.** Yerel keccak ile `1952`, `84532`, `196` ve
+`195` denendi; **yalnızca 1952 eşleşiyor.** Yani kontrat X Layer'ın kendi chainId'siyle
+kurulmuş — Base'in domain'i kopyalanmamış. Bu önemli: yanlış chainId ile kurulmuş bir ayna,
+Base'in imzalarını kabul eder ve "ayrı zincirde bağımsız doğrulama" iddiasını boşa çıkarırdı.
+
+Base'inkiyle **kasıtlı olarak farklı** (`0xfdce3a0e…` ≠ Base'inki): aynı bytecode, farklı
+chainId, dolayısıyla farklı domain. Bir zincirin imzası diğerinde geçerli değil.
+
+> **Yine de doğruluk kaynağı Base.** Demo `VERIFIER_ADDRESS`'e karşı çalışıyor ve üç rayın
+> `settle()`'ı da `assertJobVerified`'i **Base** provider'ıyla çağırıyor. Bu ayna, aynı
+> kuralların gas-free bir zincirde yeniden çalıştırılabilmesi için var — kimse ona bakarak
+> karar vermiyor.
 
 ---
 
@@ -249,8 +268,7 @@ bozardı.
 
 | | Neden |
 |---|---|
-| Canlı X Layer ödemesi | OKX API anahtarı yok |
-| X Layer'a Verifier deploy'u | Deployer'da OKB yok (faucet tarayıcı gerektiriyor) |
+| Canlı X Layer ödemesi | OKX API anahtarı yok; ayrıca Alice'in X Layer'da USDC_TEST bakiyesi 0 |
 | `nonce` bağlaması (§4) | Ayrı iş, ayrı ray, ayrı tez — `ROADMAP.md` §A.4 |
 | ASP kaydı | X Layer **mainnet**, kalıcı — ayrı onay bekliyor |
 | P4-D düz metin sızıntısı | Mevcut hata, OKX kapsamı dışı |
