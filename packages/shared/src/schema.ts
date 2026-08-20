@@ -57,8 +57,8 @@ export const TaskEnvelopeSchema = z.object({
 });
 export type TaskEnvelope = z.infer<typeof TaskEnvelopeSchema>;
 
-/** Payment rail identifier — two backends, one interface. */
-export const PaymentRailSchema = z.enum(['base-stealth', 'hedera-x402']);
+/** Payment rail identifier — three backends, one interface. */
+export const PaymentRailSchema = z.enum(['base-stealth', 'hedera-x402', 'okx-x402']);
 
 /**
  * Bob's HTTP 402 response: "authorise payment first".
