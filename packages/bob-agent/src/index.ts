@@ -108,6 +108,17 @@ export interface BobAgentOptions {
   };
   /** The card's `endpoint` field; derived from the listening address when absent. */
   publicUrl?: string;
+  /**
+   * The interface to bind to. Defaults to `127.0.0.1` — loopback ONLY.
+   *
+   * That default is the safe one and stays the default: every gate, and the local demo, runs
+   * an agent holding real testnet keys, and a process that binds `0.0.0.0` by accident is
+   * reachable by anything else on the network. A hosted deployment genuinely needs the
+   * opposite (a PaaS routes to the container's external interface and a loopback-only listener
+   * looks dead to its health check), so it must ASK for it — `BOB_HOST=0.0.0.0` — rather than
+   * get it silently.
+   */
+  host?: string;
   log?: (line: string) => void;
   /**
    * Test hook: the plaintext payload Bob DECRYPTED.
@@ -500,7 +511,7 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
     bindingSigner: () => expectedBindingSigner,
     listen: () =>
       new Promise<number>((resolve) => {
-        server.listen(options.port ?? 0, '127.0.0.1', () => {
+        server.listen(options.port ?? 0, options.host ?? '127.0.0.1', () => {
           boundPort = (server.address() as AddressInfo).port;
           log(`[bob] agentId=${options.agentId} dinliyor: ${url()}`);
           resolve(boundPort);
@@ -532,7 +543,11 @@ export async function main(): Promise<void> {
     // key the enclave generates, registered on chain with `setEnclaveSigner`.
     bindingKey: keccak256(toUtf8Bytes(`phase1-binding-key/${cfg.PRIVATE_KEY_BOB}`)),
     fraudMode: isFraudMode(cfg.FRAUD_MODE) ? cfg.FRAUD_MODE : 'none',
-    port: Number(process.env.BOB_PORT ?? 8801),
+    // A PaaS assigns the port at boot and routes to it; `PORT` is the near-universal name for
+    // that, so it wins when present. BOB_PORT stays for local runs and the gates.
+    port: Number(process.env.PORT || process.env.BOB_PORT || 8801),
+    // Loopback unless a deployment explicitly asks otherwise (see BobAgentOptions.host).
+    host: process.env.BOB_HOST?.trim() || undefined,
   });
   await agent.listen();
 }
