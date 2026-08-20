@@ -55,6 +55,7 @@ export const XLAYER_TESTNET = 'eip155:1952' as const;
 export const XLAYER_CHAIN_ID = 1952;
 
 const OKLINK = 'https://www.oklink.com/xlayer-test';
+const DEFAULT_XLAYER_RPC = 'https://testrpc.xlayer.tech/terigon';
 
 /**
  * A settlement asset on X Layer, with the EIP-712 domain its payer signs under.
@@ -287,13 +288,56 @@ export function createOkxX402Backend(config: OkxX402Config): PaymentBackend {
       if (config.payoutAddress && proof.payTo.toLowerCase() !== config.payoutAddress.toLowerCase()) {
         return { ok: false, reason: `recipient is ${proof.payTo}, expected ${config.payoutAddress}` };
       }
-      // Let OKX verify: is the signature valid, is the balance sufficient. NO MONEY MOVES.
+      // Let OKX verify the signature. NO MONEY MOVES.
       await ensureInitialized();
       const { requirements, paymentPayload } = proof.payload as OkxAuthPayload;
       const result = await resourceServer.verifyPayment(paymentPayload as never, requirements as never);
-      return result.isValid
-        ? { ok: true }
-        : { ok: false, reason: `OKX facilitator rejected: ${result.invalidReason ?? 'unknown'}` };
+      if (!result.isValid) {
+        return { ok: false, reason: `OKX facilitator rejected: ${result.invalidReason ?? 'unknown'}` };
+      }
+
+      // IS THE PAYER ACTUALLY GOOD FOR IT? We check this OURSELVES because OKX's /verify does
+      // not: measured 2026-08-20 against a payer holding 0 USDC_TEST, the facilitator returned
+      // isValid — and settlement would then fail AFTER Bob had already done the work and given
+      // away the deliverable. `base-stealth.ts` has always made this check; relying on a
+      // facilitator to make it for us turned out to be relying on something that isn't there.
+      const payer = (paymentPayload as { payload?: { authorization?: { from?: string } } })?.payload
+        ?.authorization?.from;
+      if (payer) {
+        try {
+          const rpc = process.env.XLAYER_RPC_URL?.trim() || DEFAULT_XLAYER_RPC;
+          const res = await fetch(rpc, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'eth_call',
+              params: [
+                { to: asset.address, data: `0x70a08231${payer.slice(2).toLowerCase().padStart(64, '0')}` },
+                'latest',
+              ],
+            }),
+            signal: AbortSignal.timeout(20_000),
+          });
+          const body = (await res.json()) as { result?: string };
+          if (body.result && body.result !== '0x') {
+            const balance = BigInt(body.result);
+            if (balance < BigInt(expected.amount)) {
+              return {
+                ok: false,
+                reason: `payer's ${asset.symbol} balance is insufficient (${balance} < ${expected.amount})`,
+              };
+            }
+          }
+        } catch {
+          // A balance read that cannot complete is not evidence of insolvency. The signature
+          // checks above already passed; refusing the job over an RPC hiccup would be a worse
+          // failure than the one this guard exists to prevent.
+        }
+      }
+
+      return { ok: true };
     },
 
     async settle(proof: AuthProof, jobVerifiedTx: string): Promise<Receipt> {
