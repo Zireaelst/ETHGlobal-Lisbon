@@ -3,7 +3,7 @@
 import { Panel, Chip } from "./Panel";
 import { Hash } from "./Hash";
 import { SponsorLogo } from "@/components/SponsorLogo";
-import { explorerName } from "@/lib/explorers";
+import { explorerName, networkForSponsor } from "@/lib/explorers";
 import type { NetworkEvidence } from "@/lib/server/networks";
 
 /**
@@ -34,7 +34,7 @@ export function EvidencePanel({ evidence }: { evidence: NetworkEvidence[] }) {
               <h3 className="flex min-w-0 items-center">
                 <SponsorLogo id={net.network} className="h-5" />
               </h3>
-              <Chip tone="cool">{explorerName(net.network)}</Chip>
+              <Chip tone="cool">{explorerName(networkForSponsor(net.network))}</Chip>
             </div>
 
             <p className="mt-2.5 font-body text-sm font-light leading-relaxed text-muted-foreground">
@@ -57,7 +57,7 @@ export function EvidencePanel({ evidence }: { evidence: NetworkEvidence[] }) {
                     ) : (
                       <Hash
                         value={fact.value}
-                        network={net.network}
+                        network={networkForSponsor(net.network)}
                         kind={fact.kind}
                         lead={net.network === "hedera" ? 20 : 10}
                         tail={net.network === "hedera" ? 0 : 6}

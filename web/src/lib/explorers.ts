@@ -10,25 +10,28 @@
 // only ever a function argument. Linking those somewhere plausible would be the exact opposite
 // of proof. `explorerFor` returns null for them, and the UI renders plain text instead.
 //
-// All four networks were verified by hand before being wired in (chain ids and URL shapes):
-//   Base Sepolia  84532   sepolia.basescan.org
-//   Hedera        testnet hashscan.io/testnet   (a SPA — curl 404s, browsers resolve it)
-//   0G Galileo    16602   chainscan-galileo.0g.ai
-//   The Graph     —       the Studio query endpoint itself is the artefact
+// All five networks were verified by hand before being wired in (chain ids and URL shapes):
+//   Base Sepolia    84532   sepolia.basescan.org
+//   Hedera          testnet hashscan.io/testnet   (a SPA — curl 404s, browsers resolve it)
+//   0G Galileo      16602   chainscan-galileo.0g.ai
+//   X Layer testnet 1952    oklink.com/xlayer-test   (195 is the RETIRED testnet — not this)
+//   The Graph       —       the Studio query endpoint itself is the artefact
 
 export const BASE_SEPOLIA_CHAIN_ID = 84532;
 export const OG_GALILEO_CHAIN_ID = 16602;
+export const XLAYER_TESTNET_CHAIN_ID = 1952;
 
 const BASESCAN = "https://sepolia.basescan.org";
 const OG_SCAN = "https://chainscan-galileo.0g.ai";
 const OG_STORAGE_SCAN = "https://storagescan-galileo.0g.ai";
+const OKLINK_XLAYER_TEST = "https://www.oklink.com/xlayer-test";
 
 function hashscan(): string {
   const network = (process.env.NEXT_PUBLIC_HEDERA_NETWORK ?? "testnet").toLowerCase();
   return `https://hashscan.io/${network}`;
 }
 
-export type Network = "base" | "hedera" | "0g" | "thegraph";
+export type Network = "base" | "hedera" | "0g" | "xlayer" | "thegraph";
 
 export type Kind =
   | "tx"
@@ -101,6 +104,24 @@ export function explorerFor(network: Network, kind: Kind, id: string | null | un
           return null;
       }
 
+    // X Layer testnet. The MIRROR chain: the same Verifier bytecode, re-deployed so the verdict
+    // can be re-checked where gas is free. Nothing here is a source of truth — see
+    // scripts/deploy-verifier.ts. OKLink is X Layer's own explorer.
+    case "xlayer":
+      switch (kind) {
+        case "tx":
+          return `${OKLINK_XLAYER_TEST}/tx/${id}`;
+        case "address":
+        case "contract":
+          return `${OKLINK_XLAYER_TEST}/address/${id}`;
+        case "token":
+          return `${OKLINK_XLAYER_TEST}/token/${id}`;
+        case "block":
+          return `${OKLINK_XLAYER_TEST}/block/${id}`;
+        default:
+          return null;
+      }
+
     // The Graph has no block explorer. The subgraph's own endpoint is the artefact: a judge
     // POSTs the query and gets the same rows the panel shows. The caller supplies that URL.
     case "thegraph":
@@ -144,6 +165,18 @@ export function facilitatorSupportedUrl(base: string | null | undefined) {
   return `${base.replace(/\/$/, "")}/supported`;
 }
 
+/**
+ * The chain whose explorer proves a given sponsor's facts.
+ *
+ * These are two different questions and they stopped having the same answer when OKX arrived:
+ * the SPONSOR is OKX, the CHAIN is X Layer, and OKX also supplies a facilitator that is not a
+ * chain at all. Collapsing the two names would have meant calling the explorer "okx" — which
+ * is not what OKLink indexes — or calling the sponsor "xlayer", which is not who they are.
+ */
+export function networkForSponsor(sponsor: "0g" | "base" | "hedera" | "okx" | "thegraph"): Network {
+  return sponsor === "okx" ? "xlayer" : sponsor;
+}
+
 /** The explorer's own name, so a link can say where it goes before it is clicked. */
 export function explorerName(network: Network): string {
   switch (network) {
@@ -153,6 +186,8 @@ export function explorerName(network: Network): string {
       return "HashScan";
     case "0g":
       return "0G Chainscan";
+    case "xlayer":
+      return "OKLink";
     case "thegraph":
       return "Subgraph Studio";
   }
