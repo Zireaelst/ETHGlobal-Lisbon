@@ -298,7 +298,20 @@ olarak listelenmek, ucun veremeyeceği bir şeyi ilan etmek olurdu.
 | Servis | Confidential Market Analysis · `A2MCP` · **1 USDT** |
 | Endpoint | `https://ethglobal-lisbon-production.up.railway.app/task` |
 | Owner | `0xe93f1546c2082e9cb278b9a7d3ded3bb562ea36d` |
-| Durum | `Listing under review` (OKX incelemesi bekleniyor) |
+| Durum | `Listing under review` — **gönderildi, kuyrukta** |
+
+**Onay akışı tamamlandı; yapılacak başka bir şey yok.** `activate` iki iş yapıyor —
+`agent-status` + `submit-approval`. İkincisi başarılı oldu (`approvalStatus 1 → 2`); birincisi
+`success:false` dönüyor ve bu **doğru davranış**: bir ajan ancak onaydan SONRA `active`
+olabiliyor. `identity-errors.md:52` bunu açıkça yazıyor:
+
+> `activate.approvalStatus: 2` → "under review — usually ready within 24h; once approved it
+> appears on the marketplace." **Stop.** Don't call `submit-approval`.
+
+Yani `activate`'i tekrar çalıştırmak gereksiz (ikinci çağrı zaten `submitApproval`'ı yanıta
+bile koymadı). Onaylanınca `approvalDisplayStatus` 2 → 4 olur ve `statusLabel` `active`'e
+döner — Kinora #11036'nın bugünkü hâli. Kontrol için:
+`onchainos agent get-agents --agent-ids 11070`
 
 **Gas ödenmedi.** Kayıt platformun sponsorlu kanalından geçti — `ANALYSIS.md` §8'de
 "gerçek OKB gerekiyor" diye yazdığım iddia yanlıştı ve §S6-DÜZELTME'de düzeltildi.
