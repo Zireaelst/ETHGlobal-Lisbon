@@ -23,6 +23,7 @@
 //   GET  /health
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { pathToFileURL } from 'node:url';
 import type { AddressInfo } from 'node:net';
 import { Wallet, keccak256, toUtf8Bytes } from 'ethers';
 
@@ -543,6 +544,12 @@ export async function main(): Promise<void> {
     // key the enclave generates, registered on chain with `setEnclaveSigner`.
     bindingKey: keccak256(toUtf8Bytes(`phase1-binding-key/${cfg.PRIVATE_KEY_BOB}`)),
     fraudMode: isFraudMode(cfg.FRAUD_MODE) ? cfg.FRAUD_MODE : 'none',
+    // The address the OUTSIDE world reaches this agent on — what the agent card advertises as
+    // its endpoint. Without it the card publishes `http://127.0.0.1:<port>`, which is true
+    // inside the container and useless to everyone else: a client discovering Bob would be
+    // told to call its own loopback. It is also what an ASP listing writes permanently on
+    // chain, so getting it wrong there costs another transaction to correct.
+    publicUrl: optionalEnv('BOB_PUBLIC_URL'),
     // A PaaS assigns the port at boot and routes to it; `PORT` is the near-universal name for
     // that, so it wins when present. BOB_PORT stays for local runs and the gates.
     port: Number(process.env.PORT || process.env.BOB_PORT || 8801),
@@ -550,4 +557,24 @@ export async function main(): Promise<void> {
     host: process.env.BOB_HOST?.trim() || undefined,
   });
   await agent.listen();
+}
+
+/**
+ * Run `main()` only when this file IS the process entry point.
+ *
+ * The guard matters in both directions. Without any call at all — which is how this shipped —
+ * `node dist/index.js` loads the module, executes no top-level statement, and EXITS: on a PaaS
+ * that reads as a container that starts and immediately dies, with no error to explain it,
+ * restarting forever. Nothing caught it locally because every caller here (the gates, the
+ * demo) imports `createBobAgent` as a LIBRARY and calls `listen()` itself; the file had never
+ * actually been used as an entry point.
+ *
+ * And it cannot simply call `main()` unconditionally, because those same importers would then
+ * boot a second server — holding real testnet keys — as a side effect of an import.
+ */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error('[bob] failed to start:', err);
+    process.exit(1);
+  });
 }
