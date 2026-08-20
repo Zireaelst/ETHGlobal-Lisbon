@@ -278,7 +278,16 @@ gate.check('nothing claims the payment signature covers intentHash on this rail'
   try {
     const out = execFileSync(
       'git',
-      ['grep', '-rniI', '-e', forbidden.join('\\|'), '--', '*.ts', '*.tsx', '*.md'],
+      [
+        'grep', '-rniI', '-e', forbidden.join('\\|'),
+        '--',
+        '*.ts', '*.tsx', '*.md',
+        // Exclude THIS FILE. It necessarily contains every forbidden phrase — they are the
+        // needle it searches for. Found the moment the gate was first committed: while the
+        // file was untracked `git grep` could not see it, so the check passed for a reason
+        // that stopped being true the instant it mattered.
+        `:!${'tests/gates/P4-E.ts'}`,
+      ],
       { cwd: root, encoding: 'utf8' },
     );
     hits = out.split('\n').filter(Boolean);
