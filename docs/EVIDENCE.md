@@ -285,6 +285,42 @@ olarak listelenmek, ucun veremeyeceği bir şeyi ilan etmek olurdu.
 
 ---
 
+## 3.6 OKX.AI ASP kaydı — X Layer MAINNET, kalıcı
+
+2026-08-21. **Faz E yapıldı.**
+
+| | |
+|---|---|
+| agentId | **11070** — https://www.okx.ai/agents/11070 |
+| chainIndex | **196** (X Layer **mainnet**) |
+| Kayıt tx | `0xfa81b7630167d803b7d716e6b67520722cbb8102146af348d9db3594fb9d6b24` |
+| Rol | ASP |
+| Servis | Confidential Market Analysis · `A2MCP` · **1 USDT** |
+| Endpoint | `https://ethglobal-lisbon-production.up.railway.app/task` |
+| Owner | `0xe93f1546c2082e9cb278b9a7d3ded3bb562ea36d` |
+| Durum | `Listing under review` (OKX incelemesi bekleniyor) |
+
+**Gas ödenmedi.** Kayıt platformun sponsorlu kanalından geçti — `ANALYSIS.md` §8'de
+"gerçek OKB gerekiyor" diye yazdığım iddia yanlıştı ve §S6-DÜZELTME'de düzeltildi.
+
+**Listeleme metni bilerek kısa tutuldu.** Kinora'nın kaydı yapı olarak doğru ama okunaksız:
+1. satır 400, 2. satır 600, 4. satır ~700 karakterlik duvarlar. Bizimki sırasıyla 192 / 373 /
+227 — aynı bilgi, yarı yoğunluk. Hiçbir satırda baş/son boşluk yok, satırlar tam olarak tek
+`\n` ile ayrılmış. `validate-listing` yazmadan önce çalıştırıldı: `pass: true`, sıfır bulgu.
+
+**Açıklamada testnet uyarısı bilerek duruyor:**
+
+> "Verification and settlement run on testnets (Base Sepolia, X Layer testnet) — this is a
+> hackathon build, not a production service."
+
+Uç gerçek analiz üretiyor (§3.5'te doğrulandı), ama doğrulama zinciri testnet ve 0G faucet
+kredisine bağlı. 1 USDT ödeyecek birine bunu söylememek §11'i çiğnerdi.
+
+**Aktivasyon `okx-a2a` 0.2.7'de takıldı**, 0.2.8'e yükseltilip daemon yeniden başlatıldı
+(`okx-a2a doctor --fix`) — Kinora playbook'unun uyardığı adım. Sonrasında 8/8 yeşil.
+
+---
+
 ## 4. Dürüstlük: `intentHash` bu rayda İMZAYLA KORUNMUYOR
 
 `extra.intentHash` ödeme isteğinde **taşınıyor**, ama `exact` şeması yalnızca
