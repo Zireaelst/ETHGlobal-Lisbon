@@ -24,6 +24,32 @@ bir ajan çalıştırıyor; kazara `0.0.0.0`'a bağlanan bir süreç ağdaki her
 
 ---
 
+## 0.5 Node sürümü — ilk deploy'u bu düşürdü
+
+**Node 20.19+ ZORUNLU, tercih 22.** `.nvmrc` (`22`) ve `package.json` → `engines.node`
+(`>=20.19 <25`) bunun için var; ikisi de yokken Nixpacks **Node 18**'e düştü ve container
+hiç açılmadı:
+
+```
+Error [ERR_REQUIRE_ESM]: require() of ES Module
+  @noble/curves/secp256k1.js
+  from @ethereumjs/util/dist/cjs/constants.js not supported.
+Node.js v18.20.5
+```
+
+Sebep zincirin dibinde: `eth-crypto@4.1.0` → `@ethereumjs/util@10.1.1` → `@noble/curves@2.2.0`.
+Bu son paket **ESM-only** (`"type": "module"`; `@noble/curves` 1.x sürümlerinin hepsi CJS).
+CJS'ten ESM `require()` etmek ancak `require(esm)` desteğiyle çalışıyor — Node 22.12'de
+açıldı, 20.19'a geri portlandı, **18'de yok**.
+
+Yerelde görünmemesinin sebebi: geliştirme makinesi Node 22 çalıştırıyor, dolayısıyla aynı
+kod sorunsuz açılıyor. Fark yalnızca container'da ortaya çıkıyor.
+
+Doğrulama — build loglarında Node sürümünü gör; 18 yazıyorsa `.nvmrc` okunmamıştır ve
+Railway → Variables'a `NIXPACKS_NODE_VERSION=22` eklemek gerekir.
+
+---
+
 ## 1. Servisi oluştur
 
 ```bash

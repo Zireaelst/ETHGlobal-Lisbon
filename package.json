@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "packageManager": "pnpm@10.12.1",
+  "//engines": "Node 20.19+ ZORUNLU, tercih 22. @ethereumjs/util@10 (eth-crypto uzerinden) @noble/curves@2 cekiyor ve o ESM-only; CJS'ten require() edilmesi ancak require(esm) destegiyle calisiyor — Node 22.12'de acildi, 20.19'a geri portlandi. Node 18'de ERR_REQUIRE_ESM ile duser. Railway/Nixpacks surumu .nvmrc'den ve buradan okur; ikisi de yokken Node 18'e dustu ve container acilmadi.",
+  "engines": {
+    "node": ">=20.19 <25"
+  },
   "scripts": {
     "//build": "`build` is the tsc -b solution build over the Node packages. A Next.js project does not belong in that graph, so the web app is a separate step and `build:all` is the one that covers everything.",
     "build": "tsc -b",
