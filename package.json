@@ -50,6 +50,7 @@
     "@hiero-ledger/sdk": "^2.86.2",
     "@scopelift/stealth-address-sdk": "1.0.0-beta.5",
     "@x402/core": "2.19.0",
+    "@x402/evm": "2.19.0",
     "@x402/hedera": "^2.19.0",
     "dotenv": "^16.4.5",
     "eth-crypto": "^4.1.0",
