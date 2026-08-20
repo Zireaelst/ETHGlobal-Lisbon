@@ -22,7 +22,7 @@ import type { DemoReport } from "@ca/demo";
 import { repoRoot } from "@ca/shared";
 
 export type FraudMode = "none" | "substitute" | "tamper" | "forge" | "selfintent";
-export type PaymentRail = "hedera" | "base" | "none";
+export type PaymentRail = "hedera" | "base" | "okx" | "none";
 
 /** A stored run: the report plus when it actually happened. */
 export interface RecordedRun {

@@ -57,8 +57,8 @@ const MODES: Array<{ mode: FraudMode; label: string; blurb: string; expect: stri
 ];
 
 /**
- * The rail is the operator's choice per run, not a deployment setting, because the two demos are
- * different demos. Picking one in `.env` would mean the other claim can never be shown live.
+ * The rail is the operator's choice per run, not a deployment setting, because the three demos
+ * are different demos. Picking one in `.env` would mean the other claims can never be shown live.
  */
 const RAILS: Array<{ rail: PaymentRail; label: string; buys: string }> = [
   {
@@ -73,6 +73,12 @@ const RAILS: Array<{ rail: PaymentRail; label: string; buys: string }> = [
     buys:
       "Recipient privacy: payment goes to a fresh ERC-5564 stealth address derived per job, so the payout does not name Bob and two jobs of his cannot be linked by their payouts.",
   },
+  {
+    rail: "okx",
+    label: "X Layer · OKX x402",
+    buys:
+      "A third settlement network behind the same interface: x402 exact on X Layer testnet, verified and settled by OKX's own facilitator. Like Hedera it buys no privacy — the payout is a plain EVM address. The intentHash travels with the request but is NOT covered by the payment signature; the binding stays in the enclave and the contract.",
+  },
 ];
 
 /**
@@ -86,6 +92,9 @@ const RAILS: Array<{ rail: PaymentRail; label: string; buys: string }> = [
 function railName(rail: string | undefined, explorerUrl: string | undefined): string {
   const s = `${rail ?? ""} ${explorerUrl ?? ""}`.toLowerCase();
   if (s.includes("hedera") || s.includes("hashscan")) return "Hedera";
+  // Checked before "base": the okx rail's own name contains neither, but its explorer is
+  // oklink.com/xlayer-test — and a future basescan-style host must not shadow it.
+  if (s.includes("okx") || s.includes("xlayer") || s.includes("oklink")) return "X Layer";
   if (s.includes("base") || s.includes("basescan")) return "Base";
   return "—";
 }

@@ -12,12 +12,13 @@
 export type FraudMode = "none" | "substitute" | "tamper" | "forge" | "selfintent";
 
 /**
- * Which rail carries the payment. The two are NOT interchangeable and the demo lets the operator
- * pick, because they buy different things: Base hides WHO was paid (ERC-5564 stealth), Hedera
- * hides nothing and buys autonomy plus a consensus-timestamped trail (CLAUDE.md §11 — the Hedera
- * run is not the private one, and saying otherwise would be the easiest claim here to overstate).
+ * Which rail carries the payment. The three are NOT interchangeable and the demo lets the
+ * operator pick, because they buy different things: Base hides WHO was paid (ERC-5564 stealth),
+ * Hedera hides nothing and buys autonomy plus a consensus-timestamped trail, and OKX settles on
+ * X Layer through OKX's own facilitator — also with no recipient privacy (CLAUDE.md §11 — only
+ * the Base run is the private one, and saying otherwise would be the easiest claim to overstate).
  */
-export type PaymentRail = "hedera" | "base";
+export type PaymentRail = "hedera" | "base" | "okx";
 
 export type ComputeProvider = "none" | "0g-sealed-inference" | "fixture-replay";
 export type ReasoningProvider = "policy" | "claude-local" | "0g-reasoning";

@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const MODES: FraudMode[] = ["none", "substitute", "tamper", "forge", "selfintent"];
-const RAILS: PaymentRail[] = ["hedera", "base", "none"];
+const RAILS: PaymentRail[] = ["hedera", "base", "okx", "none"];
 
 function parseMode(value: string | null): FraudMode {
   if (value && (MODES as string[]).includes(value)) return value as FraudMode;
