@@ -65,7 +65,7 @@ export interface DemoOptions {
    * The payment rail. When absent, the PAYMENT_BACKEND env is used; without that the payment
    * step is skipped. Rule: settlement ONLY after JobVerified — never called on a fraud run.
    */
-  paymentRail?: 'hedera' | 'base' | 'none';
+  paymentRail?: 'hedera' | 'base' | 'okx' | 'none';
   /** The HCS timeline. On by default; latency-measuring gates may turn it off. */
   timeline?: boolean;
   log?: (line: string) => void;
@@ -205,7 +205,7 @@ async function openTimeline(brief: string, data: string, log: (l: string) => voi
  * Build the payment backend. The SAME factory serves Bob (verify+settle) and Alice
  * (authorise) — the rail difference is invisible in Alice's code (a P4-A criterion).
  */
-export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolean) {
+export async function makePaymentBackend(rail: 'hedera' | 'base' | 'okx', forBob: boolean) {
   const cfg = loadConfig();
   const provider = new ethers.JsonRpcProvider(cfg.BASE_RPC_URL);
   const verifierAddress = requireEnv('VERIFIER_ADDRESS');
@@ -220,6 +220,32 @@ export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolea
       payoutAccountId: forBob ? process.env.BOB_HEDERA_ACCOUNT : undefined,
     });
   }
+  if (rail === 'okx') {
+    // The third rail: x402 `exact` on X Layer testnet, settled by OKX's own facilitator.
+    //
+    // Credentials are REQUIRED rather than optional-with-fallback. A rail that silently
+    // degrades to another rail would make the dashboard's `rail` label a guess, and the label
+    // is the only way a reader can tell the three settlements apart.
+    const { createOkxX402Backend } = await import('@ca/payment/dist/okx-x402.js');
+    const { createOkxFacilitatorFromEnv } = await import('@ca/payment');
+    const facilitator = createOkxFacilitatorFromEnv();
+    if (!facilitator) {
+      throw new Error(
+        'PAYMENT_BACKEND=okx needs OKX_API_KEY / OKX_SECRET_KEY / OKX_PASSPHRASE ' +
+          '(https://web3.okx.com/onchainos/dev-portal). Refusing to fall back to another rail: ' +
+          'which rail settled is something we report, not something we substitute.',
+      );
+    }
+    return createOkxX402Backend({
+      payerPrivateKey: cfg.PRIVATE_KEY_ALICE,
+      facilitator,
+      verifierProvider: provider,
+      verifierAddress,
+      payoutAddress: forBob ? process.env.OKX_PAY_ACCOUNT?.trim() : undefined,
+      log: (l) => console.log(l),
+    });
+  }
+
   const { createBaseStealthBackend } = await import('@ca/payment/dist/base-stealth.js');
   const { deriveAgentStealthKeys } = await import('@ca/payment');
   const bobKeys = deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob');
@@ -239,7 +265,7 @@ export async function makePaymentBackend(rail: 'hedera' | 'base', forBob: boolea
 }
 
 /** Bring Bob up on the port of his on-chain registered endpoint (once). */
-export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base' | 'none' = 'none'): Promise<BobAgent> {
+export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base' | 'okx' | 'none' = 'none'): Promise<BobAgent> {
   if (cachedBob) return cachedBob;
   loadDotenv();
   const cfg = loadConfig();
@@ -290,8 +316,14 @@ export async function ensureBob(log: (l: string) => void, rail: 'hedera' | 'base
             recipient:
               rail === 'hedera'
                 ? (process.env.BOB_HEDERA_ACCOUNT ?? cfg.HEDERA_OPERATOR_ID)
-                : deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob').metaAddress,
-            network: rail === 'hedera' ? 'hedera:testnet' : 'base-sepolia',
+                : rail === 'okx'
+                  ? // A plain EVM address on X Layer. No stealth derivation: this rail does not
+                    // claim recipient privacy, so it must not look as though it does.
+                    (process.env.OKX_PAY_ACCOUNT?.trim() ??
+                    new ethers.Wallet(cfg.PRIVATE_KEY_BOB).address)
+                  : deriveAgentStealthKeys(cfg.PRIVATE_KEY_BOB, 'bob').metaAddress,
+            network:
+              rail === 'hedera' ? 'hedera:testnet' : rail === 'okx' ? 'eip155:1952' : 'base-sepolia',
           },
     // Bob's ERC-5564 meta-address is derived DETERMINISTICALLY from his root wallet — no separate
     // secret to store, and the meta-address is identical on every run.
@@ -611,7 +643,7 @@ async function settleViaBob(
    * dashboard then guessed, and guessed "Base" for every fraud run on Hedera. The rail is known
    * here, so it is reported here; a run that moved no money still moved it on a named rail.
    */
-  chosenRail: 'hedera' | 'base' | 'none' = 'none',
+  chosenRail: 'hedera' | 'base' | 'okx' | 'none' = 'none',
 ): Promise<DemoReport['payment']> {
   const rail = job.paymentRequired ? chosenRail : 'none';
 
