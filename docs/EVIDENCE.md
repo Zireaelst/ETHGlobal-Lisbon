@@ -113,17 +113,54 @@ blocky402'ye düşmeye gerek kalmadı, ray OKX'in gerçek facilitator'ından ge�
 
 Verifier: [`0x3B116D648B710f551e37223c4c4d39879AFEEb96`](https://sepolia.basescan.org/address/0x3B116D648B710f551e37223c4c4d39879AFEEb96) (Base Sepolia)
 
-### ⚠️ Canlı settlement HENÜZ YOK
+### ✅ Kimlik bilgileriyle doğrulandı — OKX testnet'i BİZİM anahtarımızla listeliyor
 
-Bir X Layer ödeme tx'i **üretilmedi**. `OKX_API_KEY` / `OKX_SECRET_KEY` / `OKX_PASSPHRASE`
-girildiğinde tek komut:
+`scripts/spikes/okx-supported.ts`, gerçek kimlik bilgileriyle `/supported` (2026-08-20):
+
+```
+✅ /supported cevap verdi — 9 kayıt
+   exact/eip155:196          aggr_deferred/eip155:196    upto/eip155:196    period/eip155:196
+   exact/eip155:1952  ←      aggr_deferred/eip155:1952   upto/eip155:1952
+```
+
+`exact/eip155:1952` artık üçüncü tarafın mock merchant'ından değil, **kendi API
+anahtarımızla** doğrulandı. §8.8'in "mainnet-only" sonucunun çürütülmesi tamamlandı.
+
+### ✅ Ödeme ayağı uçtan uca çalışıyor (settle hariç)
+
+`scripts/spikes/okx-pay-probe.ts` — demoyu çalıştırmadan, yani 0G kredisi ve Base gas'ı
+harcamadan ödeme rayını izole eder. **`settle()` çağrılmaz.**
+
+```
+asset : USDC_TEST 0xcb8bf24c…7f2bec79d (v2)
+✅ quote     : 1000 USDC_TEST → 0x4F5Cd20a…Fda326
+✅ authorize : EIP-3009 imzalandı — PARA HAREKET ETMEDİ
+❌ verify    : payer's USDC_TEST balance is insufficient (0 < 1000)
+```
+
+### 🔴 OKX'in `/verify`'ı bakiyeye BAKMIYOR
+
+İlk çalıştırmada aynı probe `✅ verify: OKX yetkilendirmeyi kabul etti` dedi — **Alice'in
+bakiyesi 0 iken.** Yani facilitator, ödenemeyecek bir yetkilendirmeyi geçerli sayıyor.
+
+Sonucu somut: Bob işi yapar, teslimatı verir, sonra settle başarısız olur ve para gelmez.
+`base-stealth.ts` bu kontrolü hep kendisi yapıyordu; bu rayda facilitator'ın yapacağı
+varsayılmıştı ve varsayım yanlıştı. Kontrol `verifyAuthorization`'a eklendi ve yukarıdaki
+çıktı düzeltilmiş hâli.
+
+### ⚠️ Canlı settlement HENÜZ YOK — tek eksik Alice'in bakiyesi
+
+Bir X Layer ödeme tx'i **üretilmedi**, çünkü Alice'in `USDC_TEST` bakiyesi sıfır.
+[Faucet](https://web3.okx.com/xlayer/faucet)'ten `0x827F728d4B7816019585891A1BCfAfF5aB93d823`
+adresine USDC_TEST geldikten sonra tek komut:
 
 ```bash
 PAYMENT_BACKEND=okx pnpm demo:base
 ```
 
-Bu bölüm o zaman gerçek bir tx hash'i ve OKLink linkiyle güncellenecek. O ana kadar burada
-tx yok — çünkü yok.
+Alice'in OKB'ye ihtiyacı YOK: EIP-3009'da imzayı o atıyor, işlemi facilitator gönderiyor ve
+gas'ı facilitator ödüyor. Bu bölüm o zaman gerçek bir tx hash'i ve OKLink linkiyle
+güncellenecek. O ana kadar burada tx yok — çünkü yok.
 
 ---
 
