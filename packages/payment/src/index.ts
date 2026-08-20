@@ -18,7 +18,7 @@
 // run proves privacy, the Hedera run proves AUTONOMY. Two separate proofs, not one
 // compromised.
 
-export type PaymentRail = 'base-stealth' | 'hedera-x402';
+export type PaymentRail = 'base-stealth' | 'hedera-x402' | 'okx-x402';
 
 export interface QuoteRequest {
   /** The job the payment is bound to. */
@@ -118,6 +118,7 @@ export class SettlementNotAuthorizedError extends Error {
 }
 
 export * from './guard.js';
+export * from './okx-facilitator.js';
 export * from './signer/hedera-signer.js';
 export * from './hcs-timeline.js';
 export * from './stealth.js';
