@@ -113,6 +113,16 @@ const LATER_KEYS = [
   'THEGRAPH_API_KEY',
   'ALICE_ECIES_PRIV',
   'BOB_ECIES_PRIV',
+  // --- OKX / X Layer (third rail, P4-E) ---
+  // NOTE: OKX_SECRET_KEY and OKX_PASSPHRASE are deliberately NOT listed here. Like
+  // HEDERA_OPERATOR_KEY they are read only where they are used — packages/payment/src/
+  // okx-facilitator.ts — so `loadConfig()` never returns them and they never enter an
+  // agent's context. Listing them would undo the very boundary gate:P4-C tests for.
+  'OKX_API_KEY',
+  'OKX_PAY_ACCOUNT',
+  'OKX_XLAYER_ASSET',
+  'XLAYER_RPC_URL',
+  'VERIFIER_ADDRESS_XLAYER',
 ] as const;
 
 export type LaterKey = (typeof LATER_KEYS)[number];
