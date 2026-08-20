@@ -532,6 +532,17 @@ Yani Alice'in EIP-712 intent imzası (`packages/shared/src/intent.ts`) teknik ol
 
 Bizim Bob'umuz Base Sepolia'daki ERC-8004 IdentityRegistry'de kayıtlı (`ERC8004_IDENTITY`, `packages/shared/src/identity.ts`). Farklı zincir ⇒ farklı kontrat ⇒ **farklı agentId uzayı**. `BOB_AGENT_ID` OKX.AI'ye taşınamaz; ikinci bir kayıt gerekir.
 
+### ⚠️ S6-DÜZELTME (2026-08-21) — iki iddia CLI ile çürütüldü
+
+Kayıt öncesi `onchainos agent pre-check --role asp` çalıştırıldı; iki bulgu yanlış çıktı:
+
+| İddiam | Gerçek |
+|---|---|
+| "Cüzdan başına **rol başına tek kimlik**" | ❌ `uniqueness: "multiple"`, `canCreate: true`, `aspCount: 2` — aynı cüzdanda Kinora Music #11036 ve Prisma Agent #10702 birlikte duruyor |
+| "Gas için **gerçek OKB** gerekiyor" | ❌ Gas **tamamen platform sponsorlu**: *"the user's wallet does not need any gas / native balance"* (`task-evaluator.md:5`, `task-evaluator-staking.md:3,6,16`) |
+
+**Hâlâ doğru olan:** kimlik X Layer'da yaşıyor (`SKILL.md:99` — "Chain-fixed … XLayer only", `okx-ai`'de tek bir testnet referansı yok) ve kayıt **kalıcı**. Yani mainnet'te bir kayıt, ama **bedava** — kullanıcının "mainnet olma zorunluluğu yok" sezgisi *fonlama* açısından doğruydu, *zincir* açısından değil.
+
 ### ASP kaydının gerçek gereksinimleri `[KESİN]`
 
 `okx-ai/references/identity-register.md` §1-3 ve `identity-invariants.md`:

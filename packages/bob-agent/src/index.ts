@@ -524,8 +524,34 @@ export function createBobAgent(options: BobAgentOptions): BobAgent {
 
 /** When run directly, it configures itself from .env and starts up. */
 export async function main(): Promise<void> {
-  const { loadConfig, optionalEnv, requireEnv } = await import('@ca/shared');
+  const { loadConfig, optionalEnv, requireEnv, repoRoot, selectComputeBackend } = await import('@ca/shared');
+  const { resolve } = await import('node:path');
   const cfg = loadConfig();
+
+  /**
+   * WIRE THE COMPUTE BACKEND, or this server has nothing to sell.
+   *
+   * Without it `createBobAgent` falls back to `createNoComputeBackend()`, which returns a
+   * placeholder string that says, in as many words, that no inference was run. It is honestly
+   * labelled and it is fine for a schema test — but a hosted agent advertising
+   * "market-analysis" would be answering every paid request with that placeholder. A listing
+   * pointing at it would be selling something the endpoint cannot deliver.
+   *
+   * The selection labels itself: 0G key present → live Sealed Inference; REPLAY_0G=1 → a
+   * recorded real call; neither → `none`, and the log below says so rather than pretending.
+   */
+  const { backend: compute, reason: computeReason } = await selectComputeBackend(process.env, {
+    fixtureDir: resolve(repoRoot(), 'fixtures/og'),
+  });
+  console.log(`[bob] compute: ${computeReason}`);
+  if (compute.provider === 'none') {
+    console.warn(
+      '[bob] WARNING: no compute backend — every /task will return a PLACEHOLDER, not an analysis.\n' +
+        '      Set OG_RPC_URL + OG_PRIVATE_KEY for live 0G Sealed Inference, or REPLAY_0G=1 to\n' +
+        '      replay a recorded real call. Do NOT advertise this endpoint as a paid service\n' +
+        '      while it is in this state.',
+    );
+  }
   const verifyingContract = optionalEnv('VERIFIER_ADDRESS') ?? PLACEHOLDER_VERIFIER;
   if (verifyingContract === PLACEHOLDER_VERIFIER) {
     console.warn(
@@ -550,6 +576,7 @@ export async function main(): Promise<void> {
     // told to call its own loopback. It is also what an ASP listing writes permanently on
     // chain, so getting it wrong there costs another transaction to correct.
     publicUrl: optionalEnv('BOB_PUBLIC_URL'),
+    compute,
     // A PaaS assigns the port at boot and routes to it; `PORT` is the near-universal name for
     // that, so it wins when present. BOB_PORT stays for local runs and the gates.
     port: Number(process.env.PORT || process.env.BOB_PORT || 8801),
