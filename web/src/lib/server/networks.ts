@@ -159,6 +159,35 @@ export function networkEvidence(): NetworkEvidence[] {
       ],
     },
     {
+      network: "okx",
+      what:
+        "A third settlement network behind the same PaymentBackend interface: x402 exact on X Layer testnet, verified and settled by OKX's own facilitator. The same Verifier is deployed here too — a MIRROR of Base's verdict, re-checkable where gas is free. It is NOT a second source of truth: Base decides, and discovery cannot move here because The Graph does not index X Layer testnet (only its mainnet).",
+      how: "@x402/core 2.19.0 + @x402/evm · OKX facilitator (/api/v6/pay/x402) · Verifier.sol re-deployed to eip155:1952",
+      facts: [
+        {
+          label: "Verifier mirror (X Layer testnet)",
+          value: env.VERIFIER_ADDRESS_XLAYER ?? null,
+          kind: "contract",
+          why:
+            "The same bytecode as the Base Verifier, deployed a second time. Base remains the verdict the demo settles against; this one exists so the same rules can be re-run on a gas-free chain. When empty, it simply has not been deployed — an address we did not produce is not one we invent.",
+        },
+        {
+          label: "Settlement asset",
+          value: env.OKX_XLAYER_ASSET?.trim() || "usdc_test",
+          kind: "text",
+          why:
+            "Its EIP-712 domain was read off the chain, not from a document — OKX's own testnet mock merchant advertises version \"1\" for USDC_TEST while the contract reports \"2\", and the contract is what verifies the signature. gate:P4-E re-derives DOMAIN_SEPARATOR on every run and fails if our value stops matching.",
+        },
+        {
+          label: "intentHash in the payment payload",
+          value: "carried, NOT signed",
+          kind: "text",
+          why:
+            "The exact scheme signs (from, to, value, validAfter, validBefore, nonce) — extra is outside the digest. The field is there for correlation and debugging only. The binding that matters is the enclave's and the contract's, and this rail does not add to it.",
+        },
+      ],
+    },
+    {
       network: "base",
       what:
         "Base holds the verdict. The Verifier recovers both signatures — the enclave's seal and Alice's EIP-712 intent — and refuses the job unless they agree and match is true. Payment settles only after JobVerified, and on the Base run the recipient is a fresh ERC-5564 stealth address, so the payout does not name Bob.",
