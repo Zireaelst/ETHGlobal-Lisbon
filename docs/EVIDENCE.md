@@ -148,19 +148,36 @@ Sonucu somut: Bob işi yapar, teslimatı verir, sonra settle başarısız olur v
 varsayılmıştı ve varsayım yanlıştı. Kontrol `verifyAuthorization`'a eklendi ve yukarıdaki
 çıktı düzeltilmiş hâli.
 
-### ⚠️ Canlı settlement HENÜZ YOK — tek eksik Alice'in bakiyesi
+### ✅ CANLI SETTLEMENT — uçtan uca, 2026-08-21
 
-Bir X Layer ödeme tx'i **üretilmedi**, çünkü Alice'in `USDC_TEST` bakiyesi sıfır.
-[Faucet](https://web3.okx.com/xlayer/faucet)'ten `0x827F728d4B7816019585891A1BCfAfF5aB93d823`
-adresine USDC_TEST geldikten sonra tek komut:
+`PAYMENT_BACKEND=okx pnpm demo:base` · tek koşu · 56 489 ms
 
-```bash
-PAYMENT_BACKEND=okx pnpm demo:base
+| Aşama | Kanıt |
+|---|---|
+| Keşif | The Graph → `agentId 8429`, adres verilmedi |
+| Intent | `0x650fd8ad896c83d2221352351096dd0a0976041766e116a7f6e07ae63801bc4d` |
+| 402 | `1000000 USDC` rail=**okx-x402** |
+| Fiyat kararı | Claude (`claude-local`) onayladı |
+| Compute | `0g-sealed-inference`, TEE imzası doğrulandı, `match=true` |
+| **Verdict (Base)** | [`0x59e7bd41…`](https://sepolia.basescan.org/tx/0x59e7bd41f2992a5a0397378d90bc2695fbebdeabfc62be4ef64112f5ba1f9df1) · blok 45 745 850 · `OK` |
+| **Settlement (X Layer)** | [`0x56c23314…`](https://www.oklink.com/xlayer-test/tx/0x56c23314f99013737d487a7d7a8ae977002ae916f2132ea53e25d19a9a3b3e32) · blok 38 801 151 · `status 0x1` |
+| Zaman çizelgesi | HCS #882→#886, beş aşama |
+
+**Zincirden doğrulanan para hareketi:**
+
+```
+Transfer: 0x827f728d…3d823 (Alice) → 0x4f5cd20a…da326 (Bob)   1.000000 USDC_TEST
+bakiye:   Alice 10 → 9        Bob 0 → 1
 ```
 
-Alice'in OKB'ye ihtiyacı YOK: EIP-3009'da imzayı o atıyor, işlemi facilitator gönderiyor ve
-gas'ı facilitator ödüyor. Bu bölüm o zaman gerçek bir tx hash'i ve OKLink linkiyle
-güncellenecek. O ana kadar burada tx yok — çünkü yok.
+**Gas'ı Alice ÖDEMEDİ.** İşlemi gönderen `0x40817a0d9043732d48823c05ab2ffb643ef8d90a` —
+OKX'in relayer'ı. Alice'in OKB bakiyesi **sıfır** ve ödeme yine de geçti; EIP-3009'un tüm
+mesele bu: imzayı ödeyen atar, işlemi başkası gönderir. Bu, rayın "ajan kendi parasını
+harcıyor ama gas için ayrı bir varlık tutmuyor" iddiasının zincir üstündeki karşılığı.
+
+**Sıralama korundu:** `settle()` `assertJobVerified`'i geçtikten sonra çağrıldı — Base'deki
+`JobVerified` olmasaydı X Layer'da hiçbir şey hareket etmezdi. Verdict Base'de, para
+X Layer'da, ve ikisi arasındaki bağ tek yönlü.
 
 ---
 
@@ -305,7 +322,6 @@ bozardı.
 
 | | Neden |
 |---|---|
-| Canlı X Layer ödemesi | OKX API anahtarı yok; ayrıca Alice'in X Layer'da USDC_TEST bakiyesi 0 |
 | `nonce` bağlaması (§4) | Ayrı iş, ayrı ray, ayrı tez — `ROADMAP.md` §A.4 |
 | ASP kaydı | X Layer **mainnet**, kalıcı — ayrı onay bekliyor |
 | P4-D düz metin sızıntısı | Mevcut hata, OKX kapsamı dışı |
