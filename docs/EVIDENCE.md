@@ -298,7 +298,31 @@ olarak listelenmek, ucun veremeyeceği bir şeyi ilan etmek olurdu.
 | Servis | Confidential Market Analysis · `A2MCP` · **1 USDT** |
 | Endpoint | `https://ethglobal-lisbon-production.up.railway.app/task` |
 | Owner | `0xe93f1546c2082e9cb278b9a7d3ded3bb562ea36d` |
-| Durum | `Listing under review` — **gönderildi, kuyrukta** |
+| Durum | 1. tur **REDDEDİLDİ** → düzeltildi → 2. tur incelemede |
+| Güncelleme tx | `0xcf3f0d1f7c56940873aba61556272fcbaf87171d591506a2ad1c2fbc4d7c152c` |
+
+### 🔴 1. tur reddedildi — sebep bendeydi
+
+`approvalDisplayStatus: 5`, gerekçe:
+
+> "Your service requires a parameter whose specific value cannot be inferred during use.
+> Please specify the names, types, and related examples of each call parameter."
+
+**Haklı bir red.** Örnek `curl`'de değerleri eliptik bırakmıştım — `"0x2822...fd86"`,
+`"0x04..."`, `"<ECIES ciphertext>"`. Kinora'nın onaylanan kaydında tam JSON payload'ı vardı;
+ben "Kinora'nın satırları çok uzun" diye kısaltırken asıl bilgiyi atmışım. Yoğunluğu azaltmak
+doğruydu, örnek değerleri silmek değildi — ikisi aynı şey değil.
+
+**Düzeltme:** dört parametrenin de gerçek değerleri (canlı koşudan alınan `intentHash` ve
+`replyPubKey`), `cipher` için çalıştırılabilir bir `eth-crypto` tek-satırlığı, ve referans
+istemciye işaret. 1904/2000 karakter, `validate-listing` → `pass: true`.
+
+**Kalan yapısal risk, dürüstçe:** `cipher` her istekte yeniden türetilen bir değer ve üretmek
+için ECIES çalıştırmak gerekiyor. Hiçbir doküman bu ucu düz bir REST API'sine çevirmez. İkinci
+red gelirse sorun anlatımda değil, servisin pazaryeri-API şeklinde olmamasındadır.
+
+**`update` otomatik yeniden göndermiyor.** Güncelleme kaydedildi ama `approvalDisplayStatus`
+5'te kaldı; `activate` ile tekrar kuyruğa sokmak gerekti (`identity-update.md:38`).
 
 **Onay akışı tamamlandı; yapılacak başka bir şey yok.** `activate` iki iş yapıyor —
 `agent-status` + `submit-approval`. İkincisi başarılı oldu (`approvalStatus 1 → 2`); birincisi
